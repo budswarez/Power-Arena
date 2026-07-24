@@ -1,0 +1,8 @@
+@layer base, components, utilities;
+
+@layer base {
+  :root {
+    --arena-accent: #e00; /* placeholder; tokens reais vêm do Plano 2 via theme.json */
+  }
+  body { margin: 0; font-family: system-ui, sans-serif; }
+}
