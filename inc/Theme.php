@@ -10,5 +10,6 @@ final class Theme {
         Assets::register();
         OptionsPanel::register();
         Compatibility::register();
+        Blocks\Shortcodes::register();
     }
 }
