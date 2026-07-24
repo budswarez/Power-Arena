@@ -23,4 +23,26 @@ class SetupTest extends WP_UnitTestCase {
         do_action('after_setup_theme');
         $this->assertTrue(has_image_size('arena-card'));
     }
+
+    /**
+     * Publisher (the legacy theme) assigns existing menus to the location
+     * slugs `main-menu`, `top-menu` and `resp-menu`. Registering the same
+     * slugs here lets those assignments carry over untouched on migration.
+     * `arena_primary` is kept as an extra/alias location.
+     */
+    public function test_registers_publisher_compatible_menu_locations(): void {
+        $this->setExpectedIncorrectUsage("add_theme_support( 'title-tag' )");
+        do_action('after_setup_theme');
+        $locations = get_registered_nav_menus();
+        $this->assertArrayHasKey('main-menu', $locations);
+        $this->assertArrayHasKey('top-menu', $locations);
+        $this->assertArrayHasKey('resp-menu', $locations);
+        $this->assertArrayHasKey('arena_primary', $locations);
+    }
+
+    /** Closes the Fatia-1 gap: the `arena-primary` sidebar must be registered. */
+    public function test_registers_primary_sidebar(): void {
+        do_action('widgets_init');
+        $this->assertTrue(is_registered_sidebar('arena-primary'));
+    }
 }
