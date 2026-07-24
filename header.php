@@ -25,19 +25,34 @@ if (!defined('ABSPATH')) { exit; }
 
     <div class="header-main">
         <?php get_template_part('template-parts/header/branding'); ?>
+    </div>
 
-        <nav class="main-menu-container" aria-label="<?php esc_attr_e('Menu principal', 'arena'); ?>">
-            <?php
-            wp_nav_menu([
-                'theme_location' => 'main-menu',
-                'container'      => false,
-                'menu_class'     => 'main-menu menu bsm-pure clearfix',
-                'walker'         => new \Arena\Menus\MegaMenuWalker(),
-                'fallback_cb'    => false,
-            ]);
-            ?>
-        </nav>
+    <div class="main-menu-bar">
+        <div class="main-menu-bar__inner container">
+            <button
+                type="button"
+                class="mobile-menu-toggle"
+                aria-expanded="false"
+                aria-controls="main-navigation"
+            >
+                <span class="screen-reader-text"><?php esc_html_e('Abrir menu', 'arena'); ?></span>
+                <span class="mobile-menu-toggle__lines" aria-hidden="true"></span>
+            </button>
 
-        <?php get_template_part('template-parts/header/search'); ?>
+            <nav class="main-menu-container" aria-label="<?php esc_attr_e('Menu principal', 'arena'); ?>">
+                <?php
+                wp_nav_menu([
+                    'theme_location' => 'main-menu',
+                    'container'      => false,
+                    'menu_id'        => 'main-navigation',
+                    'menu_class'     => 'main-menu menu bsm-pure clearfix',
+                    'walker'         => new \Arena\Menus\MegaMenuWalker(),
+                    'fallback_cb'    => false,
+                ]);
+                ?>
+            </nav>
+
+            <?php get_template_part('template-parts/header/search'); ?>
+        </div>
     </div>
 </header>

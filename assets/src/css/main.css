@@ -91,14 +91,15 @@
 
   .top-menu.menu a { padding: 4px 0; }
 
+  /* Row 1: branding only (reference `.header-inner`, `header-style-2`
+     padding measured `20px 0`). The mega menu is its own full-width band
+     below (`.main-menu-bar`), not inline with the logo. */
   .header-main {
     max-width: var(--arena-site-width);
     margin-inline: auto;
-    padding: 12px 15px;
+    padding: 20px 15px;
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
   }
 
   #site-branding .site-branding__link {
@@ -107,7 +108,9 @@
     gap: 10px;
   }
 
-  #site-branding .site-logo { max-height: 48px; width: auto; }
+  /* Measured on the reference (`.logo img{max-height:74px}` under
+     header-style-2): the boxed logo mark, not the plain text fallback. */
+  #site-branding .site-logo { max-height: 64px; width: auto; }
 
   #site-branding .site-name {
     font-family: var(--arena-font-head);
@@ -122,14 +125,29 @@
     color: #777;
   }
 
-  .main-menu-container {
-    flex: 1 1 auto;
-    /* "sticky main menu": the nav bar itself sticks under the browser
-       chrome once the page scrolls past the header. */
+  /* Row 2: the mega menu band. Measured: header-style-2's
+     `.main-menu-wrapper` background is the accent red (#f42c1a), not
+     white — the menu bar itself IS the accent band, with a thin #dedede
+     seam below it before the page content. It's a full-width band (like
+     `.site-header.full-width`) with its own boxed inner row for the nav +
+     search, and it sticks under the browser chrome once scrolled past. */
+  .main-menu-bar {
     position: sticky;
     top: 0;
     z-index: 60;
-    background: #fff;
+    background: var(--arena-accent);
+    border-top: 3px solid var(--arena-accent);
+    border-bottom: 3px solid #dedede;
+  }
+
+  .main-menu-bar__inner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .main-menu-container {
+    flex: 1 1 auto;
   }
 
   .header-search {
@@ -142,7 +160,8 @@
     cursor: pointer;
     font-size: 1.1rem;
     padding: 6px;
-    color: inherit;
+    /* Sits on the red .main-menu-bar, same as the menu links. */
+    color: #fff;
   }
 
   .header-search-form {
@@ -166,6 +185,11 @@
    Mega menu — up to 3 levels, hover/focus reveal of .sub-menu
    ========================================================================== */
 @layer components {
+  /* Top-level items: white text on the accent-red bar (see
+     `.main-menu-container` above), Oswald 500 17px uppercase — measured
+     from `.main-menu li>a{font-family:'Oswald';font-weight:500;
+     font-size:17px;text-transform:uppercase}` and
+     `.site-header .main-menu>li>a{color:#fff}`. */
   .main-menu.menu {
     display: flex;
     flex-wrap: wrap;
@@ -174,23 +198,52 @@
     padding: 0;
     list-style: none;
     font-family: var(--arena-font-head);
+    font-weight: 500;
     text-transform: uppercase;
-    font-size: .9rem;
+    font-size: 1.0625rem;
   }
 
   .main-menu.menu > li {
     position: relative;
+    margin-right: 10px;
   }
 
   .main-menu.menu > li > a {
+    position: relative;
     display: block;
-    padding: 14px 16px;
-    line-height: 1.2;
+    padding: 0 12px;
+    line-height: 48px;
+    color: #fff;
   }
 
   .main-menu.menu > li:hover > a,
-  .main-menu.menu > li.current-menu-item > a {
-    color: var(--arena-accent);
+  .main-menu.menu > li.current-menu-item > a,
+  .main-menu.menu > li.current-menu-parent > a {
+    color: #fff;
+  }
+
+  /* Active/hover indicator: a white bar that grows from 20% to 100% width,
+     centered — measured from `.main-menu>li>a:before` (width/transform/
+     transition) + `:hover>a:before{background-color:#fff}`. */
+  .main-menu.menu > li > a::before {
+    content: '';
+    display: block;
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 20%;
+    height: 3px;
+    background: #fff;
+    transform: translateX(-50%);
+    transition: width .3s ease;
+    visibility: hidden;
+  }
+
+  .main-menu.menu > li:hover > a::before,
+  .main-menu.menu > li.current-menu-item > a::before,
+  .main-menu.menu > li.current-menu-parent > a::before {
+    width: 100%;
+    visibility: visible;
   }
 
   .main-menu.menu .sub-menu {
@@ -198,7 +251,7 @@
     position: absolute;
     top: 100%;
     left: 0;
-    min-width: 220px;
+    width: 210px;
     margin: 0;
     padding: 6px 0;
     list-style: none;
@@ -220,11 +273,17 @@
     display: block;
   }
 
+  /* Submenu items: Oswald 400 15px, no uppercase, dark text on white —
+     measured from `.main-menu .sub-menu>li>a{font-family:'Oswald';
+     font-weight:400;font-size:15px;text-transform:none}` +
+     `.sub-menu>li>a{color:#434343}`. */
   .main-menu.menu .sub-menu > li > a {
     display: block;
-    padding: 8px 16px;
+    padding: 10px 16px;
     color: #434343;
-    font-family: var(--arena-font-body);
+    font-family: var(--arena-font-head);
+    font-weight: 400;
+    font-size: .9375rem;
     text-transform: none;
     white-space: nowrap;
     border-bottom: 1px solid rgba(0, 0, 0, .04);
@@ -243,6 +302,85 @@
     border: 4px solid transparent;
     border-top-color: currentColor;
     vertical-align: middle;
+  }
+
+  /* Inside a (white) submenu the has-children arrow should read dark, not
+     inherit the white top-level arrow color. */
+  .main-menu.menu .sub-menu .menu-item-has-children > a::after {
+    border-top-color: #434343;
+  }
+
+  .main-menu.menu .sub-menu > li:hover > a::after {
+    border-top-color: #fff;
+  }
+}
+
+/* ==========================================================================
+   Mobile nav — CSS-only hamburger toggle (no JS framework, no jQuery): a
+   tiny vanilla-JS listener (main.js) flips `.is-open` on `.main-menu-bar`;
+   below the breakpoint the menu list is hidden until then. Above the
+   breakpoint the toggle itself is hidden and the desktop mega menu applies
+   unchanged (rules above this block).
+   ========================================================================== */
+@layer components {
+  .mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: 0;
+    padding: 10px;
+    cursor: pointer;
+    color: #fff;
+  }
+
+  .mobile-menu-toggle__lines,
+  .mobile-menu-toggle__lines::before,
+  .mobile-menu-toggle__lines::after {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: #fff;
+    position: relative;
+  }
+
+  .mobile-menu-toggle__lines::before { content: ''; top: -6px; }
+  .mobile-menu-toggle__lines::after { content: ''; top: 4px; }
+
+  @media (max-width: 860px) {
+    .mobile-menu-toggle { display: block; order: -1; }
+
+    .main-menu-bar__inner { position: relative; }
+
+    .main-menu.menu {
+      display: none;
+      flex-direction: column;
+      align-items: stretch;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--arena-accent);
+      box-shadow: 0 7px 7px rgba(0, 0, 0, .15);
+      z-index: 80;
+    }
+
+    .main-menu-bar.is-open .main-menu.menu { display: flex; }
+
+    .main-menu.menu > li { margin-right: 0; width: 100%; }
+
+    .main-menu.menu > li > a { line-height: 1.4; padding: 12px 16px; }
+
+    .main-menu.menu > li > a::before { display: none; }
+
+    .main-menu.menu .sub-menu {
+      position: static;
+      width: 100%;
+      box-shadow: none;
+      border-top: 1px solid rgba(0, 0, 0, .06);
+    }
+
+    .main-menu.menu .sub-menu .sub-menu { left: 0; }
+
+    .header-search { margin-left: auto; }
   }
 }
 
