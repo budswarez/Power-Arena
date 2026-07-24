@@ -101,7 +101,14 @@ final class Renderer {
         return !in_array(strtolower((string) $value), ['0', 'false', 'no', 'off'], true);
     }
 
+    /**
+     * `bs-text-color-scheme` names the TEXT color, not the section's own
+     * background: the shortcode passes `light` (light/white text) for
+     * sections meant to sit on a dark background (e.g. "Últimas notícias")
+     * and leaves it empty for ordinary light-background sections. So a
+     * light *text* scheme is what needs the dark-section wrapper class.
+     */
     private static function isDarkScheme(mixed $value): bool {
-        return is_string($value) && strtolower(trim($value)) === 'dark';
+        return is_string($value) && strtolower(trim($value)) === 'light';
     }
 }

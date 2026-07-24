@@ -12,9 +12,545 @@
     --arena-c-dark: #1b1b1b;
 
     --arena-accent: #f42c1a;
+
+    /* Boxed layout width — matches the live site's `--publisher-site-width`
+       (2-col boxed layout) so the header/footer/main content line up. */
+    --arena-site-width: 1200px;
   }
 
-  body { margin: 0; font-family: var(--arena-font-body); }
+  *, *::before, *::after { box-sizing: border-box; }
 
-  h1, h2, h3, h4, h5, h6 { font-family: var(--arena-font-head); }
+  body { margin: 0; font-family: var(--arena-font-body); color: #1b1b1b; }
+
+  h1, h2, h3, h4, h5, h6 { font-family: var(--arena-font-head); margin: 0 0 .5em; }
+
+  img { max-width: 100%; height: auto; display: block; }
+
+  a { color: inherit; text-decoration: none; }
+}
+
+/* ==========================================================================
+   Layout — boxed container, header/footer shell
+   ========================================================================== */
+@layer components {
+  .container {
+    max-width: var(--arena-site-width);
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 15px;
+  }
+
+  body.boxed { background-color: #eee; }
+
+  /* `.full-width` bars (header/footer) span the viewport; their own inner
+     content is still boxed to --arena-site-width via .container/.header-main
+     /.footer-inner below. */
+  .site-header.full-width,
+  .site-footer.full-width {
+    width: 100%;
+    background: #fff;
+  }
+
+  .main-content.boxed {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding: 24px 15px 48px;
+  }
+
+  .main-content.boxed > *:first-child { margin-top: 0; }
+}
+
+/* ==========================================================================
+   Header (header-style-2) — top bar, branding, sticky mega menu, search
+   ========================================================================== */
+@layer components {
+  .site-header.header-style-2 {
+    border-bottom: 3px solid #dedede;
+  }
+
+  .top-bar {
+    background: #f7f7f7;
+    border-bottom: 1px solid rgba(0, 0, 0, .07);
+    font-size: .85rem;
+  }
+
+  .top-bar .content-wrap {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding-inline: 15px;
+  }
+
+  .top-menu.menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin: 0;
+    padding: 8px 0;
+    list-style: none;
+  }
+
+  .top-menu.menu a { padding: 4px 0; }
+
+  .header-main {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding: 12px 15px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  #site-branding .site-branding__link {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  #site-branding .site-logo { max-height: 48px; width: auto; }
+
+  #site-branding .site-name {
+    font-family: var(--arena-font-head);
+    font-size: 1.4rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  #site-branding .site-description {
+    font-family: var(--arena-font-body);
+    font-size: .8rem;
+    color: #777;
+  }
+
+  .main-menu-container {
+    flex: 1 1 auto;
+    /* "sticky main menu": the nav bar itself sticks under the browser
+       chrome once the page scrolls past the header. */
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: #fff;
+  }
+
+  .header-search {
+    position: relative;
+  }
+
+  .header-search .search-toggle {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 6px;
+    color: inherit;
+  }
+
+  .header-search-form {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    display: none;
+    background: #fff;
+    box-shadow: 0 7px 7px rgba(0, 0, 0, .15);
+    padding: 8px;
+    z-index: 61;
+  }
+
+  .header-search:focus-within .header-search-form,
+  .header-search .search-toggle[aria-expanded="true"] ~ .header-search-form {
+    display: block;
+  }
+}
+
+/* ==========================================================================
+   Mega menu — up to 3 levels, hover/focus reveal of .sub-menu
+   ========================================================================== */
+@layer components {
+  .main-menu.menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--arena-font-head);
+    text-transform: uppercase;
+    font-size: .9rem;
+  }
+
+  .main-menu.menu > li {
+    position: relative;
+  }
+
+  .main-menu.menu > li > a {
+    display: block;
+    padding: 14px 16px;
+    line-height: 1.2;
+  }
+
+  .main-menu.menu > li:hover > a,
+  .main-menu.menu > li.current-menu-item > a {
+    color: var(--arena-accent);
+  }
+
+  .main-menu.menu .sub-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 220px;
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+    background: #fff;
+    box-shadow: 0 7px 7px rgba(0, 0, 0, .15);
+    z-index: 70;
+  }
+
+  /* 3rd level flies out to the right of its parent item. */
+  .main-menu.menu .sub-menu .sub-menu {
+    top: -6px;
+    left: 100%;
+  }
+
+  .main-menu.menu > li:hover > .sub-menu,
+  .main-menu.menu > li.menu-item-has-children:focus-within > .sub-menu,
+  .main-menu.menu .sub-menu > li:hover > .sub-menu,
+  .main-menu.menu .sub-menu > li.menu-item-has-children:focus-within > .sub-menu {
+    display: block;
+  }
+
+  .main-menu.menu .sub-menu > li > a {
+    display: block;
+    padding: 8px 16px;
+    color: #434343;
+    font-family: var(--arena-font-body);
+    text-transform: none;
+    white-space: nowrap;
+    border-bottom: 1px solid rgba(0, 0, 0, .04);
+  }
+
+  .main-menu.menu .sub-menu > li:hover > a,
+  .main-menu.menu .sub-menu > li.current-menu-item > a {
+    background: var(--arena-accent);
+    color: #fff;
+  }
+
+  .main-menu.menu .menu-item-has-children > a::after {
+    content: '';
+    display: inline-block;
+    margin-left: 6px;
+    border: 4px solid transparent;
+    border-top-color: currentColor;
+    vertical-align: middle;
+  }
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+@layer components {
+  .site-footer {
+    background: var(--arena-c-dark);
+    color: #ccc;
+    margin-top: 40px;
+  }
+
+  .site-footer .footer-inner {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding: 24px 15px;
+  }
+
+  .footer-menu.menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+    font-family: var(--arena-font-head);
+    text-transform: uppercase;
+    font-size: .85rem;
+  }
+
+  .footer-menu.menu a { color: #ccc; }
+  .footer-menu.menu a:hover { color: #fff; }
+
+  .copy-footer {
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    padding-top: 16px;
+    font-size: .85rem;
+  }
+
+  .footer-copyright { margin: 0; }
+}
+
+/* ==========================================================================
+   Section headings (per-listing heading, colored via inline style
+   emitted by Arena\Listing\Renderer::renderHeading())
+   ========================================================================== */
+@layer components {
+  .section-heading {
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+  }
+
+  .section-heading .h-text {
+    font-family: var(--arena-font-head);
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+
+  .section-heading a.h-text:hover { opacity: .8; }
+}
+
+/* ==========================================================================
+   Listing grids — modern-grid (hero), mix (3-col context), blog (single
+   column w/ excerpt), grid (N-column)
+   ========================================================================== */
+@layer components {
+  .bs-listing { margin: 0 0 40px; }
+  .bs-listing:last-child { margin-bottom: 0; }
+
+  /* --- modern-grid: 1 large hero + smaller items ------------------------ */
+  .listing-modern-grid .mg-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .listing-modern-grid .mg-col { flex: 1 1 100%; min-width: 0; }
+
+  @media (min-width: 720px) {
+    .listing-modern-grid .mg-row {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      grid-auto-rows: min-content;
+      align-items: start;
+      gap: 20px;
+    }
+
+    .listing-modern-grid .mg-col-1 { grid-column: 1; grid-row: 1 / -1; }
+    .listing-modern-grid .mg-col:not(.mg-col-1) { grid-column: 2; }
+  }
+
+  .listing-modern-grid .mg-col-1 .listing-item-featured .img-cont {
+    aspect-ratio: 760 / 428;
+  }
+
+  .listing-modern-grid .mg-col:not(.mg-col-1) .listing-item-featured .img-cont {
+    aspect-ratio: 16 / 9;
+  }
+
+  .listing-modern-grid .mg-col-1 .title { font-size: 1.4rem; }
+
+  /* --- mix: 1 featured card + compact text list ------------------------- */
+  .listing-mix-3-1 { display: flex; flex-direction: column; gap: 16px; }
+
+  .listing-mix-3-1 .row-2 {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+  }
+
+  .listing-mix-3-1 .listing-item-text .item-inner {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .listing-mix-3-1 .listing-item-text .title {
+    font-size: .95rem;
+    font-weight: 500;
+  }
+
+  .listing-mix-3-1 .listing-item-text .post-meta {
+    font-size: .75rem;
+    color: #888;
+    white-space: nowrap;
+  }
+
+  /* --- blog: single column with excerpt ---------------------------------- */
+  .listing-blog {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .listing-blog .listing-item-blog .item-inner {
+    display: flex;
+    gap: 20px;
+  }
+
+  .listing-blog .listing-item-blog .featured {
+    flex: 0 0 260px;
+  }
+
+  .listing-blog .listing-item-blog .featured .img-holder {
+    display: block;
+    aspect-ratio: 760 / 428;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+
+  .listing-blog .listing-item-blog .content-container { flex: 1 1 auto; min-width: 0; }
+
+  .listing-blog .post-summary {
+    margin-top: 10px;
+    font-size: .95rem;
+    color: #555;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 600px) {
+    .listing-blog .listing-item-blog .item-inner { flex-direction: column; }
+    .listing-blog .listing-item-blog .featured { flex-basis: auto; }
+  }
+
+  /* --- grid: N-column card grid ------------------------------------------ */
+  .listing-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px 20px;
+  }
+
+  .listing-grid.columns-1 { grid-template-columns: 1fr; }
+  .listing-grid.columns-2 { grid-template-columns: repeat(2, 1fr); }
+
+  @media (min-width: 720px) {
+    .listing-grid.columns-3 { grid-template-columns: repeat(3, 1fr); }
+    .listing-grid.columns-4 { grid-template-columns: repeat(4, 1fr); }
+    .listing-grid.columns-5 { grid-template-columns: repeat(5, 1fr); }
+    .listing-grid.columns-6 { grid-template-columns: repeat(6, 1fr); }
+  }
+
+  .listing-grid .listing-item-featured .img-cont { aspect-ratio: 760 / 428; }
+}
+
+/* ==========================================================================
+   Cards — thumb, title (Oswald), meta (Barlow), category badge
+   ========================================================================== */
+@layer components {
+  .listing-item { list-style: none; }
+
+  .listing-item .img-cont,
+  .listing-item .img-holder {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    background: #ddd;
+  }
+
+  .listing-item .img-cont img,
+  .listing-item .img-holder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .listing-item .term-badges.floated {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+  }
+
+  .listing-item .term-badge a {
+    display: inline-block;
+    padding: 3px 9px;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--arena-accent);
+    border-radius: 2px;
+  }
+
+  .listing-item .content-container { padding-top: 10px; }
+
+  .listing-item .title {
+    font-family: var(--arena-font-head);
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin: 0 0 8px;
+  }
+
+  .listing-item .post-title:hover { color: var(--arena-accent); }
+
+  .listing-item .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--arena-font-body);
+    font-size: .8rem;
+    color: #888;
+  }
+
+  .listing-item .post-author-a { color: #888; }
+  .listing-item .post-author { font-style: normal; }
+}
+
+/* ==========================================================================
+   Dark section — `bs-text-color-scheme="light"` listings (e.g. "Últimas
+   notícias") ask for light TEXT, which Arena\Listing\Renderer maps to the
+   `bs-dark-scheme` wrapper class; render those on a dark background.
+   `bs-light-scheme` (the default, everything else on the home page) stays
+   the plain light-background/dark-text look and needs no extra rule here.
+   ========================================================================== */
+@layer components {
+  .bs-listing.bs-dark-scheme {
+    background: var(--arena-c-dark);
+    color: #f2f2f2;
+    padding: 24px 20px;
+    border-radius: 4px;
+  }
+
+  .bs-listing.bs-dark-scheme .section-heading {
+    border-bottom-color: rgba(255, 255, 255, .15);
+  }
+
+  .bs-listing.bs-dark-scheme .title,
+  .bs-listing.bs-dark-scheme .post-title,
+  .bs-listing.bs-dark-scheme a {
+    color: #fff;
+  }
+
+  .bs-listing.bs-dark-scheme .post-title:hover { color: var(--arena-c-ultimas); }
+
+  .bs-listing.bs-dark-scheme .post-meta,
+  .bs-listing.bs-dark-scheme .post-author-a {
+    color: rgba(255, 255, 255, .6);
+  }
+
+  .bs-listing.bs-dark-scheme .post-summary { color: rgba(255, 255, 255, .85); }
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+@layer utilities {
+  .clearfix::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+
+  .screen-reader-text {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+    white-space: nowrap;
+  }
+
+  .listing-empty { padding: 20px 0; color: #888; }
 }
