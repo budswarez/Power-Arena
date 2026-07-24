@@ -4,3 +4,4 @@
 .wp-env.override.json
 *.log
 .DS_Store
+.phpunit.result.cache
