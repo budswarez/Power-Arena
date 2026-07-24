@@ -11,5 +11,6 @@ final class Theme {
         OptionsPanel::register();
         Compatibility::register();
         Blocks\Shortcodes::register();
+        Blocks\VcMap::register();
     }
 }
