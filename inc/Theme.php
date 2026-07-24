@@ -9,5 +9,6 @@ final class Theme {
         Setup::register();
         Assets::register();
         OptionsPanel::register();
+        Compatibility::register();
     }
 }
