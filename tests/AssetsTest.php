@@ -18,4 +18,28 @@ class AssetsTest extends WP_UnitTestCase {
     public function test_resolve_missing_entry_returns_null(): void {
         $this->assertNull(Assets::resolve($this->manifest, 'nope.js'));
     }
+
+    public function test_style_handles_single_css_file(): void {
+        $pairs = Assets::styleHandles(['main-def456.css']);
+        $this->assertSame(
+            [['handle' => 'arena-main', 'file' => 'main-def456.css']],
+            $pairs
+        );
+    }
+
+    public function test_style_handles_multiple_css_files_get_unique_handles_in_order(): void {
+        $pairs = Assets::styleHandles(['a.css', 'b.css', 'c.css']);
+        $this->assertSame(
+            [
+                ['handle' => 'arena-main', 'file' => 'a.css'],
+                ['handle' => 'arena-main-1', 'file' => 'b.css'],
+                ['handle' => 'arena-main-2', 'file' => 'c.css'],
+            ],
+            $pairs
+        );
+    }
+
+    public function test_style_handles_empty_array_returns_empty(): void {
+        $this->assertSame([], Assets::styleHandles([]));
+    }
 }

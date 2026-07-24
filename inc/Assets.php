@@ -27,14 +27,32 @@ final class Assets {
         return is_array($data) ? $data : [];
     }
 
+    /**
+     * Resolvedor puro (testável): lista de arquivos CSS -> pares handle/file.
+     * O primeiro arquivo recebe o handle 'arena-main' (preservado para
+     * compatibilidade com dependências externas); os demais recebem
+     * handles únicos indexados: 'arena-main-1', 'arena-main-2', ...
+     *
+     * @param string[] $cssFiles
+     * @return array<int, array{handle: string, file: string}>
+     */
+    public static function styleHandles(array $cssFiles): array {
+        $pairs = [];
+        foreach (array_values($cssFiles) as $index => $file) {
+            $handle = $index === 0 ? 'arena-main' : 'arena-main-' . $index;
+            $pairs[] = ['handle' => $handle, 'file' => $file];
+        }
+        return $pairs;
+    }
+
     public static function enqueue(): void {
         $manifest = self::manifest();
         $dist = ARENA_URI . '/assets/dist/';
 
         $js = self::resolve($manifest, 'assets/src/js/main.js');
         if ($js !== null) {
-            foreach ($js['css'] as $css) {
-                wp_enqueue_style('arena-main', $dist . $css, [], null);
+            foreach (self::styleHandles($js['css']) as $pair) {
+                wp_enqueue_style($pair['handle'], $dist . $pair['file'], [], null);
             }
             wp_enqueue_script('arena-main', $dist . $js['file'], [], null, true);
         }
