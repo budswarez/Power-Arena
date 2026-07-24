@@ -8,5 +8,6 @@ final class Theme {
     public static function boot(): void {
         Setup::register();
         Assets::register();
+        OptionsPanel::register();
     }
 }
