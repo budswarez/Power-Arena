@@ -10,7 +10,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(process.cwd(), 'assets/src/js/main.js'),
-        style: resolve(process.cwd(), 'assets/src/css/main.css'),
       },
     },
   },
