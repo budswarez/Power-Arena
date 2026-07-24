@@ -42,4 +42,26 @@ class AssetsTest extends WP_UnitTestCase {
     public function test_style_handles_empty_array_returns_empty(): void {
         $this->assertSame([], Assets::styleHandles([]));
     }
+
+    public function test_fonts_url_matches_production_link(): void {
+        $this->assertSame(
+            'https://fonts.googleapis.com/css?family=Barlow:400,500,600,700|Oswald:500,400&display=swap',
+            Assets::fontsUrl()
+        );
+    }
+
+    public function test_resource_hints_adds_google_fonts_preconnects(): void {
+        $hints = Assets::resourceHints([], 'preconnect');
+        $this->assertSame(
+            [
+                ['href' => 'https://fonts.googleapis.com'],
+                ['href' => 'https://fonts.gstatic.com', 'crossorigin' => 'anonymous'],
+            ],
+            $hints
+        );
+    }
+
+    public function test_resource_hints_leaves_other_relation_types_untouched(): void {
+        $this->assertSame(['example.com'], Assets::resourceHints(['example.com'], 'dns-prefetch'));
+    }
 }

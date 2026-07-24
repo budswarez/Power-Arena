@@ -6,9 +6,34 @@ namespace Arena;
 final class Assets {
     private const MANIFEST = '/assets/dist/.vite/manifest.json';
 
+    /** URL real do Google Fonts para os tokens do tema (Barlow + Oswald). */
+    private const FONTS_URL = 'https://fonts.googleapis.com/css?family=Barlow:400,500,600,700|Oswald:500,400&display=swap';
+
     public static function register(): void {
         add_action('wp_enqueue_scripts', [self::class, 'enqueue']);
         add_filter('script_loader_tag', [self::class, 'deferOwnScripts'], 10, 2);
+        add_filter('wp_resource_hints', [self::class, 'resourceHints'], 10, 2);
+    }
+
+    /** Resolvedor puro (testável): URL exata do Google Fonts (Barlow + Oswald, display=swap). */
+    public static function fontsUrl(): string {
+        return self::FONTS_URL;
+    }
+
+    /**
+     * Resolvedor puro (testável): adiciona preconnect para os hosts do Google
+     * Fonts, preservando quaisquer hints já presentes de outras relações.
+     *
+     * @param array<int, string|array<string, string>> $hints
+     * @return array<int, string|array<string, string>>
+     */
+    public static function resourceHints(array $hints, string $relationType): array {
+        if ($relationType !== 'preconnect') {
+            return $hints;
+        }
+        $hints[] = ['href' => 'https://fonts.googleapis.com'];
+        $hints[] = ['href' => 'https://fonts.gstatic.com', 'crossorigin' => 'anonymous'];
+        return $hints;
     }
 
     /** Resolvedor puro (testável): entrada -> dados do manifest. */
@@ -46,6 +71,8 @@ final class Assets {
     }
 
     public static function enqueue(): void {
+        wp_enqueue_style('arena-fonts', self::fontsUrl(), [], null);
+
         $manifest = self::manifest();
         $dist = ARENA_URI . '/assets/dist/';
 

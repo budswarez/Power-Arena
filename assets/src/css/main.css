@@ -2,7 +2,19 @@
 
 @layer base {
   :root {
-    --arena-accent: #e00; /* placeholder; tokens reais vêm do Plano 2 via theme.json */
+    --arena-font-head: 'Oswald', sans-serif;
+    --arena-font-body: 'Barlow', sans-serif;
+
+    --arena-c-hardware: #003791;
+    --arena-c-valorant: #129e11;
+    --arena-c-freefire: #e40b20;
+    --arena-c-ultimas: #f42c1a;
+    --arena-c-dark: #1b1b1b;
+
+    --arena-accent: #f42c1a;
   }
-  body { margin: 0; font-family: system-ui, sans-serif; }
+
+  body { margin: 0; font-family: var(--arena-font-body); }
+
+  h1, h2, h3, h4, h5, h6 { font-family: var(--arena-font-head); }
 }

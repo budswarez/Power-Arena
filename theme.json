@@ -1,0 +1,49 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/theme.json",
+    "version": 3,
+    "settings": {
+        "typography": {
+            "fontFamilies": [
+                {
+                    "fontFamily": "'Barlow', sans-serif",
+                    "slug": "barlow",
+                    "name": "Barlow"
+                },
+                {
+                    "fontFamily": "'Oswald', sans-serif",
+                    "slug": "oswald",
+                    "name": "Oswald"
+                }
+            ]
+        },
+        "color": {
+            "palette": [
+                {
+                    "slug": "hardware",
+                    "color": "#003791",
+                    "name": "Hardware"
+                },
+                {
+                    "slug": "valorant",
+                    "color": "#129e11",
+                    "name": "VALORANT"
+                },
+                {
+                    "slug": "freefire",
+                    "color": "#e40b20",
+                    "name": "Free Fire"
+                },
+                {
+                    "slug": "ultimas",
+                    "color": "#f42c1a",
+                    "name": "Últimas notícias"
+                },
+                {
+                    "slug": "dark",
+                    "color": "#1b1b1b",
+                    "name": "Dark"
+                }
+            ]
+        }
+    }
+}
