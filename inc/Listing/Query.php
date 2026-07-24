@@ -23,12 +23,12 @@ final class Query {
         ];
 
         $category = isset($atts['category']) ? (string) $atts['category'] : '';
-        if ($category !== '') {
+        if ($category !== '' && (int) $category > 0) {
             $args['cat'] = (int) $category;
         }
 
         $tag = isset($atts['tag']) ? (string) $atts['tag'] : '';
-        if ($tag !== '') {
+        if ($tag !== '' && (int) $tag > 0) {
             $args['tag_id'] = (int) $tag;
         }
 
@@ -39,10 +39,14 @@ final class Query {
 
         $postIds = isset($atts['post_ids']) ? (string) $atts['post_ids'] : '';
         if ($postIds !== '') {
-            $args['post__in'] = array_map(
+            $ids = array_map(
                 static fn (string $id): int => (int) trim($id),
                 explode(',', $postIds)
             );
+            $ids = array_values(array_filter($ids, static fn (int $id): bool => $id > 0));
+            if ($ids !== []) {
+                $args['post__in'] = $ids;
+            }
         }
 
         $timeFilter = isset($atts['time_filter']) ? (string) $atts['time_filter'] : '';
@@ -75,9 +79,9 @@ final class Query {
     }
 
     private static function normalizeBool(mixed $value, bool $default): bool {
-        if ($value === null || $value === '') {
+        if ($value === null) {
             return $default;
         }
-        return (string) $value !== '0';
+        return !in_array(strtolower((string) $value), ['0', 'false', 'no', 'off', ''], true);
     }
 }

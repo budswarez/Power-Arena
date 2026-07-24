@@ -94,4 +94,59 @@ class QueryTest extends WP_UnitTestCase {
         $args = Query::args(['count' => 'not-a-number']);
         $this->assertSame(5, $args['posts_per_page']);
     }
+
+    public function test_ignore_sticky_posts_false_string_is_false(): void {
+        $args = Query::args(['ignore_sticky_posts' => 'false']);
+        $this->assertFalse($args['ignore_sticky_posts']);
+    }
+
+    public function test_ignore_sticky_posts_no_string_is_false(): void {
+        $args = Query::args(['ignore_sticky_posts' => 'no']);
+        $this->assertFalse($args['ignore_sticky_posts']);
+    }
+
+    public function test_ignore_sticky_posts_off_string_is_false(): void {
+        $args = Query::args(['ignore_sticky_posts' => 'off']);
+        $this->assertFalse($args['ignore_sticky_posts']);
+    }
+
+    public function test_ignore_sticky_posts_one_string_is_true(): void {
+        $args = Query::args(['ignore_sticky_posts' => '1']);
+        $this->assertTrue($args['ignore_sticky_posts']);
+    }
+
+    public function test_ignore_sticky_posts_default_is_true(): void {
+        $args = Query::args([]);
+        $this->assertTrue($args['ignore_sticky_posts']);
+    }
+
+    public function test_empty_post_ids_omits_post_in_key(): void {
+        $args = Query::args(['post_ids' => '']);
+        $this->assertArrayNotHasKey('post__in', $args);
+    }
+
+    public function test_post_ids_with_trailing_comma_filters_non_positive(): void {
+        $args = Query::args(['post_ids' => '1,2,']);
+        $this->assertSame([1, 2], $args['post__in']);
+    }
+
+    public function test_post_ids_all_non_positive_omits_post_in_key(): void {
+        $args = Query::args(['post_ids' => '0,abc,']);
+        $this->assertArrayNotHasKey('post__in', $args);
+    }
+
+    public function test_category_non_numeric_omits_cat_key(): void {
+        $args = Query::args(['category' => 'abc']);
+        $this->assertArrayNotHasKey('cat', $args);
+    }
+
+    public function test_category_zero_omits_cat_key(): void {
+        $args = Query::args(['category' => '0']);
+        $this->assertArrayNotHasKey('cat', $args);
+    }
+
+    public function test_tag_zero_omits_tag_id_key(): void {
+        $args = Query::args(['tag' => '0']);
+        $this->assertArrayNotHasKey('tag_id', $args);
+    }
 }
