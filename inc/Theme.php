@@ -7,5 +7,6 @@ final class Theme {
     /** Registra todos os módulos do tema. */
     public static function boot(): void {
         Setup::register();
+        Assets::register();
     }
 }
