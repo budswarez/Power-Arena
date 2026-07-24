@@ -10,9 +10,10 @@ if (!defined('ABSPATH')) { exit; }
 add_action('setup_theme', static function (): void {
     // Autoload do tema não está disponível em mu-plugin: replicar a lógica pura mínima
     // (ver Arena\Preview::shouldPreview em themes/arena/inc/Preview.php).
-    $expected = defined('ARENA_PREVIEW_TOKEN') ? ARENA_PREVIEW_TOKEN : null;
+    $expected = (defined('ARENA_PREVIEW_TOKEN') && is_string(ARENA_PREVIEW_TOKEN)) ? ARENA_PREVIEW_TOKEN : null;
+    $raw      = $_GET['arena_preview'] ?? null;
+    $param    = is_string($raw) ? (string) wp_unslash($raw) : null;
     $loggedInCan = is_user_logged_in() && current_user_can('edit_theme_options');
-    $param = isset($_GET['arena_preview']) ? (string) wp_unslash($_GET['arena_preview']) : null;
 
     $enable = $loggedInCan
         || ($expected !== null && $expected !== '' && is_string($param) && hash_equals($expected, $param));
