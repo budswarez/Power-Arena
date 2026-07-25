@@ -15,8 +15,8 @@ if (!defined('ABSPATH')) { exit; }
  * Task 2B/4 report for the explicit rationale.
  *
  * Reuses:
- *  - the 2-column shell (template-parts/layout/{content-open,content-close}.php,
- *    Fatia 2B Task 1), same as single.php.
+ *  - the 2-column shell (template-parts/layout/{content-open,content-row-
+ *    open,content-close}.php, Fatia 2B Task 1), same as single.php.
  *  - template-parts/archive-header.php for the <h1>/description/child-terms.
  *  - template-parts/listing/archive.php (the blog-5 card layout, Task 3) for
  *    the MAIN listing.
@@ -68,11 +68,23 @@ if (!defined('ABSPATH')) { exit; }
  * template originally had it. tests/ArchiveTemplateTest.php's
  * test_featured_block_renders_before_archive_header() locks this order via
  * strpos() position comparison.
+ *
+ * Breadcrumb + featured mosaic BOTH render ABOVE the 2-column row entirely
+ * (task-uifix BUG 6) — a full-width band directly inside `<main>`, spanning
+ * the whole boxed 1200px column, not squeezed into the 8/12 content column
+ * beside an empty sidebar column. The mosaic's own 56/44 tile proportions
+ * (template-parts/listing/modern-grid-1.php) are percentage/aspect-ratio
+ * based, so it simply renders wider here — no markup change needed there.
+ * Only the archive header + paginated listing stay inside the row (the
+ * sidebar's widgets sit beside THOSE, not beside the mosaic). Rendered
+ * between template-parts/layout/content-open.php (opens just `<main>`) and
+ * template-parts/layout/content-row-open.php (opens the
+ * `.container`/`.content-column` row) — see both partials' own docblocks.
  */
 
 get_header();
 
-get_template_part('template-parts/layout/content-open', null, ['layout' => \Arena\Options::sidebarLayout()]);
+get_template_part('template-parts/layout/content-open');
 
 if (function_exists('yoast_breadcrumb')) {
     yoast_breadcrumb('<nav class="arena-breadcrumb">', '</nav>');
@@ -92,6 +104,8 @@ if (!is_paged() && $queriedObject instanceof WP_Term && in_array($queriedObject-
     }
     echo \Arena\Listing\Renderer::render('modern-grid-1', $featuredAtts);
 }
+
+get_template_part('template-parts/layout/content-row-open', null, ['layout' => \Arena\Options::sidebarLayout()]);
 
 get_template_part('template-parts/archive-header');
 

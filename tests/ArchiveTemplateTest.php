@@ -180,6 +180,46 @@ class ArchiveTemplateTest extends WP_UnitTestCase {
         $this->assertStringContainsString('data-slug="' . $slug . '"', $html);
     }
 
+    /**
+     * BUG 6 (task-uifix): the owner wants BOTH the breadcrumb and the
+     * featured mosaic ABOVE the content+sidebar row, spanning the full
+     * boxed width — not squeezed inside the 8/12 content column beside an
+     * empty sidebar column. Asserts both render BEFORE `.content-column`
+     * opens (i.e. as direct children of `<main>`, not nested inside the
+     * row), in the order breadcrumb -> mosaic -> row.
+     */
+    public function test_breadcrumb_and_featured_mosaic_render_above_the_two_column_row(): void {
+        $catId = self::factory()->category->create(['name' => 'Arena Above Row Category']);
+        for ($i = 0; $i < 4; $i++) {
+            self::factory()->post->create([
+                'post_title'    => 'Arena Above Row Post ' . $i,
+                'post_status'   => 'publish',
+                'post_category' => [$catId],
+            ]);
+        }
+
+        $html = $this->renderArchive((string) get_term_link($catId));
+
+        $breadcrumbPos = strpos($html, 'arena-breadcrumb');
+        $mosaicPos = strpos($html, 'bs-listing-modern-grid-1');
+        $contentColumnPos = strpos($html, 'content-column');
+
+        $this->assertNotFalse($breadcrumbPos, 'Breadcrumb nav must render.');
+        $this->assertNotFalse($mosaicPos, 'Featured mosaic must render.');
+        $this->assertNotFalse($contentColumnPos, 'The 2-column row must render.');
+
+        $this->assertLessThan(
+            $mosaicPos,
+            $breadcrumbPos,
+            'The breadcrumb must render BEFORE the featured mosaic.'
+        );
+        $this->assertLessThan(
+            $contentColumnPos,
+            $mosaicPos,
+            'The featured mosaic must render BEFORE the content-column opens (full-width band above the row), not inside it.'
+        );
+    }
+
     public function test_second_page_of_a_category_archive_shows_different_posts(): void {
         $catId = self::factory()->category->create(['name' => 'Arena Paged Category']);
         update_option('posts_per_page', 2);
