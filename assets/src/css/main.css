@@ -208,15 +208,13 @@
   *, *::before, *::after { box-sizing: border-box; }
 
   /* Belt-and-suspenders guard against horizontal scroll on narrow
-     viewports: `.bs-listing.bs-dark-scheme` (below) intentionally breaks
-     out to full viewport width via `width:100vw`/negative margins (the
-     dark "Últimas notícias" row), a technique that's a common source of
-     a few stray px of horizontal overflow in browsers/embeddings where
-     `100vw` accounts for the scrollbar gutter but the actual scrollable
-     viewport doesn't. `overflow-x:hidden` on the root element only clips
-     the HORIZONTAL axis — vertical scrolling (a tall page) is untouched —
-     so it can only ever prevent sideways scroll, never hide content that
-     would otherwise be reachable by scrolling down. */
+     viewports. `.bs-listing.bs-dark-scheme` is now BOXED (task-uifix BUG 2)
+     rather than breaking out to full viewport width, but this stays as a
+     cheap, harmless safety net against any other stray horizontal overflow
+     source. `overflow-x:hidden` on the root element only clips the
+     HORIZONTAL axis — vertical scrolling (a tall page) is untouched — so it
+     can only ever prevent sideways scroll, never hide content that would
+     otherwise be reachable by scrolling down. */
   html { overflow-x: hidden; }
 
   body {
@@ -282,23 +280,26 @@
   /* The boxed 1200px content column is ONE CONTINUOUS light surface —
      matching how the reference actually works: black only ever appears as
      the outer gutters either side of this 1200px column (outside its own
-     box entirely) and behind/around the full-bleed dark "Últimas notícias"
-     row further down (`.bs-listing.bs-dark-scheme`, which paints its own
-     dark fill wider than this column via `width:100vw`, fully covering
-     whatever is behind it) — never as a gap BETWEEN blocks inside the
-     column. Content blocks (hero mosaic, category columns, blog list, the
+     box entirely) — never as a gap BETWEEN blocks inside the column. The
+     dark "Últimas notícias" row (`.bs-listing.bs-dark-scheme`, further down)
+     paints its OWN dark fill on top of this same boxed width (task-uifix
+     BUG 2 — boxed, not full-bleed) rather than relying on the shared light
+     surface. Content blocks (hero mosaic, category columns, blog list, the
      WPBakery banner, ordinary page/post content) no longer need to paint
      their own light background just to be legible; they only keep their
      own internal padding, which now reads as white breathing-room instead
      of a separate white card floating on black.
 
-     No vertical padding on THIS element, on purpose: the dark full-bleed
-     row is always the last block before `</main>` on the home page and
-     carries `margin-bottom:0` (see `.bs-listing.bs-dark-scheme`, further
-     down) precisely so this wrapper's own box ends flush with the dark
-     row's bottom edge — any top/bottom padding here would render as a
-     leftover white band between the dark row and the footer (this
-     regression has bitten twice already; see git history on this file). */
+     No vertical padding on THIS element, on purpose: the dark row is
+     always the last block before `</main>` on the home page and carries
+     `margin-bottom:0` (see `.bs-listing.bs-dark-scheme`, further down)
+     precisely so this wrapper's own box ends flush with the dark row's
+     bottom edge — any top/bottom padding here would render as a leftover
+     white band between the dark row and the footer (this regression has
+     bitten twice already; see git history on this file). The footer's OWN
+     `margin-top` must also stay 0 for the same reason — a BLACK band shows
+     up there instead of a white one if it doesn't (task-uifix BUG 3, see
+     `.site-footer` further down). */
   .main-content.boxed {
     max-width: var(--arena-site-width);
     margin-inline: auto;
@@ -362,7 +363,19 @@
    already-shared `.container` utility rather than duplicating it).
    ========================================================================== */
 @layer components {
-  .content-container {
+  /* Scoped to the `<main>` ELEMENT, not a bare `.content-container` class
+     selector (task-uifix BUG 1, regression): every card partial
+     (card/featured.php, card/hero.php, card/list.php) also renders its own
+     unrelated `<div class="content-container">` for its title/meta block —
+     a bare class selector matches that div too, painting every card's
+     text block with this shell's own white background. Invisible on an
+     ordinary light-scheme listing (white text-block on an already-white
+     page surface), but inside `.bs-listing.bs-dark-scheme` ("Últimas
+     notícias") it rendered as a solid white rectangle behind each card's
+     WHITE title text — completely unreadable. See tests/StyleGuardTest.php
+     for the regression guard and `.bs-listing.bs-dark-scheme
+     .content-container` below for the belt-and-suspenders override. */
+  main.content-container {
     max-width: var(--arena-site-width);
     margin-inline: auto;
     background: #fff;
@@ -1188,10 +1201,19 @@
    Footer
    ========================================================================== */
 @layer components {
+  /* NOT a positive `margin-top` (task-uifix BUG 3, regression): `<body>`'s
+     own background is pure black (see `body` above) and `.main-content`
+     carries no trailing bottom margin/padding of its own (by design — see
+     `.main-content.boxed`'s own comment) — a margin HERE, on the footer's
+     side of the boundary, opens the exact same gap from the other
+     direction: a solid BLACK band between the last content block and the
+     footer's own dark fill. Zero on purpose; any breathing room the footer
+     wants belongs inside `.footer-inner`'s own padding, not out here where
+     it paints on bare body background. */
   .site-footer {
     background: var(--arena-c-dark);
     color: #ccc;
-    margin-top: 40px;
+    margin-top: 0;
   }
 
   .site-footer .footer-inner {
@@ -1973,9 +1995,14 @@
    longer paint) their own white card — they only keep their own internal
    padding as breathing-room, which reads as white space on the shared
    surface rather than a separately-painted box with black gaps around it.
-   The dark block is the exception: it paints its own dark fill AND breaks
-   full-bleed out of the 1200px column, overriding the shared light surface
-   for its own box.
+   The dark block paints its own dark fill but stays BOXED inside the same
+   1200px column as everything else (task-uifix BUG 2 — verified against the
+   reference HTML: that row is a plain `vc_row wpb_row vc_row-fluid` +
+   `vc_col-sm-12 vc_col-has-fill`, with NO `vc_row-full-width`/
+   `data-vc-full-width` — the dark fill sits INSIDE the boxed column, same as
+   the white content above it. An earlier revision broke it full-bleed
+   (`width:100vw`) based on an incorrect reading of the reference; that
+   inference is reverted here).
    ========================================================================== */
 @layer components {
   /* Breathing-room padding only — no background of its own; the light fill
@@ -1984,25 +2011,36 @@
     padding: 24px 15px;
   }
 
-  /* Full-bleed: `.bs-listing` sits inside `.main-content.boxed`
-     (max-width 1200px, 15px side padding), but the reference's dark
-     "Últimas notícias" row paints edge-to-edge across the viewport while
-     its content (heading + grid) stays aligned to the same 1200px column.
-     `max()` keeps a 15px minimum gutter on narrow viewports, matching
-     `.container`'s own padding-inline there. */
+  /* Boxed, not full-bleed (task-uifix BUG 2): same 15px inline padding as
+     `.bs-listing.bs-light-scheme` above, so the dark fill's own left/right
+     edges land exactly on the same column edges as the white content block
+     above it — `.bs-listing` already sits inside `.main-content.boxed`
+     (max-width 1200px, 15px side padding), it just also paints its own dark
+     background across that same width instead of relying on the shared
+     light surface. */
   .bs-listing.bs-dark-scheme {
     background: var(--arena-c-dark);
     color: var(--arena-c-surface);
-    width: 100vw;
-    margin-inline: calc(50% - 50vw);
     padding-block: 32px 40px;
-    padding-inline: max(15px, calc((100vw - var(--arena-site-width)) / 2));
+    padding-inline: 15px;
     /* The page background is now pure black (see `body` above) and this
        row's own dark fill (--arena-c-dark, #1b1b1b) is close enough in
        value that its top/bottom edges could read as an accidental seam
        rather than an intentional dark section — a faint top/bottom
        boundary keeps it legible as its own block. */
     border-block: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  /* Belt-and-suspenders (task-uifix BUG 1): forces a card's own
+     `.content-container` transparent at 3-class specificity, so it wins
+     the cascade over a future light-surface rule regardless of THAT rule's
+     own source order — the root cause (a stray bare `.content-container`
+     selector colliding with the page shell, see `main.content-container`
+     above) is fixed, but this stands on its own even if some other rule
+     ever re-adds a light background to `.content-container` generically. */
+  .bs-listing.bs-dark-scheme .content-container {
+    background: transparent;
+    color: inherit;
   }
 
   .bs-listing.bs-dark-scheme .title,
@@ -2048,8 +2086,8 @@
    inset, then apply the reference's measured 30px once, in one place.
 
    EXCEPT for `bs-dark-scheme` ("Últimas notícias"): that block paints its
-   OWN full-bleed dark fill only on `.bs-listing` itself (not on the
-   `.wpb_wrapper` ancestor, which stays transparent) — so putting the 30px
+   OWN dark fill only on `.bs-listing` itself (not on the `.wpb_wrapper`
+   ancestor, which stays transparent) — so putting the 30px
    gap on the wrapper, as done below for the ordinary light-scheme case,
    would render it as plain (non-dark) space ABOVE the dark box, with the
    heading landing flush against the box's own top edge once the fill
