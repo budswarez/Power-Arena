@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use Arena\Setup;
+
 class SetupTest extends WP_UnitTestCase {
     /**
      * Re-firing 'after_setup_theme' inside a test also re-runs
@@ -44,5 +46,32 @@ class SetupTest extends WP_UnitTestCase {
     public function test_registers_primary_sidebar(): void {
         do_action('widgets_init');
         $this->assertTrue(is_registered_sidebar('arena-primary'));
+    }
+
+    /**
+     * On single/archive/search the reference's shell body classes must be
+     * present so the 2-column-grid CSS hooks (main.css) match.
+     */
+    public function test_shell_body_classes_present_on_single(): void {
+        $postId = $this->factory()->post->create(['post_status' => 'publish']);
+        $this->go_to(get_permalink($postId));
+
+        $classes = Setup::shellBodyClasses([]);
+
+        $this->assertContains('page-layout-2-col', $classes);
+        $this->assertContains('page-layout-2-col-right', $classes);
+        $this->assertContains('active-sticky-sidebar', $classes);
+    }
+
+    /** The home page must not gain the shell's 2-column classes. */
+    public function test_shell_body_classes_absent_on_front_page(): void {
+        $pageId = $this->factory()->post->create(['post_type' => 'page', 'post_status' => 'publish']);
+        update_option('show_on_front', 'page');
+        update_option('page_on_front', $pageId);
+        $this->go_to(get_permalink($pageId));
+
+        $classes = Setup::shellBodyClasses(['existing-class']);
+
+        $this->assertSame(['existing-class'], $classes);
     }
 }

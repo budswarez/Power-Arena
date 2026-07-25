@@ -22,6 +22,16 @@
        `--publisher-spacing:50` variable, applied as every listing block's
        own `margin-bottom`. */
     --arena-block-spacing: 50px;
+
+    /* The mega menu bar's own rendered height — 48px line-height
+       (`.main-menu.menu > li > a`, below) + its 3px top/bottom borders
+       (`.main-menu-bar`, below) = 54px, matching the 54x54 search/hamburger
+       icon hit targets. Defined once here so anything that needs to clear
+       the bar when it's pinned (`.main-menu-bar.is-pinned`, fixed to the
+       viewport top) — e.g. the sticky sidebar's own top offset, further
+       down — reads the SAME number instead of a 2nd hardcoded magic value
+       that could drift out of sync with the bar's actual height. */
+    --arena-sticky-bar-height: 54px;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -117,6 +127,84 @@
   }
 
   .main-content.boxed > *:first-child { margin-top: 0; }
+}
+
+/* ==========================================================================
+   2-column shell (single/archive/search) — template-parts/layout/
+   {content-open,content-close}.php + sidebar.php build the markup;
+   Arena\Layout::columnClasses() (pure, tests/LayoutTest.php) decides which
+   of the classes below apply. Same boxed light-surface model as
+   `.main-content.boxed` above (content-container is the box; `.container`
+   inside it only adds the 15px edge padding + column gutter, reusing the
+   already-shared `.container` utility rather than duplicating it).
+   ========================================================================== */
+@layer components {
+  .content-container {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    background: #fff;
+    color: #1b1b1b;
+  }
+
+  .content-container > *:first-child { margin-top: 0; }
+
+  /* Bootstrap-style row/col gutter math: `.container` (shared utility,
+     above) already has `padding-inline:15px`; this negative margin cancels
+     it so the flex row's outer edge lines back up with `.container`'s own
+     border-box edge, and each column's own 15px padding (below) recreates
+     a 15px edge inset + a 30px gutter between the 2 columns — matching the
+     "15px column padding (30px gutter)" reference measurement. */
+  .container.layout-2-col,
+  .container.layout-1-col {
+    display: flex;
+    flex-wrap: wrap;
+    margin-inline: -15px;
+  }
+
+  .content-column,
+  .sidebar-column {
+    padding-inline: 15px;
+    /* Flex children default to min-width:auto (their content's intrinsic
+       width) — without this, a wide table/media inside .entry-content
+       could force the whole row wider than the 1200px box instead of
+       scrolling inside its own column. */
+    min-width: 0;
+  }
+
+  .content-column.col-12 { flex: 0 0 100%; max-width: 100%; }
+  .content-column.col-8 { flex: 0 0 66.6667%; max-width: 66.6667%; }
+  .sidebar-column.col-4 { flex: 0 0 33.3333%; max-width: 33.3333%; }
+
+  /* Sticky sidebar — gated on `body.active-sticky-sidebar` (added by
+     Arena\Setup::shellBodyClasses() on single/archive/search) rather than
+     unconditionally on `.sidebar-column`, matching the reference's own
+     opt-in naming for this behavior. `top` clears the mega menu bar once
+     it's pinned (`--arena-sticky-bar-height`, above) plus a 20px breathing
+     gap. No transition here — sticky positioning itself isn't an animated
+     property, so there's nothing for `prefers-reduced-motion` to disable. */
+  body.active-sticky-sidebar .sidebar-column .sidebar-inner-wrap {
+    position: sticky;
+    top: calc(var(--arena-sticky-bar-height) + 20px);
+  }
+
+  /* Stack to 1 column, sidebar below content — measured breakpoint 768px.
+     Sticky is turned back off: a sidebar sitting BELOW the content in a
+     single stacked column has no meaningful "stick while scrolling past
+     the content" behavior (there's no content left beside it to scroll
+     past), and leaving `position:sticky` on would just pin it awkwardly
+     under the mega menu bar once its own top passes that point. */
+  @media (max-width: 768px) {
+    .content-column.col-8,
+    .sidebar-column.col-4 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+
+    body.active-sticky-sidebar .sidebar-column .sidebar-inner-wrap {
+      position: static;
+      top: auto;
+    }
+  }
 }
 
 /* ==========================================================================
