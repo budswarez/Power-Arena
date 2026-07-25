@@ -14,6 +14,13 @@ if (!defined('ABSPATH')) { exit; }
  * same strategy as card/text.php — so a thumbless post degrades to a
  * text-only card, never a broken/empty `<img>`.
  *
+ * Category badge (Task 2B polish pass): the reference overlays a
+ * `.term-badges.floated`/`data-slug` badge at the BOTTOM-LEFT of every
+ * listing card's thumb, not just on the featured tiles (card/hero.php,
+ * card/featured.php already do this at the TOP-left) — same markup/colour
+ * system, `.listing-item-blog-5 .term-badges.floated` in main.css just
+ * repositions it to the bottom for this card.
+ *
  * @var array<string, mixed> $args {
  *     @type bool                 $is_first Se este é o 1º card da listagem (LCP).
  *     @type array<string, mixed> $options  Opções vindas de Renderer::buildOptions().
@@ -30,6 +37,9 @@ $isFirst = (bool) ($args['is_first'] ?? false);
 $showThumb = \Arena\Listing\Renderer::hasUsableThumbnail($postId);
 $showExcerpt = ($options['show_excerpt'] ?? true) !== false;
 
+$categories = get_the_category($postId);
+$primaryCategory = $categories !== [] ? $categories[0] : null;
+
 $authorId = (int) get_the_author_meta('ID');
 $permalink = get_permalink($postId);
 $commentCount = (int) get_comments_number($postId);
@@ -38,6 +48,13 @@ $commentCount = (int) get_comments_number($postId);
     <div class="item-inner clearfix">
         <?php if ($showThumb): ?>
             <div class="featured">
+                <?php if ($primaryCategory): ?>
+                    <div class="term-badges floated">
+                        <span class="term-badge" data-slug="<?php echo esc_attr($primaryCategory->slug); ?>">
+                            <a href="<?php echo esc_url(get_category_link($primaryCategory)); ?>"><?php echo esc_html($primaryCategory->name); ?></a>
+                        </span>
+                    </div>
+                <?php endif; ?>
                 <a class="img-holder" href="<?php echo esc_url($permalink); ?>">
                     <?php
                     $imgAttr = [

@@ -222,15 +222,75 @@
     border-bottom: 1px solid rgba(0, 0, 0, .078);
   }
 
+  /* Clearfix: `.actions-container` below is floated, so a following
+     sibling (`.archive-description`/`.archive-terms`) needs the section
+     itself to clear it rather than relying on the H1 alone being tall
+     enough. */
+  .archive-title::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+
+  /* Label chip ("pre-title") + feed link ("actions-container") — measured
+     verbatim in ref-category.html: a small dark chip above the H1, plus a
+     thin rule filling the rest of that row, with the feed link floated to
+     the right so it lands beside the H1's own first line (see
+     archive-header.php's docblock for why no extra wrapper is needed). */
+  .archive-title .pre-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 18px;
+  }
+
+  .archive-title .pre-title span {
+    display: inline-block;
+    flex-shrink: 0;
+    background: #1b1b1b;
+    color: #fff;
+    font-family: var(--arena-font-body);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: capitalize;
+    padding: 7px 16px;
+  }
+
+  .archive-title .pre-title::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    background: rgba(0, 0, 0, .12);
+  }
+
+  .archive-title .actions-container {
+    float: right;
+    margin-left: 12px;
+  }
+
+  .archive-title .rss-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    color: var(--arena-accent);
+  }
+
+  .archive-title .rss-link .icon-rss { width: 16px; height: 16px; }
+
+  /* Title-case, larger and lighter than the earlier all-caps treatment —
+     measured against the reference ("Hardware", not "HARDWARE"). */
   .archive-title .page-heading {
     font-family: var(--arena-font-head);
-    font-size: clamp(24px, 3.6vw, 34px);
+    font-size: clamp(26px, 4vw, 40px);
     line-height: 1.25;
-    font-weight: 600;
+    font-weight: 500;
     color: #1b1b1b;
     margin: 0;
-    text-transform: uppercase;
-    letter-spacing: .01em;
+    text-transform: none;
+    letter-spacing: normal;
   }
 
   .archive-description {
@@ -1339,6 +1399,14 @@
   .listing-item .term-badge[data-slug="hardware"] a { background: var(--arena-c-hardware); }
   .listing-item .term-badge[data-slug="valorant"] a { background: var(--arena-c-valorant); }
   .listing-item .term-badge[data-slug="free-fire"] a { background: var(--arena-c-freefire); }
+
+  /* card/blog5.php (category/tag/author archives, search results):
+     reference overlays the same badge at the BOTTOM-left of the thumb
+     instead of the top-left every other card uses. */
+  .listing-item-blog-5 .term-badges.floated {
+    top: auto;
+    bottom: 10px;
+  }
 
   .listing-item .content-container { padding-top: 0; }
 

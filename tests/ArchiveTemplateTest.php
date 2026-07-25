@@ -118,6 +118,68 @@ class ArchiveTemplateTest extends WP_UnitTestCase {
         $this->assertStringContainsString('Arena Archive Author', $html);
     }
 
+    /**
+     * Locks the reference's structural order (Task 2B polish): the
+     * "featured" modern-grid block renders BEFORE the archive header
+     * (`page-heading` H1), not after — archive.php used to render
+     * header -> featured -> listing; the reference renders
+     * featured -> header -> listing.
+     */
+    public function test_featured_block_renders_before_archive_header(): void {
+        $catId = self::factory()->category->create(['name' => 'Arena Order Category']);
+        for ($i = 0; $i < 5; $i++) {
+            self::factory()->post->create([
+                'post_title'    => 'Arena Order Post ' . $i,
+                'post_status'   => 'publish',
+                'post_category' => [$catId],
+            ]);
+        }
+
+        $html = $this->renderArchive((string) get_term_link($catId));
+
+        $featuredPos = strpos($html, 'bs-listing-modern-grid');
+        $headingPos = strpos($html, 'page-heading');
+
+        $this->assertNotFalse($featuredPos, 'Featured modern-grid block should render.');
+        $this->assertNotFalse($headingPos, 'Archive header <h1> should render.');
+        $this->assertLessThan($headingPos, $featuredPos, 'Featured block must render before the archive header.');
+    }
+
+    /**
+     * Reference shows a small dark "pre-title" label chip above the H1
+     * ("Navegando pela Categoria" for category archives) — the exact
+     * text/element measured in ref-category.html.
+     */
+    public function test_category_archive_shows_label_chip(): void {
+        $catId = self::factory()->category->create(['name' => 'Arena Chip Category']);
+        self::factory()->post->create(['post_status' => 'publish', 'post_category' => [$catId]]);
+
+        $html = $this->renderArchive((string) get_term_link($catId));
+
+        $this->assertStringContainsString('pre-title', $html);
+        $this->assertStringContainsString('Navegando pela Categoria', $html);
+    }
+
+    /**
+     * Reference overlays a category badge at the bottom-left of every
+     * listing card's thumbnail (`.term-badges.floated` with a slug-keyed
+     * `data-slug`), not just on the featured tiles.
+     */
+    public function test_blog5_card_has_category_badge_with_data_slug(): void {
+        $catId = self::factory()->category->create(['name' => 'Arena Badge Category']);
+        $postId = self::factory()->post->create([
+            'post_title'    => 'Arena Badge Post',
+            'post_status'   => 'publish',
+            'post_category' => [$catId],
+        ]);
+        set_post_thumbnail($postId, self::factory()->attachment->create_upload_object(DIR_TESTDATA . '/images/canola.jpg', $postId));
+
+        $slug = get_category($catId)->slug;
+        $html = $this->extractMainListing($this->renderArchive((string) get_term_link($catId)));
+
+        $this->assertStringContainsString('data-slug="' . $slug . '"', $html);
+    }
+
     public function test_second_page_of_a_category_archive_shows_different_posts(): void {
         $catId = self::factory()->category->create(['name' => 'Arena Paged Category']);
         update_option('posts_per_page', 2);

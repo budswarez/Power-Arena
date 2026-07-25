@@ -61,6 +61,13 @@ if (!defined('ABSPATH')) { exit; }
  * cosmetic (avoiding an already-recent post appearing twice near the top
  * of the same page). Skipped as "not cheap to do cleanly" per the brief's
  * own escape hatch.
+ *
+ * Order (Task 2B polish pass): the reference renders the featured block
+ * FIRST, then the archive header (label chip + H1 + description + child
+ * terms), then the paginated listing — NOT header-then-featured as this
+ * template originally had it. tests/ArchiveTemplateTest.php's
+ * test_featured_block_renders_before_archive_header() locks this order via
+ * strpos() position comparison.
  */
 
 get_header();
@@ -70,8 +77,6 @@ get_template_part('template-parts/layout/content-open', null, ['layout' => '2col
 if (function_exists('yoast_breadcrumb')) {
     yoast_breadcrumb('<nav class="arena-breadcrumb">', '</nav>');
 }
-
-get_template_part('template-parts/archive-header');
 
 $queriedObject = get_queried_object();
 if (!is_paged() && $queriedObject instanceof WP_Term && in_array($queriedObject->taxonomy, ['category', 'post_tag'], true)) {
@@ -83,6 +88,8 @@ if (!is_paged() && $queriedObject instanceof WP_Term && in_array($queriedObject-
     }
     echo \Arena\Listing\Renderer::render('modern-grid', $featuredAtts);
 }
+
+get_template_part('template-parts/archive-header');
 
 global $wp_query;
 get_template_part('template-parts/listing/archive', null, [

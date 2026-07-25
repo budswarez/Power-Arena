@@ -22,4 +22,19 @@ final class Icons {
             . '<line x1="13.3" y1="13.3" x2="18" y2="18"></line>'
             . '</svg>';
     }
+
+    /**
+     * Inline SVG RSS glyph for the archive header's feed link
+     * (template-parts/archive-header.php, Task 2B polish pass) — the
+     * reference shows a small RSS icon at the right end of the H1 row.
+     * `aria-hidden` here: the surrounding `<a>` carries its own
+     * `aria-label`, so this glyph is purely decorative.
+     */
+    public static function rss(): string {
+        return '<svg class="icon-rss" width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" focusable="false">'
+            . '<circle cx="4.2" cy="15.8" r="2.2"></circle>'
+            . '<path d="M2 8.2a9.8 9.8 0 0 1 9.8 9.8h-2.8A7 7 0 0 0 2 11z"></path>'
+            . '<path d="M2 2a16 16 0 0 1 16 16h-2.8A13.2 13.2 0 0 0 2 4.8z"></path>'
+            . '</svg>';
+    }
 }

@@ -26,6 +26,16 @@ if (!defined('ABSPATH')) { exit; }
  * Child-term chips (`with-terms`): only for taxonomy term archives
  * (category/tag/custom taxonomy) that actually have children — an author
  * or date archive never gets this block.
+ *
+ * Label chip + RSS link (`with-actions`, Task 2B polish pass): the
+ * reference shows a small dark "pre-title" chip above the H1
+ * ("Navegando pela Categoria" for a category archive — measured verbatim
+ * in ref-category.html) plus an `.actions-container` holding a feed link,
+ * BOTH placed before the `<h1>` in source order. `.actions-container` is
+ * floated right in CSS, so — being a float that starts right where the
+ * flow is after `.pre-title`'s own block — it visually lands beside the
+ * H1's first line (the H1 immediately follows it in the flow) without any
+ * extra wrapper markup, matching the reference's exact DOM shape.
  */
 
 add_filter('get_the_archive_title_prefix', '__return_empty_string');
@@ -45,6 +55,35 @@ if (is_category()) {
     $titleClass .= ' date-title';
 } elseif ($isTermArchive) {
     $titleClass .= ' ' . sanitize_html_class($queriedObject->taxonomy) . '-title';
+}
+
+$labelText = '';
+if (is_category()) {
+    $labelText = __('Navegando pela Categoria', 'arena');
+} elseif (is_tag()) {
+    $labelText = __('Navegando pela Tag', 'arena');
+} elseif ($isAuthorArchive) {
+    $labelText = __('Autor', 'arena');
+} elseif (is_date()) {
+    $labelText = __('Navegando pelo Arquivo', 'arena');
+} elseif ($isTermArchive) {
+    $labelText = __('Navegando pelo Termo', 'arena');
+}
+
+$feedLink = '';
+if ($isTermArchive) {
+    $termFeedLink = get_term_feed_link($queriedObject->term_id, $queriedObject->taxonomy);
+    $feedLink = is_string($termFeedLink) ? $termFeedLink : '';
+} elseif ($isAuthorArchive) {
+    $authorFeedLink = get_author_feed_link($queriedObject->ID);
+    $feedLink = is_string($authorFeedLink) ? $authorFeedLink : '';
+}
+if ($feedLink === '') {
+    $feedLink = (string) get_bloginfo('rss2_url');
+}
+
+if ($labelText !== '') {
+    $titleClass .= ' with-actions';
 }
 
 $description = '';
@@ -75,7 +114,13 @@ if ($childTerms !== []) {
 }
 ?>
 <section class="<?php echo esc_attr($titleClass); ?>">
-    <h1 class="page-heading"><?php echo esc_html(get_the_archive_title()); ?></h1>
+    <?php if ($labelText !== ''): ?>
+        <div class="pre-title"><span><?php echo esc_html($labelText); ?></span></div>
+        <div class="actions-container">
+            <a class="rss-link" href="<?php echo esc_url($feedLink); ?>" aria-label="<?php esc_attr_e('Feed RSS', 'arena'); ?>"><?php echo \Arena\Icons::rss(); ?></a>
+        </div>
+    <?php endif; ?>
+    <h1 class="page-heading"><span class="h-title"><?php echo esc_html(get_the_archive_title()); ?></span></h1>
     <?php if ($description !== ''): ?>
         <div class="archive-description"><?php echo wp_kses_post($description); ?></div>
     <?php endif; ?>
