@@ -81,7 +81,7 @@ if (!defined('ABSPATH')) { exit; }
      and only shown below the mobile breakpoint (see main.css). -->
 <div class="offcanvas-overlay" id="offcanvas-overlay" hidden></div>
 
-<div class="offcanvas-menu" id="offcanvas-menu" aria-hidden="true">
+<div class="offcanvas-menu" id="offcanvas-menu" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e('Menu principal (móvel)', 'arena'); ?>" aria-hidden="true">
     <div class="offcanvas-menu__header">
         <span class="offcanvas-menu__title"><?php esc_html_e('Menu', 'arena'); ?></span>
         <button type="button" class="offcanvas-menu__close" aria-label="<?php esc_attr_e('Fechar menu', 'arena'); ?>">

@@ -40,6 +40,13 @@ function initOffCanvasMenu() {
         toggle.setAttribute('aria-expanded', 'true');
         toggle.classList.add('is-active');
         document.documentElement.classList.add('offcanvas-open');
+        // Moves focus INTO the panel (mirrors initSearchToggle()'s own
+        // open() focusing its field) — a `role="dialog"` that never
+        // receives focus on open would leave a keyboard user's focus
+        // sitting on the now off-screen-again hamburger button while the
+        // dialog itself is announced. The close button is the panel's
+        // first focusable element in DOM order.
+        if (closeBtn) { closeBtn.focus(); }
     };
 
     const close = () => {
@@ -49,6 +56,12 @@ function initOffCanvasMenu() {
         toggle.setAttribute('aria-expanded', 'false');
         toggle.classList.remove('is-active');
         document.documentElement.classList.remove('offcanvas-open');
+        // Returns focus to the toggle that opened the panel — mirrors
+        // initSearchToggle()'s close({refocus:true}) — regardless of which
+        // of the 3 close paths (close button, overlay click, Escape)
+        // triggered it, since the hamburger is always the sensible next
+        // focus target once the dialog is gone.
+        toggle.focus();
         window.setTimeout(() => {
             if (!isOpen()) { overlay.hidden = true; }
         }, 400);

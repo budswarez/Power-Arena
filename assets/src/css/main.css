@@ -852,6 +852,18 @@
      `.38s` timing. Hidden off-screen by default — this is the state the
      mobile screenshot verification checks for without needing to interact
      with the page. */
+  /* `visibility: hidden` (not transform alone): `transform:translateX()`
+     moves the panel off-screen but does NOT remove it from the tab order —
+     with the hard-coded `aria-hidden="true"` in header.php, that let a
+     keyboard user Tab into an invisible menu inside an `aria-hidden`
+     container (axe `aria-hidden-focus`). Delaying the `visibility`
+     transition by the same duration as the slide (`transition-delay`) means
+     it only takes effect once the slide-out finishes — so the panel stays
+     visually present throughout its own closing animation and simply drops
+     out of the tab order right after — while opening flips `visibility`
+     back instantly (delay 0) so the panel is interactive from frame one.
+     Also the fix for the ~6px `document.documentElement.scrollWidth`
+     artifact this off-screen-but-still-hit-testable panel produced. */
   .offcanvas-menu {
     display: none;
     position: fixed;
@@ -863,12 +875,17 @@
     color: #fff;
     z-index: 9995;
     transform: translateX(-100%);
-    transition: transform .38s cubic-bezier(.4, 0, .2, 1);
+    visibility: hidden;
+    transition: transform .38s cubic-bezier(.4, 0, .2, 1), visibility 0s .38s;
     overflow-y: auto;
     flex-direction: column;
   }
 
-  .offcanvas-menu.is-open { transform: translateX(0); }
+  .offcanvas-menu.is-open {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform .38s cubic-bezier(.4, 0, .2, 1), visibility 0s;
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .offcanvas-menu,
