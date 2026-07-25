@@ -183,4 +183,65 @@ class AssetsTest extends WP_UnitTestCase {
     public function test_auto_sizes_feature_is_disabled_globally(): void {
         $this->assertFalse(apply_filters('wp_img_tag_add_auto_sizes', true));
     }
+
+    /**
+     * FIX 1 (CRITICAL): with an EMPTY manifest (absent/stale on the host —
+     * no `npm run build`, or rsync/FTP skipping the dot-directory
+     * `.vite/`), the resolver must still hand back a style registration
+     * for the `arena-main` handle so `arena-child`'s dependency on it never
+     * silently vanishes.
+     */
+    public function test_resolve_main_assets_empty_manifest_falls_back_to_style_css(): void {
+        $resolved = Assets::resolveMainAssets([]);
+
+        $this->assertNull($resolved['js']);
+        $this->assertSame(
+            [['handle' => 'arena-main', 'file' => null, 'fallback' => true]],
+            $resolved['styles']
+        );
+    }
+
+    public function test_resolve_main_assets_with_manifest_uses_hashed_paths(): void {
+        $resolved = Assets::resolveMainAssets($this->manifest);
+
+        $this->assertSame(['handle' => 'arena-main', 'file' => 'main-abc123.js'], $resolved['js']);
+        $this->assertSame(
+            [['handle' => 'arena-main', 'file' => 'main-def456.css', 'fallback' => false]],
+            $resolved['styles']
+        );
+    }
+
+    /**
+     * Integration-level guard: `enqueue()` must register a REAL `arena-main`
+     * style handle even when the manifest FILE is missing entirely (the
+     * real-world failure mode this fix targets: no `npm run build`, or a
+     * deploy tool skipping the `.vite/` dot-directory), so a child theme's
+     * `wp_enqueue_style(['arena-main'], ...)` resolves its dependency
+     * instead of being silently dropped by WordPress. Temporarily renames
+     * the actual manifest file to reproduce that condition, and restores it
+     * in a `finally` so the rest of the suite (and any real build output)
+     * is never left disturbed.
+     */
+    public function test_enqueue_registers_arena_main_style_even_without_manifest_file(): void {
+        $path = ARENA_DIR . '/assets/dist/.vite/manifest.json';
+        $hadManifest = is_file($path);
+        if ($hadManifest) {
+            rename($path, $path . '.bak');
+        }
+
+        try {
+            global $wp_styles;
+            $wp_styles = null;
+
+            Assets::enqueue();
+
+            $this->assertTrue(wp_style_is('arena-main', 'registered'));
+            $registered = $wp_styles->registered['arena-main'];
+            $this->assertStringEndsWith('/style.css', $registered->src);
+        } finally {
+            if ($hadManifest) {
+                rename($path . '.bak', $path);
+            }
+        }
+    }
 }

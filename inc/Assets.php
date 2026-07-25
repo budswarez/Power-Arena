@@ -90,18 +90,65 @@ final class Assets {
         return $pairs;
     }
 
+    /**
+     * Resolvedor puro (testável): decide QUAIS estilos/script enfileirar
+     * para a entrada principal, a partir do manifest do Vite.
+     *
+     * Quando `resolve()` não encontra a entrada JS (manifest ausente —
+     * deploy sem `npm run build` — ou stale — rsync/FTP ignorando
+     * `assets/dist/.vite/`, um diretório-ponto), este resolvedor NUNCA
+     * retorna uma lista de estilos vazia: ele cai para o `style.css` do
+     * tema pai sob o handle `arena-main`. Isso é o que garante que
+     * `arena-child`'s `wp_enqueue_style(['arena-main'])` sempre encontre
+     * uma dependência registrada — o WordPress descarta silenciosamente
+     * (sem warning) um enqueue cuja dependência nunca foi registrada, então
+     * sem esse fallback o CSS do child some junto com o do pai.
+     *
+     * Caminho hasheado do manifest é preservado como o caso normal.
+     *
+     * @param array<string, mixed> $manifest
+     * @return array{
+     *   js: ?array{handle: string, file: string},
+     *   styles: array<int, array{handle: string, file: ?string, fallback: bool}>
+     * }
+     */
+    public static function resolveMainAssets(array $manifest): array {
+        $js = self::resolve($manifest, 'assets/src/js/main.js');
+
+        if ($js === null) {
+            return [
+                'js'     => null,
+                'styles' => [['handle' => 'arena-main', 'file' => null, 'fallback' => true]],
+            ];
+        }
+
+        $styles = array_map(
+            static fn (array $pair): array => $pair + ['fallback' => false],
+            self::styleHandles($js['css'])
+        );
+
+        return [
+            'js'     => ['handle' => 'arena-main', 'file' => $js['file']],
+            'styles' => $styles,
+        ];
+    }
+
     public static function enqueue(): void {
         wp_enqueue_style('arena-fonts', self::fontsUrl(), [], null);
 
         $manifest = self::manifest();
         $dist = ARENA_URI . '/assets/dist/';
+        $resolved = self::resolveMainAssets($manifest);
 
-        $js = self::resolve($manifest, 'assets/src/js/main.js');
-        if ($js !== null) {
-            foreach (self::styleHandles($js['css']) as $pair) {
-                wp_enqueue_style($pair['handle'], $dist . $pair['file'], [], null);
-            }
-            wp_enqueue_script('arena-main', $dist . $js['file'], [], null, true);
+        foreach ($resolved['styles'] as $style) {
+            $src = $style['fallback']
+                ? get_template_directory_uri() . '/style.css'
+                : $dist . $style['file'];
+            wp_enqueue_style($style['handle'], $src, [], null);
+        }
+
+        if ($resolved['js'] !== null) {
+            wp_enqueue_script('arena-main', $dist . $resolved['js']['file'], [], null, true);
         }
     }
 
