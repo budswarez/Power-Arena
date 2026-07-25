@@ -86,6 +86,32 @@ class CommentsTemplateTest extends WP_UnitTestCase {
         $this->assertFalse(wp_script_is('comment-reply', 'enqueued'));
     }
 
+    /**
+     * Minor finding #6 (whole-branch review): comments.php replaces
+     * comment_form()'s whole 'fields' array with its own pt-BR
+     * author/email/url markup, which used to silently drop core's
+     * cookies-consent checkbox (added by core only when
+     * `show_comments_cookies_opt_in` is on) instead of merging with it.
+     */
+    public function test_cookies_consent_field_renders_when_opted_in(): void {
+        update_option('show_comments_cookies_opt_in', 1);
+        $postId = $this->factory()->post->create(['post_status' => 'publish', 'comment_status' => 'open']);
+
+        $html = $this->renderSingle($postId);
+
+        $this->assertStringContainsString('comment-form-cookies-consent', $html);
+        $this->assertStringContainsString('wp-comment-cookies-consent', $html);
+    }
+
+    public function test_cookies_consent_field_absent_when_opted_out(): void {
+        update_option('show_comments_cookies_opt_in', 0);
+        $postId = $this->factory()->post->create(['post_status' => 'publish', 'comment_status' => 'open']);
+
+        $html = $this->renderSingle($postId);
+
+        $this->assertStringNotContainsString('comment-form-cookies-consent', $html);
+    }
+
     public function test_closed_comments_with_existing_comments_shows_disabled_message_not_form(): void {
         $postId = $this->factory()->post->create(['post_status' => 'publish', 'comment_status' => 'closed']);
         $this->factory()->comment->create([

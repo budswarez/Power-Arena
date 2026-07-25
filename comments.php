@@ -73,6 +73,41 @@ if (comments_open() && get_option('thread_comments')) {
         // internally — needed here explicitly because the custom 'fields'
         // markup below is built before comment_form() runs.
         $commenter = wp_get_current_commenter();
+
+        $fields = [
+            'author' => '<p class="comment-form-author">'
+                . '<label for="author">' . esc_html__('Nome', 'arena') . ' <span class="required">*</span></label>'
+                . '<input id="author" name="author" type="text" value="' . esc_attr((string) ($commenter['comment_author'] ?? '')) . '" size="30" maxlength="245" required="required" />'
+                . '</p>',
+            'email' => '<p class="comment-form-email">'
+                . '<label for="email">' . esc_html__('E-mail', 'arena') . ' <span class="required">*</span></label>'
+                . '<input id="email" name="email" type="email" value="' . esc_attr((string) ($commenter['comment_author_email'] ?? '')) . '" size="30" maxlength="100" required="required" />'
+                . '</p>',
+            'url' => '<p class="comment-form-url">'
+                . '<label for="url">' . esc_html__('Site', 'arena') . '</label>'
+                . '<input id="url" name="url" type="url" value="' . esc_attr((string) ($commenter['comment_author_url'] ?? '')) . '" size="30" maxlength="200" />'
+                . '</p>',
+        ];
+
+        // Merge in core's own cookies-consent checkbox instead of silently
+        // dropping it (whole-branch review, minor finding #6): replacing
+        // `comment_form()`'s whole 'fields' array (as this template always
+        // has, for the pt-BR labels/markup above) also silently drops
+        // whatever OTHER fields core would have added to its own default
+        // array — including this one, which core only adds when the site
+        // has opted into the GDPR cookies-consent checkbox
+        // (`show_comments_cookies_opt_in`). A privacy-consent control
+        // should not regress out of the form as a side effect of
+        // localizing the other three fields. Mirrors core's own
+        // conditional + markup (wp-includes/comment-template.php).
+        if (has_action('set_comment_cookies', 'wp_set_comment_cookies') && get_option('show_comments_cookies_opt_in')) {
+            $consentChecked = empty($commenter['comment_author_email']) ? '' : ' checked="checked"';
+            $fields['cookies'] = '<p class="comment-form-cookies-consent">'
+                . '<input id="wp-comment-cookies-consent" name="wp-comment-cookies-consent" type="checkbox" value="yes"' . $consentChecked . ' />'
+                . '<label for="wp-comment-cookies-consent">' . esc_html__('Salvar meu nome, e-mail e site neste navegador para a próxima vez que eu comentar.', 'arena') . '</label>'
+                . '</p>';
+        }
+
         comment_form([
             'title_reply'          => esc_html__('Deixe um comentário', 'arena'),
             /* translators: %s: author of the comment being replied to. */
@@ -83,20 +118,7 @@ if (comments_open() && get_option('thread_comments')) {
                 . '<label for="comment">' . esc_html__('Comentário', 'arena') . ' <span class="required">*</span></label>'
                 . '<textarea id="comment" name="comment" cols="45" rows="6" maxlength="65525" required="required"></textarea>'
                 . '</p>',
-            'fields'               => [
-                'author' => '<p class="comment-form-author">'
-                    . '<label for="author">' . esc_html__('Nome', 'arena') . ' <span class="required">*</span></label>'
-                    . '<input id="author" name="author" type="text" value="' . esc_attr((string) ($commenter['comment_author'] ?? '')) . '" size="30" maxlength="245" required="required" />'
-                    . '</p>',
-                'email' => '<p class="comment-form-email">'
-                    . '<label for="email">' . esc_html__('E-mail', 'arena') . ' <span class="required">*</span></label>'
-                    . '<input id="email" name="email" type="email" value="' . esc_attr((string) ($commenter['comment_author_email'] ?? '')) . '" size="30" maxlength="100" required="required" />'
-                    . '</p>',
-                'url' => '<p class="comment-form-url">'
-                    . '<label for="url">' . esc_html__('Site', 'arena') . '</label>'
-                    . '<input id="url" name="url" type="url" value="' . esc_attr((string) ($commenter['comment_author_url'] ?? '')) . '" size="30" maxlength="200" />'
-                    . '</p>',
-            ],
+            'fields'               => $fields,
             'class_submit'         => 'submit comment-submit-button',
             'comment_notes_before' => '<p class="comment-notes">' . esc_html__('Seu e-mail não será publicado.', 'arena') . '</p>',
             'comment_notes_after'  => '',
