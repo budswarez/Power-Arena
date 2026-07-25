@@ -16,6 +16,12 @@ if (!defined('ABSPATH')) { exit; }
  * bare term/author/date title, so that prefix is filtered away to an empty
  * string right here. This is the ONLY <h1> this partial renders, and
  * archive.php renders no other H1, so exactly one <h1> reaches the page.
+ * The filter is added immediately before, and removed immediately after,
+ * the single `get_the_archive_title()` call below (whole-branch review,
+ * minor finding #5) — it used to be added here and never removed, which
+ * leaked it for the rest of the request: any later `get_the_archive_title()`
+ * call from a widget/plugin (e.g. in the sidebar) would silently lose its
+ * "Category:"/"Tag:" prefix too.
  *
  * Description: `term_description()` (category/tag/generic taxonomy terms)
  * or the author's own bio (`description` user meta) — rendered via
@@ -37,8 +43,6 @@ if (!defined('ABSPATH')) { exit; }
  * H1's first line (the H1 immediately follows it in the flow) without any
  * extra wrapper markup, matching the reference's exact DOM shape.
  */
-
-add_filter('get_the_archive_title_prefix', '__return_empty_string');
 
 $queriedObject = get_queried_object();
 $isTermArchive = $queriedObject instanceof WP_Term;
@@ -100,6 +104,19 @@ if ($isTermArchive) {
         'taxonomy'   => $queriedObject->taxonomy,
         'child_of'   => $queriedObject->term_id,
         'hide_empty' => false,
+        // Capped (whole-branch review, minor finding #5): `child_of` with
+        // no `number` returns EVERY descendant, however many there are —
+        // a large taxonomy tree could mean an unbounded query and an
+        // unbounded chip list. 50 is generous for what's rendered as a
+        // flat inline list of chips.
+        // `hide_empty` stays false, deliberately NOT flipped to true: this
+        // is a "browse the subcategories of this category" nav aid, not a
+        // "does this subcategory currently have published posts" filter —
+        // a freshly-created child category with no posts yet should still
+        // be reachable here (see
+        // ArchiveTemplateTest::test_category_with_children_shows_term_chips,
+        // which asserts exactly that for a childless-of-posts child term).
+        'number'     => 50,
     ]);
     if (is_array($terms)) {
         $childTerms = $terms;
@@ -112,6 +129,14 @@ if ($description !== '') {
 if ($childTerms !== []) {
     $titleClass .= ' with-terms';
 }
+
+// Scoped strictly to this one call — added immediately before, removed
+// immediately after — so the prefix-suppression never leaks into any
+// OTHER `get_the_archive_title()` call later in the same request (e.g.
+// from a widget or another plugin).
+add_filter('get_the_archive_title_prefix', '__return_empty_string');
+$archiveTitle = get_the_archive_title();
+remove_filter('get_the_archive_title_prefix', '__return_empty_string');
 ?>
 <section class="<?php echo esc_attr($titleClass); ?>">
     <?php if ($labelText !== ''): ?>
@@ -120,7 +145,7 @@ if ($childTerms !== []) {
             <a class="rss-link" href="<?php echo esc_url($feedLink); ?>" aria-label="<?php esc_attr_e('Feed RSS', 'arena'); ?>"><?php echo \Arena\Icons::rss(); ?></a>
         </div>
     <?php endif; ?>
-    <h1 class="page-heading"><span class="h-title"><?php echo esc_html(get_the_archive_title()); ?></span></h1>
+    <h1 class="page-heading"><span class="h-title"><?php echo esc_html($archiveTitle); ?></span></h1>
     <?php if ($description !== ''): ?>
         <div class="archive-description"><?php echo wp_kses_post($description); ?></div>
     <?php endif; ?>
@@ -128,8 +153,10 @@ if ($childTerms !== []) {
         <ul class="archive-terms">
             <?php foreach ($childTerms as $childTerm): ?>
                 <?php if (!($childTerm instanceof WP_Term)): continue; endif; ?>
+                <?php $childTermLink = get_term_link($childTerm); ?>
+                <?php if (is_wp_error($childTermLink)): continue; endif; ?>
                 <li class="archive-terms__item">
-                    <a class="archive-terms__link" href="<?php echo esc_url((string) get_term_link($childTerm)); ?>"><?php echo esc_html($childTerm->name); ?></a>
+                    <a class="archive-terms__link" href="<?php echo esc_url($childTermLink); ?>"><?php echo esc_html($childTerm->name); ?></a>
                 </li>
             <?php endforeach; ?>
         </ul>
