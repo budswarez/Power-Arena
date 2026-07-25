@@ -8,6 +8,18 @@ final class Renderer {
     private const DEFAULT_LAYOUT = 'grid';
 
     /**
+     * Short date format shared by every card template
+     * (template-parts/card/{hero,featured,excerpt,text}.php) AND the
+     * single-article meta (template-parts/single/meta.php, via
+     * `articleDate()` below) — e.g. "24 Jul, 2026". One constant instead of
+     * the same literal `'j M, Y'` duplicated in 5 places, so the two
+     * surfaces can't drift apart again (they had: the article meta used to
+     * fall back to WP's own `date_format` option, rendering the English
+     * long form "July 24, 2026").
+     */
+    private const CARD_DATE_FORMAT = 'j M, Y';
+
+    /**
      * Renderiza uma listagem de posts para um dos 4 layouts do Publisher
      * (paridade visual), a partir dos atributos crus de um shortcode `[bs-*]`.
      *
@@ -144,6 +156,14 @@ final class Renderer {
      * comment count text itself already conveys the count; the icon is
      * purely decorative.
      */
+    /**
+     * Formats a post's date with the same short format used across every
+     * card AND the single-article meta — see `CARD_DATE_FORMAT` above.
+     */
+    public static function articleDate(int $postId): string {
+        return get_the_date(self::CARD_DATE_FORMAT, $postId);
+    }
+
     public static function commentIcon(): string {
         return '<svg class="icon-comment" width="14" height="13" viewBox="0 0 16 15" aria-hidden="true" focusable="false">'
             . '<path fill="currentColor" d="M2 1.5h12A1.5 1.5 0 0 1 15.5 3v6A1.5 1.5 0 0 1 14 10.5H6.8L3 14v-3.5H2A1.5 1.5 0 0 1 .5 9V3A1.5 1.5 0 0 1 2 1.5z"/>'

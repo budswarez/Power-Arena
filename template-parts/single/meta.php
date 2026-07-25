@@ -16,7 +16,7 @@ $commentCount = (int) get_comments_number($postId);
 <div class="post-meta single-post-meta">
     <span class="post-author-name"><?php echo get_the_author_posts_link(); ?></span>
     <time class="post-published updated" datetime="<?php echo esc_attr(get_the_date('c', $postId)); ?>">
-        <?php echo esc_html(get_the_date('', $postId)); ?>
+        <?php echo esc_html(\Arena\Listing\Renderer::articleDate($postId)); ?>
     </time>
     <a class="comments" href="<?php echo esc_url((string) get_comments_link($postId)); ?>">
         <?php echo \Arena\Listing\Renderer::commentIcon(); ?> <?php echo esc_html((string) $commentCount); ?>

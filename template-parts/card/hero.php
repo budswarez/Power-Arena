@@ -75,7 +75,7 @@ $permalink = get_permalink($postId);
                     </a>
                 <?php endif; ?>
                 <span class="time">
-                    <time class="post-published updated" datetime="<?php echo esc_attr(get_the_date('c', $postId)); ?>"><?php echo esc_html(get_the_date('j M, Y', $postId)); ?></time>
+                    <time class="post-published updated" datetime="<?php echo esc_attr(get_the_date('c', $postId)); ?>"><?php echo esc_html(\Arena\Listing\Renderer::articleDate($postId)); ?></time>
                 </span>
             </div>
         <?php endif; ?>

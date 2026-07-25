@@ -120,4 +120,19 @@ class RendererTest extends WP_UnitTestCase {
         $this->assertStringContainsString('class="comments"', $html);
         $this->assertStringContainsString('<svg class="icon-comment"', $html);
     }
+
+    /**
+     * The single-article meta date must render with the SAME short format
+     * as the home cards (e.g. "24 Jul, 2026"), not WordPress's default
+     * English long-form date_format option — both now go through this one
+     * shared helper instead of each duplicating the format string.
+     */
+    public function test_article_date_uses_short_card_format_for_a_fixed_date(): void {
+        $postId = $this->factory()->post->create([
+            'post_title' => 'Arena Date Format Post',
+            'post_date'  => '2026-07-24 10:00:00',
+        ]);
+
+        $this->assertSame('24 Jul, 2026', Renderer::articleDate($postId));
+    }
 }
