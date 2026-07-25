@@ -1,0 +1,101 @@
+<?php
+declare(strict_types=1);
+if (!defined('ABSPATH')) { exit; }
+
+/**
+ * Term archives (category/tag), author archives and generic date archives
+ * (Fatia 2B Task 4) — ONE template for all of them. WordPress' own template
+ * hierarchy already falls through to `archive.php` for every one of these
+ * query types once no more specific `category-*.php`/`tag-*.php`/
+ * `author-*.php`/`date.php` exists, so none of those were created: the
+ * only real differences between them (title text, description source,
+ * whether child-term chips or a "featured" block make sense) are small
+ * enough to live as conditionals inside template-parts/archive-header.php
+ * and this file, rather than 4 near-identical template copies. See the
+ * Task 2B/4 report for the explicit rationale.
+ *
+ * Reuses:
+ *  - the 2-column shell (template-parts/layout/{content-open,content-close}.php,
+ *    Fatia 2B Task 1), same as single.php.
+ *  - template-parts/archive-header.php for the <h1>/description/child-terms.
+ *  - template-parts/listing/archive.php (the blog-5 card layout, Task 3) for
+ *    the MAIN listing.
+ *  - template-parts/pagination.php (Task 3) for the pager.
+ *
+ * Main-query decision: the paginated listing below is rendered by handing
+ * template-parts/listing/archive.php the GLOBAL $wp_query object directly,
+ * NOT via Arena\Listing\Renderer::render('archive', …) — Renderer::render()
+ * always builds a brand-new WP_Query from the given $atts
+ * (`new \WP_Query(Query::args($atts, time()))`), which has no idea about
+ * the current page's `paged` query var or the archive's own query vars
+ * (cat/tag/author/date); using it here would silently reset pagination to
+ * page 1 of an unrelated "latest N posts" query every time. Because
+ * get_template_part() only isolates variable SCOPE (not object identity),
+ * passing the live $wp_query object lets the partial call
+ * `$query->have_posts()`/`$query->the_post()` — the exact same method
+ * calls the global have_posts()/the_post() functions delegate to — so this
+ * is byte-for-byte the same iteration as a normal `while (have_posts())`
+ * loop, just performed inside the shared partial instead of inline here.
+ * Arena\Listing\Renderer::render() IS still used, but only for the small
+ * "featured" modern-grid block above the listing (see below), which
+ * intentionally wants its OWN independent top-5 query scoped to the
+ * current term rather than the paginated one.
+ *
+ * Featured block: only rendered for category/tag term archives (the
+ * queried object is a WP_Term whose taxonomy the shortcode-oriented
+ * Arena\Listing\Query already knows how to filter by — `cat`/`tag_id`),
+ * and only on page 1 (`!is_paged()`). Author and date archives have no
+ * such "term" to scope a curated top-5 pick to, and Arena\Listing\Query
+ * has no author/date filter of its own to add just for this, so they get
+ * the plain listing only — noted here rather than silently showing an
+ * unscoped "latest 5 sitewide" block that would have nothing to do with
+ * the archive being viewed. Restricting it to page 1 avoids repeating the
+ * exact same curated top-5 pick, unchanged, at the top of every later
+ * page — it is a "featured" callout, not part of the paginated set.
+ *
+ * Featured/listing overlap: deliberately NOT de-duplicated. Excluding the
+ * featured block's own post IDs from the main listing on page 1 would
+ * require knowing those IDs BEFORE the main query runs (a `pre_get_posts`
+ * hook on the main query, fed by a separate lookahead query for the same
+ * top-5) — extra global-query-mutating machinery whose main payoff is
+ * cosmetic (avoiding an already-recent post appearing twice near the top
+ * of the same page). Skipped as "not cheap to do cleanly" per the brief's
+ * own escape hatch.
+ */
+
+get_header();
+
+get_template_part('template-parts/layout/content-open', null, ['layout' => '2col-right']);
+
+if (function_exists('yoast_breadcrumb')) {
+    yoast_breadcrumb('<nav class="arena-breadcrumb">', '</nav>');
+}
+
+get_template_part('template-parts/archive-header');
+
+$queriedObject = get_queried_object();
+if (!is_paged() && $queriedObject instanceof WP_Term && in_array($queriedObject->taxonomy, ['category', 'post_tag'], true)) {
+    $featuredAtts = ['count' => '5'];
+    if ($queriedObject->taxonomy === 'category') {
+        $featuredAtts['category'] = (string) $queriedObject->term_id;
+    } else {
+        $featuredAtts['tag'] = (string) $queriedObject->term_id;
+    }
+    echo \Arena\Listing\Renderer::render('modern-grid', $featuredAtts);
+}
+
+global $wp_query;
+get_template_part('template-parts/listing/archive', null, [
+    'query'   => $wp_query,
+    'options' => [
+        'heading_html' => '',
+        'show_excerpt' => true,
+        'dark_scheme'  => false,
+    ],
+]);
+
+get_template_part('template-parts/pagination');
+
+get_template_part('template-parts/layout/content-close', null, ['layout' => '2col-right']);
+
+get_footer();
