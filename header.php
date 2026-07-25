@@ -9,6 +9,15 @@ if (!defined('ABSPATH')) { exit; }
  * (`#header.site-header.header-style-2.full-width`) clean-room — the
  * actual markup below was written from the spec, not copied from the
  * legacy Publisher theme's PHP.
+ *
+ * The very first focusable element in <body> is a "skip to content" link
+ * (`.skip-link`, styled in main.css) jumping to `#content` — the id shared
+ * by every content template's main landmark: template-parts/layout/
+ * content-open.php's `<main id="content">` (single/archive/search/page/
+ * attachment) AND front-page.php's own `<main id="content">`. Kept
+ * visually hidden (clipped off-screen, same technique as `.screen-reader-
+ * text`) until it receives focus, at which point it becomes visible with
+ * accent-on-white contrast that clears 4.5:1.
  */
 ?><!doctype html>
 <html <?php language_attributes(); ?>>
@@ -19,6 +28,8 @@ if (!defined('ABSPATH')) { exit; }
 </head>
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
+
+<a class="skip-link" href="#content"><?php esc_html_e('Pular para o conteúdo', 'arena'); ?></a>
 
 <header id="header" class="site-header header-style-2 full-width">
     <?php get_template_part('template-parts/header/topbar'); ?>

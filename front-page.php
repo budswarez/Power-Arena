@@ -9,10 +9,15 @@ if (!defined('ABSPATH')) { exit; }
  * `vc_*` shortcodes and Arena's own `bs-*` listing shortcodes
  * (Arena\Blocks\Shortcodes, registered via add_shortcode()) both render
  * without any extra do_shortcode() call here.
+ *
+ * `id="content"` matches the same id template-parts/layout/content-open.php
+ * uses on every other template's main landmark — header.php's skip link
+ * targets `#content` and must land on a real landmark regardless of which
+ * template rendered the page.
  */
 get_header();
 ?>
-<main id="main-content" class="main-content page-layout-1-col page-layout-no-sidebar boxed">
+<main id="content" class="main-content page-layout-1-col page-layout-no-sidebar boxed">
     <?php
     while (have_posts()):
         the_post();

@@ -71,4 +71,53 @@ class SingleTemplateTest extends WP_UnitTestCase {
 
         $this->assertStringNotContainsString('Fatal error', $html);
     }
+
+    /**
+     * GAP A: the "skip to content" link (header.php) must be the FIRST
+     * focusable element in <body> and must target the id actually present
+     * on the page's main landmark (`#content`, opened by template-parts/
+     * layout/content-open.php).
+     *
+     * Renders header.php DIRECTLY via load_template(…, false) rather than
+     * through single.php's own get_header() call: WP core's get_header()
+     * hardcodes locate_template()'s $require_once to true, so header.php
+     * only actually executes on the FIRST get_header() call of the whole
+     * PHPUnit PROCESS (every test file in the suite shares one process) —
+     * every later call is a silent no-op require_once, regardless of which
+     * template invoked it. That's a require_once artifact of testing the
+     * same in-process PHP repeatedly, not a real production behavior (a
+     * real request is its own fresh PHP process), so asserting against it
+     * here would make this test's pass/fail depend on unrelated suite
+     * ordering. Rendering header.php directly (like every other full-
+     * template test in this suite renders ITS OWN top-level file via
+     * load_template(..., false)) sidesteps that artifact entirely.
+     */
+    public function test_skip_link_is_first_focusable_element_and_targets_a_real_landmark(): void {
+        $postId = $this->factory()->post->create(['post_status' => 'publish']);
+        $this->go_to(get_permalink($postId));
+
+        ob_start();
+        load_template(get_template_directory() . '/header.php', false);
+        $header = (string) ob_get_clean();
+
+        // The content landmark itself lives in a different partial
+        // (template-parts/layout/content-open.php, shared by every
+        // template) — render it too so the assertion that the skip link's
+        // target actually exists on the page isn't just taken on faith.
+        ob_start();
+        get_template_part('template-parts/layout/content-open', null, ['layout' => '2col-right']);
+        $contentOpen = (string) ob_get_clean();
+
+        $bodyPos = strpos($header, '<body');
+        $skipLinkPos = strpos($header, 'class="skip-link"');
+        $firstAnchorPos = strpos($header, '<a ');
+        $mainLandmarkPos = strpos($contentOpen, 'id="content"');
+
+        $this->assertNotFalse($bodyPos, 'header.php must render the opening <body> tag.');
+        $this->assertNotFalse($skipLinkPos, 'header.php must render the skip link.');
+        $this->assertNotFalse($mainLandmarkPos, 'The shell must expose the id the skip link targets.');
+        $this->assertGreaterThan($bodyPos, $skipLinkPos, 'Skip link must be inside <body>.');
+        $this->assertSame($firstAnchorPos, strpos($header, '<a ', $bodyPos), 'Skip link must be the first <a> after <body>.');
+        $this->assertStringContainsString('href="#content"', $header);
+    }
 }

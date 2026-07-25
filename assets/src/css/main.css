@@ -151,6 +151,48 @@
 }
 
 /* ==========================================================================
+   Skip link — first focusable element in <body> (header.php), jumping to
+   `#content` (the main landmark every template shares). Clipped
+   off-screen with the same technique as `.screen-reader-text` (below, in
+   the Utilities layer) so it never affects sighted-mouse layout, then
+   made visible — pinned to the viewport's top-left corner, above
+   everything else via z-index — the moment it receives keyboard focus.
+   `--arena-accent-text` (#c81f10) on white measures ~5.74:1, clearing the
+   4.5:1 small-text threshold with margin (see the token's own definition
+   above for the full calc).
+   ========================================================================== */
+@layer components {
+  .skip-link {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 100000;
+  }
+
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    top: 12px;
+    left: 12px;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    display: inline-block;
+    padding: 12px 20px;
+    background: #fff;
+    color: var(--arena-accent-text);
+    font-family: var(--arena-font-body);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: underline;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* ==========================================================================
    2-column shell (single/archive/search) — template-parts/layout/
    {content-open,content-close}.php + sidebar.php build the markup;
    Arena\Layout::columnClasses() (pure, tests/LayoutTest.php) decides which
