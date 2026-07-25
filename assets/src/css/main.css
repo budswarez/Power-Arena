@@ -2481,6 +2481,207 @@
 }
 
 /* ==========================================================================
+   Comments (comments.php, GAP D) — styles ONLY WordPress core's own
+   wp_list_comments()/comment_form() markup (Walker_Comment::html5_comment(),
+   opted into via the 'comment-list'/'comment-form' html5 theme supports in
+   Arena\Setup::themeSupports()). wpDiscuz (the reference's actual comments
+   plugin) ships its own CSS for its own DOM — none of THAT is targeted or
+   overridden here.
+   ========================================================================== */
+@layer components {
+  .comments-area {
+    margin-top: var(--arena-block-spacing);
+    padding-top: 24px;
+    border-top: 1px solid #eaeaea;
+  }
+
+  .comments-title {
+    font-family: var(--arena-font-head);
+    font-size: 20px;
+    font-weight: 600;
+    color: #1b1b1b;
+    margin: 0 0 20px;
+  }
+
+  .comment-list,
+  .comment-list .children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Nested-reply indentation — `.children` is the <ol> WP core nests
+     directly inside a parent <li class="comment">. */
+  .comment-list .children {
+    margin-left: 24px;
+    padding-left: 20px;
+    border-left: 2px solid #eaeaea;
+  }
+
+  .comment-list > li.comment + li.comment,
+  .comment-list .children > li.comment + li.comment {
+    margin-top: 20px;
+  }
+
+  .comment-body {
+    padding: 16px 0;
+  }
+
+  .comment-author.vcard {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .comment-author .avatar {
+    border-radius: 50%;
+    display: block;
+  }
+
+  .comment-author .fn {
+    font-weight: 600;
+    color: #1b1b1b;
+    font-style: normal;
+  }
+
+  .comment-author .says { display: none; }
+
+  .comment-metadata {
+    font-size: 13px;
+    color: #6b6b6b; /* same contrast fix used for .post-meta / .listing-empty elsewhere in this file */
+    margin-bottom: 10px;
+  }
+
+  .comment-metadata a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .comment-content {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #1b1b1b;
+  }
+  .comment-content p { margin: 0 0 .8em; }
+  .comment-content > :last-child { margin-bottom: 0; }
+
+  .comment-awaiting-moderation {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    font-style: italic;
+    color: #6b6b6b;
+  }
+
+  /* `.reply a` (the "Reply" link core's comment_reply_link() prints) and
+     the "Cancel reply" link share this: both are plain inline text links
+     otherwise well under the 24px touch-target minimum. */
+  .reply a,
+  #cancel-comment-reply-link {
+    display: inline-block;
+    padding: 6px 4px;
+    min-height: 24px;
+    color: var(--arena-accent-text);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .reply a:hover,
+  #cancel-comment-reply-link:hover {
+    text-decoration: underline;
+  }
+
+  .comment-reply-title small { margin-left: 8px; font-size: 13px; }
+
+  /* Comment form */
+  #respond.comment-respond {
+    margin-top: 32px;
+  }
+
+  #reply-title {
+    font-family: var(--arena-font-head);
+    font-size: 18px;
+    font-weight: 600;
+    color: #1b1b1b;
+    margin: 0 0 16px;
+  }
+
+  .comment-notes {
+    font-size: 13px;
+    color: #6b6b6b;
+    margin: 0 0 16px;
+  }
+
+  .comment-form p {
+    margin: 0 0 16px;
+  }
+
+  .comment-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1b1b1b;
+  }
+
+  .comment-form .required {
+    color: var(--arena-accent-text);
+  }
+
+  .comment-form input[type="text"],
+  .comment-form input[type="email"],
+  .comment-form input[type="url"],
+  .comment-form textarea {
+    width: 100%;
+    max-width: 100%;
+    min-height: 24px;
+    padding: 10px 12px;
+    border: 1px solid #cfcfcf;
+    border-radius: 4px;
+    font-family: var(--arena-font-body);
+    font-size: 15px;
+    color: #1b1b1b;
+    background: #fff;
+  }
+
+  .comment-form textarea { resize: vertical; }
+
+  .comment-form input:focus-visible,
+  .comment-form textarea:focus-visible {
+    outline: 2px solid var(--arena-accent-text);
+    outline-offset: 1px;
+  }
+
+  .comment-form .form-submit { margin-bottom: 0; }
+
+  .comment-submit-button {
+    display: inline-block;
+    min-height: 24px;
+    padding: 12px 28px;
+    border: 0;
+    border-radius: 4px;
+    background: var(--arena-accent-text);
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .comment-submit-button:hover,
+  .comment-submit-button:focus-visible {
+    background: #a3190d;
+  }
+  .comment-submit-button:focus-visible {
+    outline: 2px solid #1b1b1b;
+    outline-offset: 2px;
+  }
+
+  .no-comments {
+    color: #1b1b1b;
+    font-size: 14px;
+  }
+}
+
+/* ==========================================================================
    Utilities
    ========================================================================== */
 @layer utilities {
