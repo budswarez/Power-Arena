@@ -6,11 +6,23 @@ namespace Arena;
 final class Assets {
     private const MANIFEST = '/assets/dist/.vite/manifest.json';
 
-    /** URL real do Google Fonts para os tokens do tema (Barlow + Oswald). */
-    private const FONTS_URL = 'https://fonts.googleapis.com/css?family=Barlow:400,500,600,700|Oswald:500,400&display=swap';
+    /**
+     * Caminho (relativo a ARENA_URI) do único arquivo WOFF2 pré-carregado
+     * via `<link rel=preload>` (task-review-fixes-3, FIX 2): Barlow 400,
+     * subset latin — o peso realmente usado no corpo do texto acima da
+     * dobra em todo template (ver `body{}` em main.css, sem override de
+     * font-weight), e o subset que cobre pt-BR (todos os diacríticos do
+     * português — ã, ç, é, í, ó, õ, ü — estão dentro de U+0000-00FF). Os
+     * outros 11 arquivos em assets/fonts/ (demais pesos + subset latin-ext)
+     * NÃO são pré-carregados de propósito: pré-carregar todos adiaria
+     * exatamente o que importa para o LCP.
+     */
+    private const PRELOAD_FONT_PATH = '/assets/fonts/barlow-400-latin.woff2';
 
     public static function register(): void {
         add_action('wp_enqueue_scripts', [self::class, 'enqueue']);
+        add_action('wp_head', [self::class, 'printPreloadLink'], 1);
+        add_action('wp_head', [self::class, 'printInlineTokens']);
         add_filter('script_loader_tag', [self::class, 'deferOwnScripts'], 10, 2);
         add_filter('wp_resource_hints', [self::class, 'resourceHints'], 10, 2);
         add_filter('wp_get_attachment_image_attributes', [self::class, 'filterCardImageAttributes'], 10, 3);
@@ -35,25 +47,69 @@ final class Assets {
         add_filter('wp_img_tag_add_auto_sizes', '__return_false');
     }
 
-    /** Resolvedor puro (testável): URL exata do Google Fonts (Barlow + Oswald, display=swap). */
-    public static function fontsUrl(): string {
-        return self::FONTS_URL;
+    /**
+     * Resolvedor puro (testável): URL do stylesheet externo de fontes a
+     * enfileirar. Sempre `null` desde task-review-fixes-3 (FIX 2) — Barlow e
+     * Oswald são self-hosted via `@font-face` em main.css (assets/fonts/),
+     * não há mais um stylesheet de terceiros para resolver. Mantido (em vez
+     * de removido) porque enqueue() ainda consulta este resolvedor
+     * defensivamente antes de decidir se enfileira algo.
+     */
+    public static function fontsUrl(): ?string {
+        return null;
     }
 
     /**
-     * Resolvedor puro (testável): adiciona preconnect para os hosts do Google
-     * Fonts, preservando quaisquer hints já presentes de outras relações.
+     * Resolvedor puro (testável): não adiciona mais nenhum preconnect de
+     * fontes — desde que Barlow/Oswald passaram a ser self-hosted
+     * (task-review-fixes-3, FIX 2), nada nesta página fala com
+     * fonts.googleapis.com/fonts.gstatic.com, então os hints antigos
+     * seriam apenas uma conexão desperdiçada. Repassa qualquer hint que já
+     * exista (de outros filtros) sem alteração, para qualquer tipo de
+     * relação.
      *
      * @param array<int, string|array<string, string>> $hints
      * @return array<int, string|array<string, string>>
      */
     public static function resourceHints(array $hints, string $relationType): array {
-        if ($relationType !== 'preconnect') {
-            return $hints;
-        }
-        $hints[] = ['href' => 'https://fonts.googleapis.com'];
-        $hints[] = ['href' => 'https://fonts.gstatic.com', 'crossorigin' => 'anonymous'];
         return $hints;
+    }
+
+    /**
+     * Resolvedor puro (testável): URL absoluta do único WOFF2 pré-carregado
+     * (ver PRELOAD_FONT_PATH acima).
+     */
+    public static function preloadFontUrl(): string {
+        return ARENA_URI . self::PRELOAD_FONT_PATH;
+    }
+
+    /** Callback `wp_head`: imprime o `<link rel=preload>` da fonte crítica. */
+    public static function printPreloadLink(): void {
+        printf(
+            '<link rel="preload" href="%s" as="font" type="font/woff2" crossorigin="anonymous">' . "\n",
+            esc_url(self::preloadFontUrl())
+        );
+    }
+
+    /**
+     * Resolvedor puro (testável): monta o bloco `<style>:root{…}</style>`
+     * inline a partir dos tokens resolvidos (task-review-fixes-3, FIX 1) —
+     * Arena\Options::cssTokens() já sanitiza cada valor (hex normalizado /
+     * pilha de fontes de uma whitelist fixa), então esta função só formata.
+     *
+     * @param array<string, string> $tokens
+     */
+    public static function inlineRootStyle(array $tokens): string {
+        $decls = '';
+        foreach ($tokens as $name => $value) {
+            $decls .= $name . ':' . $value . ';';
+        }
+        return '<style id="arena-inline-tokens">:root{' . $decls . '}</style>' . "\n";
+    }
+
+    /** Callback `wp_head`: imprime o override de custom properties a partir das opções ACF salvas. */
+    public static function printInlineTokens(): void {
+        echo self::inlineRootStyle(Options::cssTokens());
     }
 
     /** Resolvedor puro (testável): entrada -> dados do manifest. */
@@ -134,7 +190,15 @@ final class Assets {
     }
 
     public static function enqueue(): void {
-        wp_enqueue_style('arena-fonts', self::fontsUrl(), [], null);
+        // task-review-fixes-3, FIX 2: Barlow/Oswald are self-hosted via
+        // @font-face in main.css (assets/fonts/) — fontsUrl() resolves to
+        // null (nothing to enqueue), kept as a defensive guard rather than
+        // deleted, matching the same "resolver can say there's nothing to
+        // do" shape as resolveMainAssets()'s own null cases below.
+        $fontsUrl = self::fontsUrl();
+        if ($fontsUrl !== null) {
+            wp_enqueue_style('arena-fonts', $fontsUrl, [], null);
+        }
 
         $manifest = self::manifest();
         $dist = ARENA_URI . '/assets/dist/';

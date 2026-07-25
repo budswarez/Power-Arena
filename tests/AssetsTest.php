@@ -43,26 +43,47 @@ class AssetsTest extends WP_UnitTestCase {
         $this->assertSame([], Assets::styleHandles([]));
     }
 
-    public function test_fonts_url_matches_production_link(): void {
-        $this->assertSame(
-            'https://fonts.googleapis.com/css?family=Barlow:400,500,600,700|Oswald:500,400&display=swap',
-            Assets::fontsUrl()
-        );
+    /**
+     * task-review-fixes-3, FIX 2: fonts are now self-hosted (assets/fonts/,
+     * @font-face declarations in main.css) — fontsUrl() no longer points at
+     * Google, and nothing enqueues it as a separate stylesheet. Kept as a
+     * pure resolver (rather than deleted outright) because Assets::enqueue()
+     * still calls it defensively; it now resolves to null, meaning "nothing
+     * to enqueue here", which is asserted directly below.
+     */
+    public function test_fonts_url_no_longer_points_at_google(): void {
+        $this->assertNull(Assets::fontsUrl());
     }
 
-    public function test_resource_hints_adds_google_fonts_preconnects(): void {
-        $hints = Assets::resourceHints([], 'preconnect');
-        $this->assertSame(
-            [
-                ['href' => 'https://fonts.googleapis.com'],
-                ['href' => 'https://fonts.gstatic.com', 'crossorigin' => 'anonymous'],
-            ],
-            $hints
-        );
+    /**
+     * The Google-specific preconnect hints are gone now that nothing on the
+     * page talks to fonts.googleapis.com/fonts.gstatic.com — resourceHints()
+     * must leave the 'preconnect' relation untouched (not add anything),
+     * while still passing through whatever hints WordPress/other filters
+     * already added.
+     */
+    public function test_resource_hints_no_longer_adds_google_fonts_preconnects(): void {
+        $this->assertSame([], Assets::resourceHints([], 'preconnect'));
+        $this->assertSame(['example.com'], Assets::resourceHints(['example.com'], 'preconnect'));
     }
 
     public function test_resource_hints_leaves_other_relation_types_untouched(): void {
         $this->assertSame(['example.com'], Assets::resourceHints(['example.com'], 'dns-prefetch'));
+    }
+
+    /**
+     * The ONE face most critical to first paint: Barlow 400 (the body copy
+     * weight used above the fold everywhere — see main.css `body{}`, no
+     * font-weight override), latin subset (covers pt-BR text; latin-ext is
+     * shipped too for completeness but isn't what renders above the fold).
+     * preloadFontUrl() is pure/testable so this choice doesn't silently
+     * drift as assets/fonts/ file names change.
+     */
+    public function test_preload_font_url_targets_barlow_400_latin(): void {
+        $this->assertSame(
+            ARENA_URI . '/assets/fonts/barlow-400-latin.woff2',
+            Assets::preloadFontUrl()
+        );
     }
 
     public function test_card_sizes_default_context_is_760_slot(): void {

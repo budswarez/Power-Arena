@@ -98,10 +98,12 @@ embaralhada.
 - `inc/Theme.php` — ponto único de boot; registra todos os módulos abaixo.
 - `inc/Setup.php` — theme supports, menus, sidebars, `body_class` do shell
   2-colunas, `load_theme_textdomain()`.
-- `inc/Assets.php` — enfileiramento de CSS/JS via manifest do Vite, Google
-  Fonts, correção de `sizes` de imagens lazy-loaded.
-- `inc/Layout.php` — mapeia uma chave de layout (`2col-right`, `1col`) para
-  as classes CSS das colunas do shell (`template-parts/layout/`).
+- `inc/Assets.php` — enfileiramento de CSS/JS via manifest do Vite,
+  `<link rel=preload>` da fonte crítica + bloco `:root{…}` inline (ver
+  seções "Fontes" e "Painel de opções" abaixo), correção de `sizes` de
+  imagens lazy-loaded.
+- `inc/Layout.php` — mapeia uma chave de layout (`2col-right`, `2col-left`,
+  `1col`) para as classes CSS das colunas do shell (`template-parts/layout/`).
 - `inc/Pagination.php` — paginação (`paginate_links` com `type: 'plain'`).
 - `inc/Preview.php` + `mu-plugins/arena-preview.php` — preview do tema em
   produção sem alterar o tema ativo (ver seção própria abaixo).
@@ -134,6 +136,66 @@ Requer o plugin **Advanced Custom Fields** ativo (já incluso em
 `.wp-env.json`); sem ACF, `OptionsPanel::boot()` retorna sem fazer nada
 (`function_exists('acf_add_options_page')` guard) — não fatala. Os valores
 são lidos por `inc/Options.php`.
+
+**Os 4 campos são todos efetivamente aplicados** (revisão
+`task-review-fixes-3`; antes só a logo era lida por algum template):
+
+- **Cor de destaque** (`arena_accent_color`) e **fonte base**
+  (`arena_base_font`, whitelist `barlow-oswald`/`system` — não um seletor de
+  família livre, que exigiria auto-hospedar qualquer fonte digitada) são
+  lidos por `Arena\Options::cssTokens()` e impressos como um bloco
+  `<style id="arena-inline-tokens">:root{…}</style>` inline no `wp_head`
+  (`Arena\Assets::printInlineTokens()`), sobrepondo os valores padrão de
+  `main.css` via ordem no `<head>` (mesma especificidade CSS, o que vem
+  depois vence). **Garantia de contraste:** `--arena-accent-text` NUNCA é a
+  cor salva bruta — é sempre derivada por `Options::accessibleTextColor()`,
+  que escurece a cor em passos de luminosidade HSL até garantir pelo menos
+  `Options::SAFE_ACCESSIBLE_CONTRAST` (4.6:1, uma margem de segurança acima
+  do mínimo AA de 4.5:1) contra branco. Isso vale para QUALQUER cor salva
+  no painel — nunca depende de o dono do site escolher algo "seguro".
+  Lógica pura, cobertura em `tests/OptionsTest.php` (várias cores de
+  entrada, incluindo branco puro e o próprio accent padrão do tema).
+- **Posição da sidebar** (`arena_sidebar_position`: Direita/Esquerda/Sem
+  sidebar) é lida por `Arena\Options::sidebarLayout()`, que mapeia para a
+  chave de layout (`2col-right`/`2col-left`/`1col`) passada por TODO
+  template que usa o shell 2 colunas (antes, cada um passava o literal
+  `'2col-right'` fixo). `2col-left` reaproveita a mesma divisão 8/12+4/12
+  de `2col-right` (`Arena\Layout::columnClasses()`), só troca a classe do
+  container (`Arena\Layout::containerClasses()`) para `layout-left-sidebar`,
+  que em `main.css` inverte a ordem visual via flex `order` — sem mudar a
+  ordem no DOM.
+
+## Fontes (self-hosted)
+
+Desde a revisão `task-review-fixes-3`, Barlow e Oswald **não vêm mais do
+Google Fonts** (`fonts.googleapis.com`/`fonts.gstatic.com`) — eram uma
+requisição bloqueante de terceiro no caminho do LCP, mais o round-trip dos
+próprios WOFF2, e enviavam o IP de cada visitante ao Google em toda
+pageview (exposição LGPD para um portal de notícias brasileiro).
+
+- Os arquivos WOFF2 vivem em `assets/fonts/` (**versionados no git** — são
+  ativos do próprio tema, diferente de `assets/dist/`): Barlow 400/500/600/700
+  e Oswald 400/500 (os mesmos pesos que a query antiga do Google Fonts
+  pedia), cada um em 2 subsets — `latin` (cobre pt-BR: todos os acentos do
+  português — ã, ç, é, í, ó, õ, ü — estão dentro de `U+0000-00FF`) e
+  `latin-ext` (acentos de outras línguas europeias, incluído por completude,
+  não é o que renderiza para o público deste site) — não o conjunto
+  completo do Google (cirílico, grego, vietnamita etc., que este site nunca
+  usa).
+- `@font-face` (com `unicode-range` por subset e `font-display: swap`) vive
+  em `assets/src/css/main.css`, com `url()` **absoluto**
+  (`/wp-content/themes/arena/assets/fonts/…`) — os arquivos NÃO passam pelo
+  pipeline do Vite (mesma premissa de caminho fixo que `vite.config.js` já
+  usa para todo o resto via sua própria opção `base`), então o caminho é
+  estável entre builds sem precisar de lookup no manifest.
+- Só a fonte mais crítica para o first paint — Barlow 400, subset `latin`
+  (o peso do corpo do texto acima da dobra em todo template, sem override
+  de `font-weight`) — recebe `<link rel=preload>`
+  (`Arena\Assets::preloadFontUrl()`/`printPreloadLink()`, hookado em
+  `wp_head`); as outras 11 faces não são pré-carregadas de propósito.
+- **Licença:** ambas as famílias são SIL Open Font License 1.1 — o aviso
+  completo (texto da OFL + linhas de copyright de cada projeto) está em
+  `assets/fonts/OFL.txt`.
 
 ## Tema filho (`arena-child`)
 
