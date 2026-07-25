@@ -20,18 +20,25 @@ if (!defined('ABSPATH')) { exit; }
  * missing comments plugin degrades to WordPress's own default comment form
  * rather than fataling.
  *
- * Breadcrumbs render BEFORE the article, immediately inside the shell's
- * content column (`layout-bc-before`, see content-open.php's own docblock) —
- * Yoast owns the breadcrumb trail's markup/schema, so no custom fallback is
- * rendered here to avoid duplicating schema output when Yoast isn't active.
+ * Breadcrumbs render ABOVE the 2-column row entirely (task-uifix BUG 5) —
+ * a full-width band directly inside `<main>`, spanning the whole boxed
+ * 1200px column, not squeezed into the 8/12 content column beside an empty
+ * sidebar column. Rendered between template-parts/layout/content-open.php
+ * (opens just `<main>`) and template-parts/layout/content-row-open.php
+ * (opens the `.container`/`.content-column` row) — see both partials' own
+ * docblocks. Yoast owns the breadcrumb trail's markup/schema, so no custom
+ * fallback is rendered here to avoid duplicating schema output when Yoast
+ * isn't active.
  */
 get_header();
 
-get_template_part('template-parts/layout/content-open', null, ['layout' => \Arena\Options::sidebarLayout()]);
+get_template_part('template-parts/layout/content-open');
 
 if (function_exists('yoast_breadcrumb')) {
     yoast_breadcrumb('<nav class="arena-breadcrumb">', '</nav>');
 }
+
+get_template_part('template-parts/layout/content-row-open', null, ['layout' => \Arena\Options::sidebarLayout()]);
 
 while (have_posts()):
     the_post();

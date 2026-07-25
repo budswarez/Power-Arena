@@ -64,6 +64,31 @@ class SingleTemplateTest extends WP_UnitTestCase {
         $this->assertStringNotContainsString('post-tags', $html);
     }
 
+    /**
+     * BUG 5 (task-uifix): the owner wants the breadcrumb ABOVE the
+     * content+sidebar row, spanning the full boxed width — not squeezed
+     * inside the 8/12 content column. Asserts the breadcrumb renders
+     * BEFORE `.content-column` opens (i.e. it's a direct child of `<main>`,
+     * not nested inside the row), and that it still renders exactly once.
+     */
+    public function test_breadcrumb_renders_above_the_two_column_row(): void {
+        $postId = $this->factory()->post->create(['post_title' => 'Arena Breadcrumb Post', 'post_status' => 'publish']);
+
+        $html = $this->renderSingle($postId);
+
+        $breadcrumbPos = strpos($html, 'arena-breadcrumb');
+        $contentColumnPos = strpos($html, 'content-column');
+
+        $this->assertNotFalse($breadcrumbPos, 'Breadcrumb nav must render.');
+        $this->assertNotFalse($contentColumnPos, 'The 2-column row must render.');
+        $this->assertLessThan(
+            $contentColumnPos,
+            $breadcrumbPos,
+            'The breadcrumb must render BEFORE the content-column opens (full-width band above the row), not inside it.'
+        );
+        $this->assertSame(1, substr_count($html, 'arena-breadcrumb'), 'Exactly one breadcrumb nav.');
+    }
+
     public function test_comments_template_does_not_fatal_without_a_comments_plugin(): void {
         $postId = $this->factory()->post->create(['post_status' => 'publish']);
 

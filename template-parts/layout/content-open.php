@@ -3,51 +3,29 @@ declare(strict_types=1);
 if (!defined('ABSPATH')) { exit; }
 
 /**
- * Opens the 2-column shell shared by single/archive/search (and any future
- * template that needs the same shape): `<main id="content">` down to the
- * open `<div class="…content-column…">`. Always paired with
- * template-parts/layout/content-close.php, which closes the content column,
- * renders the sidebar column (when the layout has one) and closes
- * `.container`/`#content`.
+ * Opens the shared page-level landmark: just `<main id="content"
+ * class="content-container">` — the box `.main-content.boxed`-style rules
+ * key off (max-width 1200px, 15px side padding, white surface). Always
+ * paired with template-parts/layout/content-close.php, which closes it.
  *
- * Column widths/classes come from Arena\Layout::columnClasses(); container
- * classes come from Arena\Layout::containerClasses() (both pure, unit-
- * tested in tests/LayoutTest.php) — this partial only wires them into
- * markup, reproducing the reference's measured structure:
- *   <main id="content" class="content-container">
- *     <div class="container layout-2-col layout-2-col-1 layout-right-sidebar layout-bc-before">
- *       <div class="content-column col-8">
+ * task-uifix (BUG 5/6): this used to ALSO open the 2-column row
+ * (`.container` + `.content-column`) in the same partial, which forced
+ * every full-width thing a caller wanted to render before the row (the
+ * Yoast breadcrumb, and — on archives — the featured mosaic) to actually
+ * render INSIDE the 8/12 content column instead, squeezed to that column's
+ * own narrower width with an empty sidebar column beside it. Opening the
+ * row is now a SEPARATE step
+ * (template-parts/layout/content-row-open.php) so a caller can render
+ * full-width content directly inside `<main>`, BEFORE opening the row —
+ * single.php and archive.php do exactly that for the breadcrumb (and, on
+ * archive.php, the featured mosaic); every other consumer
+ * (page.php/search.php/attachment.php/404.php/index.php) still opens the
+ * row immediately afterward, reproducing their previous, unchanged shape.
  *
- * `$layout` normally comes from Arena\Options::sidebarLayout() (the ACF
- * `arena_sidebar_position` option, task-review-fixes-3 FIX 1) — every
- * caller passes that instead of a hardcoded literal, so an owner's choice
- * of "Direita"/"Esquerda"/"Sem sidebar" actually changes the rendered
- * shell. '2col-left' renders the SAME 8/12+4/12 columns as '2col-right'
- * (Layout::columnClasses() treats them identically) but tags the container
- * `layout-left-sidebar`, which main.css uses to flip the sidebar's flex
- * `order` so it appears visually before the content column.
- *
- * `layout-bc-before` signals that breadcrumbs render BEFORE the rest of the
- * content column's own markup — the consuming template (e.g. single.php,
- * Fatia 2B Task 2) is responsible for calling yoast_breadcrumb() right
- * after this partial, not this partial itself, since not every consumer of
- * the shell wants breadcrumbs.
- *
- * get_template_part('template-parts/layout/content-open', null, ['layout' => '…'])
- * — pass the SAME 'layout' value to the matching content-close.php call;
- * get_template_part() gives each partial its own isolated variable scope,
- * so the two don't share state automatically.
- *
- * @var array<string, mixed> $args {
- *     @type string $layout Layout key understood by Arena\Layout::columnClasses(). Default '2col-right'.
- * }
+ * get_template_part('template-parts/layout/content-open') takes no args —
+ * the layout key only matters once the row itself opens
+ * (template-parts/layout/content-row-open.php), which is where
+ * Arena\Layout::columnClasses()/containerClasses() actually get consulted.
  */
-
-$args = is_array($args ?? null) ? $args : [];
-$layout = is_string($args['layout'] ?? null) && $args['layout'] !== '' ? $args['layout'] : '2col-right';
-$columns = \Arena\Layout::columnClasses($layout);
-$containerClasses = \Arena\Layout::containerClasses($layout);
 ?>
 <main id="content" class="content-container">
-    <div class="<?php echo esc_attr(implode(' ', $containerClasses)); ?>">
-        <div class="<?php echo esc_attr($columns['content']); ?>">
