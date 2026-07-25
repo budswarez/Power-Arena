@@ -88,61 +88,35 @@
     width: 100%;
   }
 
-  /* The boxed 1200px content column is transparent (the black `body` shows
-     through it) — matching how the reference actually works: the WRAPPER
-     is black end-to-end, and each CONTENT BLOCK below (hero mosaic,
-     category columns, blog list — `.bs-listing.bs-light-scheme`, further
-     down) supplies its own light background. This was previously reversed
-     (this wrapper painted white, with bottom padding on top of that) —
-     harmless while every block inside happened to be light, but the dark
-     full-bleed "Últimas notícias" row (`.bs-listing.bs-dark-scheme`) breaks
-     out of this column and is the LAST block on the page, so that white
-     fill + its bottom padding kept rendering as a leftover white band
-     between the dark row and the dark footer. No vertical padding here for
-     the same reason: any top/bottom inset on this element renders in
-     whatever colour it is (now black) rather than the intended block's own
-     colour — the light blocks add their own padding, and the last block
-     (light or dark) simply meets the footer with nothing in between. */
+  /* The boxed 1200px content column is ONE CONTINUOUS light surface —
+     matching how the reference actually works: black only ever appears as
+     the outer gutters either side of this 1200px column (outside its own
+     box entirely) and behind/around the full-bleed dark "Últimas notícias"
+     row further down (`.bs-listing.bs-dark-scheme`, which paints its own
+     dark fill wider than this column via `width:100vw`, fully covering
+     whatever is behind it) — never as a gap BETWEEN blocks inside the
+     column. Content blocks (hero mosaic, category columns, blog list, the
+     WPBakery banner, ordinary page/post content) no longer need to paint
+     their own light background just to be legible; they only keep their
+     own internal padding, which now reads as white breathing-room instead
+     of a separate white card floating on black.
+
+     No vertical padding on THIS element, on purpose: the dark full-bleed
+     row is always the last block before `</main>` on the home page and
+     carries `margin-bottom:0` (see `.bs-listing.bs-dark-scheme`, further
+     down) precisely so this wrapper's own box ends flush with the dark
+     row's bottom edge — any top/bottom padding here would render as a
+     leftover white band between the dark row and the footer (this
+     regression has bitten twice already; see git history on this file). */
   .main-content.boxed {
     max-width: var(--arena-site-width);
     margin-inline: auto;
     padding-inline: 15px;
+    background: #fff;
+    color: #1b1b1b;
   }
 
   .main-content.boxed > *:first-child { margin-top: 0; }
-
-  /* Light surface for content that ISN'T one of Arena's own `[bs-*]`
-     listing blocks — WPBakery-native shortcodes (`[vc_single_image]`,
-     `[vc_column_text]`, etc, all rendered wrapped in `.wpb_content_element`)
-     and ordinary (non-WPBakery) page/post content (`.page-content`, from
-     page.php). Neither carries a background of its own (only `.bs-listing.
-     bs-light-scheme`, further down, does), so on the now-black `.main-
-     content.boxed` (see the comment on that rule above) they were sitting
-     on raw black with their native dark text — e.g. the homepage banner's
-     `[vc_single_image title="Evento Pichau Arena 2026"]` heading, rendered
-     as dark-grey-on-black, barely legible.
-
-     Deliberately scoped to THESE two leaf-level selectors rather than to
-     `.main-content.boxed` itself or to any ancestor between it and them
-     (`.wpb-content-wrapper`, `.vc_row`, `.wpb_column`, `.vc_column-inner`,
-     `.wpb_wrapper`): every one of those ancestors either floats
-     (`.vc_row`'s columns, `.vc_col-sm-*`) or is a flex column
-     (`.vc_column-inner{display:flex;flex-direction:column}`, set by
-     js_composer's own CSS) — both establish their own formatting context,
-     so a `.bs-listing`'s trailing `margin-bottom` (the 50px block rhythm,
-     below) can never collapse out of them and ends up baked into THEIR OWN
-     box height. Painting any of those ancestors light would therefore
-     paint OVER that trailing margin too, turning the reference's black
-     inter-block gaps white. `.wpb_content_element`/`.page-content` are
-     leaf boxes with their own independent margin (never shared with a
-     sibling `.bs-listing`'s rhythm spacing), so giving THEM the light fill
-     only ever paints their own content — never a neighbour's gap. */
-  .main-content.boxed .wpb_content_element,
-  .main-content.boxed .page-content {
-    background: #fff;
-    color: #1b1b1b;
-    padding: 24px 15px;
-  }
 }
 
 /* ==========================================================================
@@ -1164,19 +1138,20 @@
 /* ==========================================================================
    Block colour schemes — `bs-light-scheme` (the default: hero mosaic,
    category columns, blog list) vs `bs-dark-scheme` (`bs-text-color-
-   scheme="light"` listings, e.g. "Últimas notícias"). Since the boxed
-   wrapper (`.main-content.boxed`, above) is transparent/black, EACH BLOCK
-   supplies its own background — light blocks paint themselves white so the
-   boxed column still reads as a light page in the areas the reference
-   does; the dark block paints itself dark and additionally breaks full-
-   bleed out of the 1200px column.
+   scheme="light"` listings, e.g. "Últimas notícias"). The boxed wrapper
+   (`.main-content.boxed`, above) now supplies ONE continuous light surface
+   for the whole column, so `bs-light-scheme` blocks don't need (and no
+   longer paint) their own white card — they only keep their own internal
+   padding as breathing-room, which reads as white space on the shared
+   surface rather than a separately-painted box with black gaps around it.
+   The dark block is the exception: it paints its own dark fill AND breaks
+   full-bleed out of the 1200px column, overriding the shared light surface
+   for its own box.
    ========================================================================== */
 @layer components {
-  /* The light content blocks: own white background + breathing-room
-     padding (this used to be `.main-content.boxed`'s job — see the comment
-     there for why it moved down here). */
+  /* Breathing-room padding only — no background of its own; the light fill
+     now comes from `.main-content.boxed` (see the comment there). */
   .bs-listing.bs-light-scheme {
-    background: #fff;
     padding: 24px 15px;
   }
 
