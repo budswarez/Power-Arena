@@ -73,7 +73,7 @@ final class Renderer {
         }
 
         $query = new \WP_Query($args);
-        $options = self::buildOptions($atts);
+        $options = self::buildOptions($layout, $atts);
 
         ob_start();
         get_template_part('template-parts/listing/' . $layout, null, [
@@ -103,9 +103,9 @@ final class Renderer {
      * @param array<string, mixed> $atts
      * @return array<string, mixed>
      */
-    private static function buildOptions(array $atts): array {
+    private static function buildOptions(string $layout, array $atts): array {
         return [
-            'heading_html'      => self::renderHeading($atts),
+            'heading_html'      => self::renderHeading($layout, $atts),
             'columns'           => Attrs::intOrDefault($atts['columns'] ?? null, 4, 1),
             'featured_image'    => self::boolOrDefault($atts['featured_image'] ?? null, true),
             'show_excerpt'      => self::boolOrDefault($atts['show_excerpt'] ?? null, true),
@@ -173,14 +173,45 @@ final class Renderer {
      * invalid value simply drops the inline style — the heading still
      * renders, just without a custom colour.
      *
+     * Owner-reported (task-final-ui, item 1): on the home, `[bs-blog-listing-1]`
+     * (the single-column "blog" layout) is the only block in its row that
+     * renders with no heading at all — every neighbouring block (the 3
+     * category columns, the dark "Últimas notícias" grid) has one. The
+     * production content passes `title=""` to it, and the reference site
+     * ALSO renders no heading there, so this isn't a parity gap — it's a
+     * deliberate improvement the owner asked for: give the `blog` layout a
+     * sensible DEFAULT heading when the block itself supplies neither a
+     * `title` nor `hide_title="1"`. Scoped to `$layout === 'blog'` only —
+     * the other 3 layouts keep their original "empty title -> no heading"
+     * behaviour, since only this one was reported as looking broken.
+     * `hide_title="1"` still wins outright (checked first, same as
+     * before), and an explicit non-empty `title` always wins over the
+     * default. The default wording is filterable
+     * (`arena_default_listing_title`) rather than a bare hard-coded
+     * literal, so the owner can reword it without a PHP change; the filter
+     * receives the layout and raw atts as extra args in case a future
+     * caller wants a different default per-layout.
+     *
      * @param array<string, mixed> $atts
      */
-    private static function renderHeading(array $atts): string {
+    private static function renderHeading(string $layout, array $atts): string {
         if (self::boolOrDefault($atts['hide_title'] ?? null, false)) {
             return '';
         }
 
         $title = isset($atts['title']) ? trim((string) $atts['title']) : '';
+        if ($title === '' && $layout === 'blog') {
+            /**
+             * Filters the default section heading used for a `blog` layout
+             * listing (`[bs-blog-listing-1]`) block that has an empty
+             * `title` attribute and is not `hide_title="1"`.
+             *
+             * @param string               $default The default heading text.
+             * @param string               $layout  Always 'blog' for this filter.
+             * @param array<string, mixed> $atts    The block's raw shortcode attributes.
+             */
+            $title = trim((string) apply_filters('arena_default_listing_title', 'Postagens recentes', $layout, $atts));
+        }
         if ($title === '') {
             return '';
         }

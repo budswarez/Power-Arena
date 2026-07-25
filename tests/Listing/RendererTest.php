@@ -197,6 +197,107 @@ class RendererTest extends WP_UnitTestCase {
     }
 
     /**
+     * task-final-ui item 1 (owner-reported): the home's `[bs-blog-listing-1]`
+     * ("blog" layout) block renders with production content passing
+     * `title=""` — every neighbouring block on the row has a heading, this
+     * one alone didn't. Not a parity fix (the reference site also renders
+     * no heading there) — a deliberate default the owner asked for. An
+     * empty title (and no `hide_title`) must now render a default heading.
+     */
+    public function test_render_blog_layout_with_empty_title_renders_default_heading(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Blog Default Heading Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('blog', ['count' => '1', 'title' => '']);
+
+        $this->assertStringContainsString('section-heading', $html);
+        $this->assertStringContainsString('Postagens recentes', $html);
+    }
+
+    /**
+     * task-final-ui item 1: an explicit non-empty `title` must still win
+     * over the new default — the default only fills in when the block
+     * itself supplies nothing.
+     */
+    public function test_render_blog_layout_with_explicit_title_uses_that_title_not_the_default(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Blog Explicit Heading Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('blog', ['count' => '1', 'title' => 'Minhas Postagens']);
+
+        $this->assertStringContainsString('Minhas Postagens', $html);
+        $this->assertStringNotContainsString('Postagens recentes', $html);
+    }
+
+    /**
+     * task-final-ui item 1: `hide_title="1"` must still suppress the
+     * heading entirely, even though `blog` now has a non-empty default —
+     * the explicit suppression flag is checked before the default ever
+     * gets a chance to apply.
+     */
+    public function test_render_blog_layout_with_hide_title_suppresses_default_heading(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Blog Hidden Default Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('blog', ['count' => '1', 'title' => '', 'hide_title' => '1']);
+
+        $this->assertStringNotContainsString('section-heading', $html);
+        $this->assertStringNotContainsString('Postagens recentes', $html);
+    }
+
+    /**
+     * task-final-ui item 1: other layouts (e.g. `grid`) must keep their
+     * ORIGINAL "empty title -> no heading" behaviour — only `blog` was
+     * reported as missing a heading, so the default must not leak into the
+     * other 3 layouts.
+     */
+    public function test_render_grid_layout_with_empty_title_still_renders_no_heading(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Grid No Default Heading Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('grid', ['count' => '1', 'title' => '']);
+
+        $this->assertStringNotContainsString('section-heading', $html);
+        $this->assertStringNotContainsString('Postagens recentes', $html);
+    }
+
+    /**
+     * task-final-ui item 1: the default wording is filterable
+     * (`arena_default_listing_title`) so the owner can reword it without a
+     * PHP change.
+     */
+    public function test_render_blog_layout_default_heading_is_filterable(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Blog Filtered Heading Post', 'post_status' => 'publish']);
+
+        $filter = static function (string $default, string $layout, array $atts): string {
+            return 'Título customizado';
+        };
+        add_filter('arena_default_listing_title', $filter, 10, 3);
+
+        try {
+            $html = Renderer::render('blog', ['count' => '1', 'title' => '']);
+        } finally {
+            remove_filter('arena_default_listing_title', $filter, 10);
+        }
+
+        $this->assertStringContainsString('Título customizado', $html);
+        $this->assertStringNotContainsString('Postagens recentes', $html);
+    }
+
+    /**
+     * task-final-ui item 1: the default heading must use the same
+     * per-section colour mechanism as every other block — i.e. when no
+     * `heading_color` attribute is supplied, no inline `style` is added at
+     * all, leaving `.section-heading.sh-t6.sh-s6`'s own CSS default
+     * (`color: var(--arena-accent)`) in charge, exactly like an explicit
+     * title with no colour would.
+     */
+    public function test_render_blog_layout_default_heading_has_no_inline_color_by_default(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Blog Default Color Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('blog', ['count' => '1', 'title' => '']);
+
+        $this->assertStringContainsString('<div class="section-heading sh-t6 sh-s6">', $html);
+        $this->assertStringNotContainsString('style=', $html);
+    }
+
+    /**
      * Minor finding #9 (whole-branch review): `hide_title="1"` used to be
      * silently dropped by `shortcode_atts()` (not in the defaults list at
      * all) — a block with a non-empty `title` still rendered the heading
