@@ -259,12 +259,20 @@
     position: relative;
   }
 
+  /* Same 54x54 hit target as `.mobile-menu-toggle` (below) — the reference
+     shows the search + hamburger icons as a matched pair at the bar's right
+     end, both white-on-red with the same measured `rgba(0,0,0,.15)` hover/
+     focus darkening (see the shared rule at the bottom of this layer). */
   .header-search .search-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
     background: none;
     border: 0;
+    padding: 0;
     cursor: pointer;
-    font-size: 1.1rem;
-    padding: 6px;
     /* Sits on the red .main-menu-bar, same as the menu links. */
     color: #fff;
   }
@@ -283,6 +291,34 @@
   .header-search:focus-within .header-search-form,
   .header-search .search-toggle[aria-expanded="true"] ~ .header-search-form {
     display: block;
+  }
+
+  .header-search-form .search-field {
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid #ddd;
+    color: #333;
+    min-width: 220px;
+  }
+
+  /* Right-aligned icon pair: on the reference the search + hamburger icons
+     sit together at the bar's right end on DESKTOP too, not only on the
+     mobile off-canvas breakpoint — `.main-menu-container` (flex:1 1 auto,
+     above) already consumes the row's leftover width, so simply letting
+     both icons keep flex's default (0) growth is enough to push them flush
+     right; `.mobile-menu-toggle` additionally gets `order:3` (below) so it
+     renders AFTER the search icon (DOM order alone would put it first —
+     it's the panel-toggle in mobile markup order, see header.php). */
+  .header-search,
+  .mobile-menu-toggle {
+    flex: 0 0 auto;
+  }
+
+  .header-search .search-toggle:hover,
+  .header-search .search-toggle:focus-visible,
+  .mobile-menu-toggle:hover,
+  .mobile-menu-toggle:focus-visible {
+    background-color: rgba(0, 0, 0, .15);
   }
 }
 
@@ -421,21 +457,30 @@
 }
 
 /* ==========================================================================
-   Mobile nav — real off-canvas panel (no CSS-only/jQuery dropdown): the
-   hamburger handler (`.mobile-menu-toggle`, a real <button
-   aria-expanded/aria-controls>) opens `#offcanvas-menu`, a panel containing
-   the SAME main-menu re-rendered as a nested accordion, sliding in from the
-   left over a dimmed page overlay. All open/close/Escape/accordion wiring
-   is initOffCanvasMenu() in main.js (vanilla ES6, no jQuery). Above the
-   breakpoint the toggle + panel + overlay are hidden and the desktop mega
-   menu applies unchanged (rules above this block, untouched by any of this).
+   Off-canvas panel + its hamburger handler (`.mobile-menu-toggle`, a real
+   <button aria-expanded/aria-controls>) — opens `#offcanvas-menu`, a panel
+   containing the SAME main-menu re-rendered as a nested accordion, sliding
+   in from the left over a dimmed page overlay. All open/close/Escape/
+   accordion wiring is initOffCanvasMenu() in main.js (vanilla ES6, no
+   jQuery). The handler itself is shown on BOTH desktop and mobile (the
+   reference has a hamburger at the red bar's right end even on desktop,
+   next to the search icon — see `.header-search`, above — reusing this
+   SAME panel rather than a 2nd desktop-only menu); only the panel/overlay
+   and the "hide the mega menu, show the toggle first" swap below the
+   breakpoint are mobile-only.
    ========================================================================== */
 @layer components {
   /* Handler: 54x54, centered, translucent-white fill on the red bar —
      measured `width:54px;height:54px;color:#fff;
-     background-color:rgba(255,255,255,.05);font-size:18px`. */
+     background-color:rgba(255,255,255,.05);font-size:18px`. `order:3`
+     keeps it AFTER the search icon on desktop (DOM order alone would put
+     it first — it's the first element inside `.main-menu-bar__inner` in
+     header.php); the mobile breakpoint below overrides back to `order:-1`
+     (hamburger first, search pushed to the far right via its own
+     `margin-left:auto`). */
   .mobile-menu-toggle {
-    display: none;
+    display: flex;
+    order: 3;
     width: 54px;
     height: 54px;
     align-items: center;
@@ -624,7 +669,7 @@
   }
 
   @media (max-width: 860px) {
-    .mobile-menu-toggle { display: flex; order: -1; }
+    .mobile-menu-toggle { order: -1; }
 
     .offcanvas-menu { display: flex; }
     .offcanvas-overlay { display: block; }

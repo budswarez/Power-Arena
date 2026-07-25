@@ -3,10 +3,13 @@ declare(strict_types=1);
 if (!defined('ABSPATH')) { exit; }
 
 /**
- * Search toggle: static markup only (matches the live site's search-icon
- * button + hidden form pattern). AJAX-driven live search is out of scope
- * for this task; the toggle behaviour itself belongs to theme JS added in
- * a later task.
+ * Search toggle: a magnifier icon on the red menu bar (desktop AND mobile —
+ * the reference shows it at the bar's right end on both) that reveals a
+ * minimal search field submitting to `home_url('/')` with `name="s"`
+ * (WordPress's own search query var). The icon is an inline SVG (no icon
+ * font is enqueued — `.icon-search` would otherwise render nothing) drawn
+ * clean-room to read as a plain magnifying glass. Open/close/Escape wiring
+ * is `initSearchToggle()` in main.js (vanilla ES6, no jQuery).
  */
 ?>
 <div class="header-search">
@@ -15,9 +18,13 @@ if (!defined('ABSPATH')) { exit; }
         class="menu-handler search-toggle"
         aria-expanded="false"
         aria-controls="header-search-form"
+        aria-label="<?php esc_attr_e('Buscar', 'arena'); ?>"
     >
         <span class="screen-reader-text"><?php esc_html_e('Buscar', 'arena'); ?></span>
-        <i class="icon-search" aria-hidden="true"></i>
+        <svg class="icon-search" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <circle cx="8.5" cy="8.5" r="6"></circle>
+            <line x1="13.3" y1="13.3" x2="18" y2="18"></line>
+        </svg>
     </button>
     <form
         role="search"

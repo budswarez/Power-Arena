@@ -173,7 +173,55 @@ function initSmartStickyMenuBar() {
     window.addEventListener('resize', measure);
 }
 
+/**
+ * Search toggle: the magnifier button on the red menu bar (desktop AND
+ * mobile) reveals a minimal search field (`.header-search-form`, already
+ * present in the markup, CSS-hidden by default — see
+ * `template-parts/header/search.php` + main.css) rather than navigating
+ * anywhere itself. Vanilla ES6, mirrors initOffCanvasMenu()'s own
+ * open/close/Escape shape: a real <button aria-expanded>, Escape closes
+ * and returns focus to the toggle, and clicking outside the widget also
+ * closes it (the form has no visible "close" button of its own, unlike the
+ * off-canvas panel).
+ */
+function initSearchToggle() {
+    const wrapper = document.querySelector('.header-search');
+    const toggle = wrapper ? wrapper.querySelector('.search-toggle') : null;
+    const form = wrapper ? wrapper.querySelector('.header-search-form') : null;
+    const input = form ? form.querySelector('.search-field') : null;
+    if (!wrapper || !toggle || !form) { return; }
+
+    const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+
+    const open = () => {
+        toggle.setAttribute('aria-expanded', 'true');
+        if (input) { input.focus(); }
+    };
+
+    const close = ({ refocus = false } = {}) => {
+        toggle.setAttribute('aria-expanded', 'false');
+        if (refocus) { toggle.focus(); }
+    };
+
+    toggle.addEventListener('click', () => {
+        if (isOpen()) { close(); } else { open(); }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isOpen()) {
+            close({ refocus: true });
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (isOpen() && !wrapper.contains(event.target)) {
+            close();
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initOffCanvasMenu();
+    initSearchToggle();
     initSmartStickyMenuBar();
 });

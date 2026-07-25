@@ -34,6 +34,7 @@ if (!defined('ABSPATH')) { exit; }
                 class="mobile-menu-toggle"
                 aria-expanded="false"
                 aria-controls="offcanvas-menu"
+                aria-label="<?php esc_attr_e('Abrir menu', 'arena'); ?>"
             >
                 <span class="screen-reader-text"><?php esc_html_e('Abrir menu', 'arena'); ?></span>
                 <span class="mobile-menu-toggle__lines" aria-hidden="true"></span>
