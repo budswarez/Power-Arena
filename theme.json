@@ -2,6 +2,20 @@
     "$schema": "https://schemas.wp.org/trunk/theme.json",
     "version": 3,
     "settings": {
+        "appearanceTools": true,
+        "layout": {
+            "contentSize": "720px",
+            "wideSize": "1200px"
+        },
+        "spacing": {
+            "units": ["px", "%", "em", "rem", "vw"],
+            "spacingSizes": [
+                {"slug": "20", "size": "8px", "name": "Pequeno"},
+                {"slug": "30", "size": "15px", "name": "Médio"},
+                {"slug": "40", "size": "24px", "name": "Grande"},
+                {"slug": "50", "size": "50px", "name": "Extra grande"}
+            ]
+        },
         "typography": {
             "fontFamilies": [
                 {
@@ -14,6 +28,12 @@
                     "slug": "oswald",
                     "name": "Oswald"
                 }
+            ],
+            "fontSizes": [
+                {"slug": "small", "size": "13px", "name": "Pequeno"},
+                {"slug": "medium", "size": "15px", "name": "Médio"},
+                {"slug": "large", "size": "20px", "name": "Grande"},
+                {"slug": "x-large", "size": "32px", "name": "Extra grande"}
             ]
         },
         "color": {
@@ -42,6 +62,11 @@
                     "slug": "dark",
                     "color": "#1b1b1b",
                     "name": "Dark"
+                },
+                {
+                    "slug": "accent-text",
+                    "color": "#c81f10",
+                    "name": "Acento (texto acessível)"
                 }
             ]
         }
