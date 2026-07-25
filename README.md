@@ -118,13 +118,25 @@ embaralhada.
   args de `WP_Query`; `Renderer::render()` executa a query e delega a
   marcação para o layout certo (`grid`, `mix`, `blog`, `modern-grid[-1]`,
   `archive`) em `template-parts/listing/` e aos cards em
-  `template-parts/card/` (`hero`, `blog5`, `excerpt`, `text`).
+  `template-parts/card/` (`hero`, `featured`, `list`, `text`), todos
+  compartilhando o partial `card/meta.php` para o bloco `.post-meta`
+  (autor/data/comentários).
 - `inc/Menus/MegaMenuWalker.php` — walker de menu customizado para o mega
   menu + menu off-canvas mobile.
 - Templates na raiz (`front-page.php`, `single.php`, `page.php`,
   `archive.php`, `search.php`, `404.php`, `attachment.php`, `comments.php`)
   + `template-parts/` — a marcação propriamente dita, reproduzida
   clean-room a partir da referência medida (não copiada do Publisher).
+- `assets/src/css/main.css` inteiro vive dentro de `@layer base, components,
+  utilities;`. Isso é uma escolha deliberada, não um acidente — mas tem uma
+  consequência que já mordeu este tema antes: QUALQUER stylesheet de plugin
+  que não declare seus próprios `@layer` (js_composer/WPBakery, entre
+  outros) fica automaticamente acima de `main.css` na cascata, não importa
+  a especificidade do seletor — CSS não-camadeado sempre vence sobre CSS
+  camadeado. É por isso que algumas regras contra o `js_composer` neste
+  arquivo precisam de `!important`: não é especificidade insuficiente, é a
+  ordem das camadas. Ver o comentário equivalente no topo de
+  `assets/src/css/main.css`.
 
 ## Painel de opções (ACF Options Page)
 
@@ -196,6 +208,22 @@ pageview (exposição LGPD para um portal de notícias brasileiro).
 - **Licença:** ambas as famílias são SIL Open Font License 1.1 — o aviso
   completo (texto da OFL + linhas de copyright de cada projeto) está em
   `assets/fonts/OFL.txt`.
+- **`theme.json` / editor** (whole-branch review, minor finding #11): as
+  mesmas 12 faces acima agora também estão declaradas como `fontFace` em
+  `settings.typography.fontFamilies` (`file:./assets/fonts/…`, caminho
+  relativo à raiz do tema), então o editor de blocos consegue de fato
+  RENDERIZAR Barlow/Oswald ao invés de só oferecê-las no seletor e cair
+  para uma fonte substituta. `theme.json` também declara `"version": 2`
+  (não 3 — nada aqui precisa de v3; suporte a `fontFace` dentro de
+  `fontFamilies` já existe desde o schema v2, WP 6.4, o mesmo mínimo que
+  `style.css` já declara em `Requires at least`), e um
+  `styles.color.background`/`text` (`#000`/`#fff`) para que o canvas do
+  editor combine com o fundo real do front-end (ver `body{}` em
+  `main.css`) em vez de aparecer branco. `Arena\Assets::registerEditorStyle()`
+  (hookado em `after_setup_theme`) chama `add_editor_style()` apontando
+  para o MESMO CSS principal (hash incluído) que `enqueue()` já resolve
+  para o front-end, com o mesmo fallback para `style.css` quando o
+  manifest do Vite está ausente.
 
 ## Tema filho (`arena-child`)
 
