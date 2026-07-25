@@ -193,16 +193,56 @@ class AssetsTest extends WP_UnitTestCase {
     }
 
     /**
-     * `Theme::boot()` (chamado uma vez por `functions.php`, já ativo neste
-     * processo de testes) desliga globalmente o recurso "auto sizes for
-     * lazy-loaded images" do WP — necessário porque `wp_filter_content_tags()`
-     * reprocessa TODO o HTML de `the_content` depois que os cards já foram
-     * renderizados (via `do_shortcode`) e reintroduziria `sizes=auto,` em
-     * qualquer `<img loading=lazy>` mesmo já tendo o valor corrigido, se
-     * esse filtro continuasse ligado.
+     * Minor finding #12 (whole-branch review): narrowed from a blanket
+     * `__return_false` (disabled the WP 6.7 "auto sizes for lazy-loaded
+     * images" feature on EVERY request) to only the 2 contexts that
+     * actually render a `.hero-tile .img-cont` — the only absolutely
+     * positioned image container in this theme, and the actual root cause
+     * (`sizes=auto` resolving from LAYOUT width breaks under
+     * `position:absolute`; every other `.img-cont`/`.img-holder` is
+     * `position:relative`, where `auto` resolves correctly). `Theme::boot()`
+     * (called once by functions.php, already active in this test process)
+     * wires the narrowed callback.
      */
-    public function test_auto_sizes_feature_is_disabled_globally(): void {
+    public function test_auto_sizes_disabled_on_the_front_page(): void {
+        $this->go_to(home_url('/'));
+        $this->assertTrue(is_front_page(), 'go_to("/") must land on the front page for this test to be meaningful.');
+
         $this->assertFalse(apply_filters('wp_img_tag_add_auto_sizes', true));
+    }
+
+    public function test_auto_sizes_disabled_on_page_1_of_a_category_archive(): void {
+        $catId = $this->factory()->category->create();
+        $this->factory()->post->create(['post_status' => 'publish', 'post_category' => [$catId]]);
+
+        $this->go_to(get_term_link($catId));
+        $this->assertTrue(is_category(), 'go_to() must land on a category archive for this test to be meaningful.');
+        $this->assertFalse(is_paged());
+
+        $this->assertFalse(apply_filters('wp_img_tag_add_auto_sizes', true));
+    }
+
+    public function test_auto_sizes_left_enabled_on_an_ordinary_single_post(): void {
+        $postId = $this->factory()->post->create(['post_status' => 'publish']);
+
+        $this->go_to(get_permalink($postId));
+        $this->assertTrue(is_single());
+
+        $this->assertTrue(apply_filters('wp_img_tag_add_auto_sizes', true));
+    }
+
+    public function test_auto_sizes_left_enabled_on_page_2_of_a_category_archive(): void {
+        $catId = $this->factory()->category->create();
+        for ($i = 0; $i < 3; $i++) {
+            $this->factory()->post->create(['post_status' => 'publish', 'post_category' => [$catId]]);
+        }
+        update_option('posts_per_page', 1);
+
+        $this->go_to(add_query_arg('paged', 2, get_term_link($catId)));
+        $this->assertTrue(is_category());
+        $this->assertTrue(is_paged(), 'go_to() must land on page 2 for this test to be meaningful.');
+
+        $this->assertTrue(apply_filters('wp_img_tag_add_auto_sizes', true));
     }
 
     /**
@@ -243,6 +283,47 @@ class AssetsTest extends WP_UnitTestCase {
      * in a `finally` so the rest of the suite (and any real build output)
      * is never left disturbed.
      */
+    /**
+     * Minor finding #7 (whole-branch review): the off-canvas submenu
+     * toggle's aria-label strings used to be hardcoded pt-BR literals in
+     * main.js, bypassing i18n entirely. They're now passed to JS via
+     * wp_localize_script() as `window.arenaI18n` instead.
+     */
+    public function test_enqueue_localizes_offcanvas_i18n_strings_for_arena_main(): void {
+        Assets::enqueue();
+
+        $data = wp_scripts()->get_data('arena-main', 'data');
+
+        $this->assertIsString($data);
+        $this->assertStringContainsString('arenaI18n', $data);
+        $this->assertStringContainsString('expandSubmenuWithLabel', $data);
+        $this->assertStringContainsString('expandSubmenu', $data);
+    }
+
+    /**
+     * Minor finding #11 (whole-branch review): the block editor previously
+     * had no editor stylesheet registered at all — the canvas never
+     * reflected this theme's real look. `registerEditorStyle()` must call
+     * `add_editor_style()` (which itself calls `add_theme_support(
+     * 'editor-style')`) so `get_editor_stylesheets()` picks up a real
+     * file.
+     */
+    public function test_register_editor_style_registers_a_real_stylesheet(): void {
+        global $editor_styles;
+        $editor_styles = [];
+
+        Assets::registerEditorStyle();
+
+        $this->assertTrue(current_theme_supports('editor-style'));
+        $this->assertNotEmpty($editor_styles);
+        foreach ((array) $editor_styles as $file) {
+            $this->assertTrue(
+                str_starts_with($file, 'assets/dist/') || $file === 'style.css',
+                "Unexpected editor stylesheet path: $file"
+            );
+        }
+    }
+
     public function test_enqueue_registers_arena_main_style_even_without_manifest_file(): void {
         $path = ARENA_DIR . '/assets/dist/.vite/manifest.json';
         $hadManifest = is_file($path);

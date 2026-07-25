@@ -23,28 +23,97 @@ final class Assets {
         add_action('wp_enqueue_scripts', [self::class, 'enqueue']);
         add_action('wp_head', [self::class, 'printPreloadLink'], 1);
         add_action('wp_head', [self::class, 'printInlineTokens']);
+        add_action('after_setup_theme', [self::class, 'registerEditorStyle']);
         add_filter('script_loader_tag', [self::class, 'deferOwnScripts'], 10, 2);
         add_filter('wp_resource_hints', [self::class, 'resourceHints'], 10, 2);
         add_filter('wp_get_attachment_image_attributes', [self::class, 'filterCardImageAttributes'], 10, 3);
 
         /**
          * Desliga o recurso "auto sizes for lazy-loaded images" do WP 6.7+
-         * por completo. Ele não é apenas a origem do bug (`sizes=auto`
-         * resolvido a partir da largura de LAYOUT quebra dentro do
-         * `.hero-tile .img-cont` absolutamente posicionado — ver
-         * fixCardImageAttributes()): mesmo depois do filtro acima corrigir
-         * o `sizes` das thumbs `arena-card`, o WP reprocessa TODO o HTML de
-         * `the_content` via `wp_filter_content_tags()` e, como
-         * `wp_img_tag_add_auto_sizes()` só verifica se o `sizes` já começa
-         * com `auto` (não sabe que já corrigimos o valor), ele PREFIXA
-         * `auto,` de novo em qualquer `<img loading=lazy>` — inclusive nas
-         * thumbs dos cards, que é como os listings (`[bs-*]` via
-         * do_shortcode dentro de `the_content`) reintroduziam o bug mesmo
-         * com o filtro de atributos corrigido. Desligar aqui é o hook que o
-         * próprio WP documenta para isso ("Filters whether auto-sizes for
-         * lazy loaded images is enabled").
+         * — mas SÓ nas requisições onde ele de fato quebra, não o site
+         * inteiro (whole-branch review, minor finding #12; narrowed from a
+         * blanket `__return_false`).
+         *
+         * A causa raiz: `sizes=auto` é resolvido pelo browser a partir da
+         * largura de LAYOUT da imagem no momento do lazy-load, o que quebra
+         * dentro de `.hero-tile .img-cont` — o ÚNICO container de imagem
+         * absolutamente posicionado (`position:absolute; inset:0`) do tema
+         * (ver assets/src/css/main.css; todo outro `.img-cont`/`.img-holder`
+         * é `position:relative`, em fluxo normal, onde `auto` resolve
+         * corretamente). Mesmo depois do filtro
+         * `wp_get_attachment_image_attributes` acima corrigir o `sizes` das
+         * thumbs `arena-card`, o WP reprocessa TODO o HTML de `the_content`
+         * via `wp_filter_content_tags()` e, como `wp_img_tag_add_auto_sizes()`
+         * só verifica se o `sizes` já começa com `auto` (não sabe que já
+         * corrigimos o valor), ele PREFIXA `auto,` de novo em qualquer `<img
+         * loading=lazy>` — inclusive nas hero tiles.
+         *
+         * `.hero-tile` só é renderizado em 2 contextos (ver
+         * currentRequestRendersHeroTiles()): a home (front-page.php's
+         * `[bs-modern-grid-listing-7]`) e a página 1, não paginada, de um
+         * arquivo de categoria/tag (archive.php's bloco `modern-grid-1`,
+         * guardado por `!is_paged()` no próprio archive.php). Em qualquer
+         * OUTRA request — post único, busca, página 2+ de um arquivo,
+         * autor, etc. — não existe hero tile na página, então o recurso do
+         * WP 6.7 fica LIGADO (comportamento padrão do core, correto para
+         * imagens em fluxo normal) em vez de desligado sem necessidade.
          */
-        add_filter('wp_img_tag_add_auto_sizes', '__return_false');
+        add_filter('wp_img_tag_add_auto_sizes', [self::class, 'autoSizesEnabledForCurrentRequest']);
+    }
+
+    /**
+     * Callback do filtro `wp_img_tag_add_auto_sizes` — ver o comentário em
+     * register() para o raciocínio completo por trás de restringir isto a
+     * apenas requisições que renderizam hero tiles.
+     */
+    public static function autoSizesEnabledForCurrentRequest(bool $enabled): bool {
+        return self::currentRequestRendersHeroTiles() ? false : $enabled;
+    }
+
+    /**
+     * True apenas nos 2 contextos de template que renderizam
+     * `card/hero.php` (`.hero-tile .img-cont`): a home, e a página 1 (não
+     * paginada) de um arquivo de categoria/tag. Depende de conditional tags
+     * do WP (`is_front_page()`/`is_category()`/`is_tag()`/`is_paged()`),
+     * então só é confiável DEPOIS que a query principal resolveu — mas o
+     * próprio filtro (`wp_img_tag_add_auto_sizes`) só dispara durante a
+     * renderização do template, bem depois disso, então nunca é chamado
+     * cedo demais.
+     */
+    private static function currentRequestRendersHeroTiles(): bool {
+        if (is_front_page()) {
+            return true;
+        }
+
+        return !is_paged() && (is_category() || is_tag());
+    }
+
+    /**
+     * Whole-branch review, minor finding #11: without this, the block
+     * editor's canvas had NOTHING backing it — `theme.json` declares
+     * Barlow/Oswald as selectable `fontFamilies` (now with real `fontFace`
+     * entries too, see theme.json) and this theme's own `color.palette`,
+     * but no editor stylesheet meant the front-end look (dark canvas,
+     * this theme's actual type scale/spacing) never carried over into the
+     * editor preview. `add_editor_style()` accepts a path relative to the
+     * theme directory (resolved against BOTH the child theme's and the
+     * parent/template theme's directory — see WP core's
+     * `get_editor_stylesheets()` — so this keeps working for
+     * `arena-child`, which has no `assets/dist` of its own) — same
+     * resolved main stylesheet the front end enqueues, hashed filename and
+     * all, with the same `style.css` fallback `enqueue()` uses when the
+     * manifest is missing.
+     */
+    public static function registerEditorStyle(): void {
+        $manifest = self::manifest();
+        $resolved = self::resolveMainAssets($manifest);
+
+        $style = $resolved['styles'][0] ?? null;
+        $relativePath = ($style !== null && !$style['fallback'] && is_string($style['file']))
+            ? 'assets/dist/' . $style['file']
+            : 'style.css';
+
+        add_editor_style($relativePath);
     }
 
     /**
@@ -213,6 +282,17 @@ final class Assets {
 
         if ($resolved['js'] !== null) {
             wp_enqueue_script('arena-main', $dist . $resolved['js']['file'], [], null, true);
+            // The off-canvas submenu toggle's aria-label is built in JS
+            // (it's per-submenu, injected at runtime) — these two strings
+            // used to be hardcoded pt-BR literals in main.js, bypassing
+            // i18n entirely (whole-branch review, minor finding #7).
+            // `%s` is a literal placeholder swapped for the submenu's own
+            // label client-side (see initOffCanvasMenu() in main.js), not a
+            // PHP sprintf() token.
+            wp_localize_script('arena-main', 'arenaI18n', [
+                'expandSubmenuWithLabel' => __('Expandir %s', 'arena'),
+                'expandSubmenu'          => __('Expandir submenu', 'arena'),
+            ]);
         }
     }
 
