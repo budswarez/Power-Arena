@@ -60,4 +60,28 @@ class PageTemplateTest extends WP_UnitTestCase {
         $this->assertStringNotContainsString('sidebar-column', $html);
         $this->assertStringNotContainsString('Fatal error', $html);
     }
+
+    /**
+     * Minor finding #10 (whole-branch review): the home's body is a
+     * WPBakery `[vc_row]` tree of `bs-*` listing blocks whose own card/
+     * section headings are all `<h2>` — the page used to render zero
+     * `<h1>` anywhere, unlike every other template. Behavioural, not
+     * markup-brittle: counts `<h1` tags rather than asserting a specific
+     * class/wrapper, so it stays green regardless of exactly how/where the
+     * H1 is implemented.
+     */
+    public function test_front_page_renders_exactly_one_h1(): void {
+        $pageId = $this->factory()->post->create([
+            'post_type'    => 'page',
+            'post_title'   => 'Arena Home Page',
+            'post_content' => 'Conteudo da home estatica.',
+            'post_status'  => 'publish',
+        ]);
+        update_option('show_on_front', 'page');
+        update_option('page_on_front', $pageId);
+
+        $html = $this->renderTemplate('front-page.php', $pageId);
+
+        $this->assertSame(1, preg_match_all('/<h1[\s>]/', $html));
+    }
 }
