@@ -3,10 +3,12 @@ declare(strict_types=1);
 if (!defined('ABSPATH')) { exit; }
 
 /**
- * Card compacto, apenas texto (usado por `mix` para os itens além do
- * primeiro). Sem thumb por padrão — só exibe quando `featured_image` é
- * explicitamente truthy nas opções, pois este card serve o contexto de
- * coluna estreita (3 colunas) onde o Publisher usa uma lista enxuta.
+ * Card compacto (usado por `mix` para os itens além do primeiro): thumb
+ * pequena + título numa linha. Mostra a thumb sempre que o post tiver uma —
+ * verificado contra a referência pública que as linhas compactas do
+ * `bs-mix-listing-3-1` (com `featured_image="0"` no shortcode) SEMPRE
+ * carregam uma thumb pequena (~86x64px); esse atributo não governa a
+ * visibilidade da imagem aqui (mesmo raciocínio de `card/featured.php`).
  *
  * @var array<string, mixed> $args {
  *     @type bool                 $is_first Se este é o 1º card da listagem (LCP).
@@ -19,9 +21,8 @@ if (!$postId) {
     return;
 }
 
-$options = is_array($args['options'] ?? null) ? $args['options'] : [];
 $isFirst = (bool) ($args['is_first'] ?? false);
-$showThumb = (($options['featured_image'] ?? false) === true) && has_post_thumbnail($postId);
+$showThumb = has_post_thumbnail($postId);
 
 $permalink = get_permalink($postId);
 ?>

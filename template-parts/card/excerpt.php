@@ -20,7 +20,7 @@ if (!$postId) {
 
 $options = is_array($args['options'] ?? null) ? $args['options'] : [];
 $isFirst = (bool) ($args['is_first'] ?? false);
-$showThumb = (($options['featured_image'] ?? true) !== false) && has_post_thumbnail($postId);
+$showThumb = has_post_thumbnail($postId);
 $showExcerpt = ($options['show_excerpt'] ?? true) !== false;
 
 $categories = get_the_category($postId);
@@ -35,7 +35,7 @@ $commentCount = (int) get_comments_number($postId);
         <div class="featured clearfix">
             <?php if ($primaryCategory): ?>
                 <div class="term-badges floated">
-                    <span class="term-badge term-<?php echo esc_attr((string) $primaryCategory->term_id); ?>">
+                    <span class="term-badge" data-slug="<?php echo esc_attr($primaryCategory->slug); ?>">
                         <a href="<?php echo esc_url(get_category_link($primaryCategory)); ?>"><?php echo esc_html($primaryCategory->name); ?></a>
                     </span>
                 </div>

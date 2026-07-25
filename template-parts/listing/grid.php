@@ -31,8 +31,10 @@ if ($columns < 1) {
                 $query->the_post();
                 $index++;
                 get_template_part('template-parts/card/featured', null, [
-                    'is_first' => $index === 1,
-                    'options'  => $options,
+                    'is_first'   => $index === 1,
+                    'show_meta'  => false,
+                    'show_badge' => false,
+                    'options'    => $options,
                 ]);
             endwhile;
             ?>

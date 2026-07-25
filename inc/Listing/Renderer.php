@@ -51,7 +51,18 @@ final class Renderer {
         ];
     }
 
-    /** @param array<string, mixed> $atts */
+    /**
+     * `heading_color` colore a BARRA do heading (o `::before` skewed de
+     * `.section-heading.sh-t6.sh-s6`, ver main.css), não o texto — medido
+     * contra a referência pública, onde o texto do heading fica sempre
+     * branco sobre a barra colorida. O `style="color:..."` fica no `<div
+     * class="section-heading">` (não no `.h-text` interno) para que a CSS
+     * da barra possa ler `background:currentColor` a partir do elemento
+     * pai; o texto em si é forçado a branco via regra própria de
+     * `.section-heading.sh-t6.sh-s6 .h-text`.
+     *
+     * @param array<string, mixed> $atts
+     */
     private static function renderHeading(array $atts): string {
         $title = isset($atts['title']) ? trim((string) $atts['title']) : '';
         if ($title === '') {
@@ -59,16 +70,16 @@ final class Renderer {
         }
 
         $color = isset($atts['heading_color']) ? trim((string) $atts['heading_color']) : '';
-        $style = $color !== '' ? ' style="color:' . esc_attr($color) . '"' : '';
+        $wrapperStyle = $color !== '' ? ' style="color:' . esc_attr($color) . '"' : '';
 
         $link = self::headingLink($atts);
 
         if ($link !== '') {
-            return '<div class="section-heading sh-t6 sh-s6"><a class="h-text main-link" href="'
-                . esc_url($link) . '"' . $style . '>' . esc_html($title) . '</a></div>';
+            return '<div class="section-heading sh-t6 sh-s6"' . $wrapperStyle . '><a class="h-text main-link" href="'
+                . esc_url($link) . '">' . esc_html($title) . '</a></div>';
         }
 
-        return '<div class="section-heading sh-t6 sh-s6"><span class="h-text"' . $style . '>'
+        return '<div class="section-heading sh-t6 sh-s6"' . $wrapperStyle . '><span class="h-text">'
             . esc_html($title) . '</span></div>';
     }
 

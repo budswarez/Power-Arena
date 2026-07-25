@@ -29,8 +29,9 @@ if ($query->have_posts()) {
         ob_start();
         if ($index === 1) {
             get_template_part('template-parts/card/featured', null, [
-                'is_first' => true,
-                'options'  => $options,
+                'is_first'      => true,
+                'show_comments' => true,
+                'options'       => $options,
             ]);
             $firstHtml = (string) ob_get_clean();
         } else {

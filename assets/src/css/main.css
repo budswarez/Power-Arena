@@ -425,25 +425,49 @@
 }
 
 /* ==========================================================================
-   Section headings (per-listing heading, colored via inline style
-   emitted by Arena\Listing\Renderer::renderHeading())
+   Section headings — colored skewed "ribbon" bar (measured against the
+   reference's `.section-heading.sh-t6.sh-s6`: bar skew ~20deg, text
+   padding `0 26px 0 10px`, line-height ~34px). The bar's color comes from
+   `heading_color` (Arena\Listing\Renderer::renderHeading() puts it as an
+   inline `color:` on THIS wrapper, not on `.h-text`), read here via
+   `background: currentColor` on the `::before`; the text itself is always
+   forced white, matching the reference (white text on the colored bar
+   regardless of the bar's own hue).
    ========================================================================== */
 @layer components {
-  .section-heading {
+  .section-heading.sh-t6.sh-s6 {
+    position: relative;
+    display: inline-block;
     margin: 0 0 18px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #eee;
+    color: var(--arena-accent); /* fallback bar color when no heading_color is set */
   }
 
-  .section-heading .h-text {
+  .section-heading.sh-t6.sh-s6::before {
+    content: '';
+    position: absolute;
+    inset: 0 8px 0 0;
+    background: currentColor;
+    transform: skewX(-20deg);
+    transform-origin: top left;
+  }
+
+  .section-heading.sh-t6.sh-s6 .h-text {
+    position: relative;
+    display: inline-block;
+    padding: 0 26px 0 14px;
+    line-height: 34px;
+    color: #fff;
     font-family: var(--arena-font-head);
-    font-size: 1.5rem;
+    font-size: 1.05rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: .02em;
   }
 
-  .section-heading a.h-text:hover { opacity: .8; }
+  .section-heading.sh-t6.sh-s6 a.h-text:hover,
+  .section-heading.sh-t6.sh-s6 .main-link:hover .h-text {
+    opacity: .85;
+  }
 }
 
 /* ==========================================================================
@@ -454,64 +478,53 @@
   .bs-listing { margin: 0 0 40px; }
   .bs-listing:last-child { margin-bottom: 0; }
 
-  /* --- modern-grid: 1 large hero + smaller items ------------------------ */
-  .listing-modern-grid .mg-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-
-  .listing-modern-grid .mg-col { flex: 1 1 100%; min-width: 0; }
-
-  @media (min-width: 720px) {
-    .listing-modern-grid .mg-row {
-      display: grid;
-      grid-template-columns: 1.6fr 1fr;
-      grid-auto-rows: min-content;
-      align-items: start;
-      gap: 20px;
-    }
-
-    .listing-modern-grid .mg-col-1 { grid-column: 1; grid-row: 1 / -1; }
-    .listing-modern-grid .mg-col:not(.mg-col-1) { grid-column: 2; }
-  }
-
-  .listing-modern-grid .mg-col-1 .listing-item-featured .img-cont {
-    aspect-ratio: 760 / 428;
-  }
-
-  .listing-modern-grid .mg-col:not(.mg-col-1) .listing-item-featured .img-cont {
-    aspect-ratio: 16 / 9;
-  }
-
-  .listing-modern-grid .mg-col-1 .title { font-size: 1.4rem; }
-
-  /* --- mix: 1 featured card + compact text list ------------------------- */
+  /* --- mix: 1 featured card (thumb + full meta, incl. comments) + a
+     compact text list (small thumb, title, date only) below a divider —
+     measured against the reference's `listing-mix-3-1` (row-1 =
+     `.listing-grid-1` card, row-2 = `.listing-tb-1` rows with an ~86x64
+     thumb each). ------------------------------------------------------- */
   .listing-mix-3-1 { display: flex; flex-direction: column; gap: 16px; }
 
   .listing-mix-3-1 .row-2 {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding-top: 12px;
+    gap: 12px;
+    padding-top: 14px;
     border-top: 1px solid #eee;
   }
 
+  /* Grid, not flex: image spans both text rows (title on top, date below),
+     matching the reference's thumb-left/stacked-text-right compact row —
+     the `.featured`/`.title`/`.post-meta` markup are flat siblings
+     (card/text.php), so grid placement (rather than restructuring the
+     markup into a nested wrapper) is the simplest way to reproduce it. */
   .listing-mix-3-1 .listing-item-text .item-inner {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    column-gap: 10px;
+    align-items: center;
+  }
+
+  .listing-mix-3-1 .listing-item-text .featured { grid-row: 1 / 3; }
+
+  .listing-mix-3-1 .listing-item-text .img-holder {
+    display: block;
+    aspect-ratio: 86 / 64;
+    overflow: hidden;
+    border-radius: 3px;
   }
 
   .listing-mix-3-1 .listing-item-text .title {
-    font-size: .95rem;
+    grid-column: 2;
+    font-size: .92rem;
     font-weight: 500;
+    line-height: 1.3;
   }
 
   .listing-mix-3-1 .listing-item-text .post-meta {
+    grid-column: 2;
     font-size: .75rem;
     color: #888;
-    white-space: nowrap;
   }
 
   /* --- blog: single column with excerpt ---------------------------------- */
@@ -577,6 +590,13 @@
 @layer components {
   .listing-item { list-style: none; }
 
+  /* `.featured` is the containing block for the absolutely-positioned
+     `.term-badges.floated` badge (a sibling of `.img-cont`/`.img-holder`
+     inside it, per card/featured.php + card/excerpt.php) — without this,
+     the badge has no positioned ancestor and escapes to the initial
+     containing block instead of anchoring over its own card's image. */
+  .listing-item .featured { position: relative; }
+
   .listing-item .img-cont,
   .listing-item .img-holder {
     display: block;
@@ -611,6 +631,14 @@
     border-radius: 2px;
   }
 
+  /* Per-category badge color, keyed by the term SLUG emitted as
+     `data-slug` on `.term-badge` (card/featured.php, card/hero.php,
+     card/excerpt.php) — NOT by term_id, which varies per environment.
+     Falls back to `--arena-accent` (rule above) for any other slug. */
+  .listing-item .term-badge[data-slug="hardware"] a { background: var(--arena-c-hardware); }
+  .listing-item .term-badge[data-slug="valorant"] a { background: var(--arena-c-valorant); }
+  .listing-item .term-badge[data-slug="free-fire"] a { background: var(--arena-c-freefire); }
+
   .listing-item .content-container { padding-top: 10px; }
 
   .listing-item .title {
@@ -634,6 +662,114 @@
 
   .listing-item .post-author-a { color: #888; }
   .listing-item .post-author { font-style: normal; }
+
+  .listing-item .post-meta .comments {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+}
+
+/* ==========================================================================
+   Hero (`modern-grid`) — mosaic of image-background tiles: a large 2-up
+   row followed by compact 3-up rows, category badge + title overlaid on
+   the image behind a bottom scrim. Measured against the reference's
+   `.listing-modern-grid-7`/`.listing-mg-type-1` (row split 50/50 then
+   33/33/33, tile aspect-ratio ~68% vs ~60% padding-top, overlay
+   `rgba(0,0,0,.42)`, hover zoom `scale(1.1)`) — placed after the generic
+   Cards block above so `.hero-tile .img-cont` (absolute, full-bleed) wins
+   over the generic `.listing-item .img-cont` (relative, bordered) at equal
+   selector specificity.
+   ========================================================================== */
+@layer components {
+  .listing-modern-grid .mg-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px;
+  }
+
+  .listing-modern-grid .mg-row + .mg-row { margin-top: 3px; }
+
+  .listing-modern-grid .mg-row:not(.mg-row-1) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .hero-tile {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 2px;
+    /* Dark fallback (not the generic card's light #ddd) so the white
+       overlay title stays legible on posts with no featured image. */
+    background: var(--arena-c-dark);
+    height: 100%;
+  }
+
+  .mg-row-1 .hero-tile { aspect-ratio: 1.47; }
+  .mg-row:not(.mg-row-1) .hero-tile { aspect-ratio: 1.67; }
+
+  .hero-tile .img-cont {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  .hero-tile .img-cont img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .5s ease;
+  }
+
+  .hero-tile:hover .img-cont img { transform: scale(1.1); }
+
+  .hero-tile .term-badges.floated { z-index: 2; }
+
+  .hero-tile .content-container {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 1;
+    padding: 20px 18px 16px;
+    background: rgba(0, 0, 0, .42);
+    max-height: 75%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hero-tile .content-container a { pointer-events: auto; }
+
+  .hero-tile .title {
+    margin: 0;
+    color: #fff;
+    font-weight: 500;
+    line-height: 1.35;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, .25);
+  }
+
+  .mg-row-1 .hero-tile .title { font-size: 1.25rem; }
+  .mg-row:not(.mg-row-1) .hero-tile .title { font-size: .98rem; padding: 12px 14px; }
+  .mg-row:not(.mg-row-1) .hero-tile .content-container { padding: 14px 14px 12px; }
+
+  .hero-tile .post-meta {
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+    font-size: .78rem;
+  }
+
+  .hero-tile .post-meta .post-author { color: #fff; }
+  .hero-tile .post-meta .time { color: rgba(255, 255, 255, .62); }
+
+  @media (max-width: 640px) {
+    .listing-modern-grid .mg-row,
+    .listing-modern-grid .mg-row:not(.mg-row-1) {
+      grid-template-columns: 1fr;
+    }
+
+    .mg-row-1 .hero-tile,
+    .mg-row:not(.mg-row-1) .hero-tile { aspect-ratio: 16 / 9; }
+  }
 }
 
 /* ==========================================================================
@@ -644,15 +780,19 @@
    the plain light-background/dark-text look and needs no extra rule here.
    ========================================================================== */
 @layer components {
+  /* Full-bleed: `.bs-listing` sits inside `.main-content.boxed`
+     (max-width 1200px, 15px side padding), but the reference's dark
+     "Últimas notícias" row paints edge-to-edge across the viewport while
+     its content (heading + grid) stays aligned to the same 1200px column.
+     `max()` keeps a 15px minimum gutter on narrow viewports, matching
+     `.container`'s own padding-inline there. */
   .bs-listing.bs-dark-scheme {
     background: var(--arena-c-dark);
     color: #f2f2f2;
-    padding: 24px 20px;
-    border-radius: 4px;
-  }
-
-  .bs-listing.bs-dark-scheme .section-heading {
-    border-bottom-color: rgba(255, 255, 255, .15);
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding-block: 32px 40px;
+    padding-inline: max(15px, calc((100vw - var(--arena-site-width)) / 2));
   }
 
   .bs-listing.bs-dark-scheme .title,
