@@ -26,7 +26,7 @@ if (!$postId || !\Arena\Listing\Renderer::hasUsableThumbnail($postId)) {
     the_post_thumbnail('full', [
         'fetchpriority' => 'high',
         'decoding'      => 'async',
-        'alt'           => get_the_title($postId),
+        'alt'           => \Arena\Media::imageAlt((int) get_post_thumbnail_id($postId), get_the_title($postId)),
     ]);
     ?>
 </div>

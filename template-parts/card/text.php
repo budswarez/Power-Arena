@@ -35,7 +35,7 @@ $permalink = get_permalink($postId);
                     $imgAttr = [
                         'class'    => 'attachment-arena-card',
                         'decoding' => 'async',
-                        'alt'      => get_the_title($postId),
+                        'alt'      => \Arena\Media::imageAlt((int) get_post_thumbnail_id($postId), get_the_title($postId)),
                     ];
                     if ($isFirst) {
                         $imgAttr['fetchpriority'] = 'high';

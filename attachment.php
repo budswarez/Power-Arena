@@ -57,7 +57,7 @@ while (have_posts()):
                     [
                         'class'    => 'attachment-media__image',
                         'decoding' => 'async',
-                        'alt'      => get_the_title($attachmentId),
+                        'alt'      => \Arena\Media::imageAlt($attachmentId, get_the_title($attachmentId)),
                     ]
                 );
                 ?>
