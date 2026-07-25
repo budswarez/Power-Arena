@@ -94,7 +94,7 @@ $commentCount = (int) get_comments_number($postId);
                     </span>
                     <?php if ($showComments): ?>
                         <a class="comments" href="<?php echo esc_url(get_comments_link($postId)); ?>">
-                            <i class="fa fa-comments-o"></i> <?php echo esc_html((string) $commentCount); ?>
+                            <?php echo \Arena\Listing\Renderer::commentIcon(); ?> <?php echo esc_html((string) $commentCount); ?>
                         </a>
                     <?php endif; ?>
                 </div>

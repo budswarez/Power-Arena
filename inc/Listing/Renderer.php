@@ -131,6 +131,25 @@ final class Renderer {
         return is_string($file) && $file !== '' && file_exists($file);
     }
 
+    /**
+     * Inline SVG speech-bubble icon printed before the comment count in a
+     * card's `.post-meta` (`template-parts/card/featured.php` and
+     * `card/excerpt.php`) — measured against the reference, which shows a
+     * small bubble glyph before the number (e.g. "💬 0"), never a bare
+     * digit. A shared helper (rather than duplicating the markup in both
+     * card templates) so there's exactly one clean-room shape to maintain;
+     * inline (not an icon-font glyph or external asset) since no icon font
+     * is enqueued — an `<i class="fa …">` with nothing backing it renders
+     * empty, which is the current bug this fixes. `aria-hidden`: the
+     * comment count text itself already conveys the count; the icon is
+     * purely decorative.
+     */
+    public static function commentIcon(): string {
+        return '<svg class="icon-comment" width="14" height="13" viewBox="0 0 16 15" aria-hidden="true" focusable="false">'
+            . '<path fill="currentColor" d="M2 1.5h12A1.5 1.5 0 0 1 15.5 3v6A1.5 1.5 0 0 1 14 10.5H6.8L3 14v-3.5H2A1.5 1.5 0 0 1 .5 9V3A1.5 1.5 0 0 1 2 1.5z"/>'
+            . '</svg>';
+    }
+
     private static function intOrDefault(mixed $value, int $default): int {
         if ($value === null || $value === '' || !is_numeric($value)) {
             return $default;

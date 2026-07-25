@@ -71,7 +71,7 @@ $commentCount = (int) get_comments_number($postId);
                     <time class="post-published updated" datetime="<?php echo esc_attr(get_the_date('c', $postId)); ?>"><?php echo esc_html(get_the_date('j M, Y', $postId)); ?></time>
                 </span>
                 <a class="comments" href="<?php echo esc_url(get_comments_link($postId)); ?>">
-                    <i class="fa fa-comments-o"></i> <?php echo esc_html((string) $commentCount); ?>
+                    <?php echo \Arena\Listing\Renderer::commentIcon(); ?> <?php echo esc_html((string) $commentCount); ?>
                 </a>
             </div>
             <?php if ($showExcerpt): ?>

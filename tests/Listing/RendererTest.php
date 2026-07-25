@@ -101,4 +101,23 @@ class RendererTest extends WP_UnitTestCase {
         $this->assertStringContainsString('Destaques', $html);
         $this->assertStringContainsString('color:#ff0000', $html);
     }
+
+    public function test_comment_icon_is_an_inline_svg_not_an_icon_font_glyph(): void {
+        $icon = Renderer::commentIcon();
+
+        $this->assertStringStartsWith('<svg', $icon);
+        $this->assertStringContainsString('icon-comment', $icon);
+        $this->assertStringContainsString('aria-hidden="true"', $icon);
+        $this->assertStringNotContainsString('fa fa-comments', $icon);
+        $this->assertStringNotContainsString('<i ', $icon);
+    }
+
+    public function test_render_mix_layout_first_card_shows_comment_icon_before_count(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Mix Comments Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('mix', ['count' => '1']);
+
+        $this->assertStringContainsString('class="comments"', $html);
+        $this->assertStringContainsString('<svg class="icon-comment"', $html);
+    }
 }
