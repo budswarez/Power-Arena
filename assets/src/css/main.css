@@ -26,6 +26,18 @@
 
   *, *::before, *::after { box-sizing: border-box; }
 
+  /* Belt-and-suspenders guard against horizontal scroll on narrow
+     viewports: `.bs-listing.bs-dark-scheme` (below) intentionally breaks
+     out to full viewport width via `width:100vw`/negative margins (the
+     dark "Últimas notícias" row), a technique that's a common source of
+     a few stray px of horizontal overflow in browsers/embeddings where
+     `100vw` accounts for the scrollbar gutter but the actual scrollable
+     viewport doesn't. `overflow-x:hidden` on the root element only clips
+     the HORIZONTAL axis — vertical scrolling (a tall page) is untouched —
+     so it can only ever prevent sideways scroll, never hide content that
+     would otherwise be reachable by scrolling down. */
+  html { overflow-x: hidden; }
+
   body {
     margin: 0;
     font-family: var(--arena-font-body);
@@ -985,6 +997,14 @@
     top: 10px;
     left: 10px;
     z-index: 1;
+    /* Defensive: an absolutely-positioned box's width is shrink-to-fit
+       (intrinsic to its content), NOT clamped to the remaining space in
+       its containing block — an unusually long category name could
+       otherwise push this past the card's own right edge. On narrow
+       (2-column grid) cards there's little room to spare, so cap it to
+       the containing block's width minus the 10px left offset, matching
+       what a right:10px companion inset would give without needing one. */
+    max-width: calc(100% - 20px);
   }
 
   .listing-item .term-badge a {
