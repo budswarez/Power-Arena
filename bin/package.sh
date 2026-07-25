@@ -2,7 +2,7 @@
 # Gera o pacote de distribuição do tema Arena (pai + filho + mu-plugin + docs).
 #
 # Uso:  bash bin/package.sh [diretório-de-saída]
-# Saída padrão: ../../../arena-package/  (ao lado de wp-content)
+# Saída padrão: renew/entrega-arena/ (FORA da raiz web, para o zip não ficar público)
 #
 # O pacote contém APENAS o que o site precisa em tempo de execução.
 # Ferramentas de desenvolvimento (node_modules, vendor, tests, .superpowers,
@@ -11,7 +11,7 @@ set -euo pipefail
 
 THEME_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 THEMES_DIR="$(dirname "$THEME_DIR")"
-OUT_DIR="${1:-$THEMES_DIR/../../arena-package}"
+OUT_DIR="${1:-$THEMES_DIR/../../../entrega-arena}"
 STAGE="$OUT_DIR/stage"
 VERSION="$(grep -m1 '^Version:' "$THEME_DIR/style.css" | sed 's/Version:[[:space:]]*//' | tr -d '\r')"
 STAMP="$(date +%Y%m%d)"
@@ -83,16 +83,36 @@ echo "    stage limpo"
 # ---------------------------------------------------------------- zip
 echo "==> Gerando o zip…"
 rm -f "$OUT_DIR/$ZIP_NAME"
-( cd "$STAGE" && zip -rq "$OUT_DIR/$ZIP_NAME" . -x '.DS_Store' )
+if command -v zip >/dev/null 2>&1; then
+  ( cd "$STAGE" && zip -rq "$OUT_DIR/$ZIP_NAME" . -x '.DS_Store' )
+else
+  # Git Bash no Windows normalmente não traz `zip`; o zipfile do Python
+  # preserva arquivos/pastas ocultos (essencial para assets/dist/.vite/).
+  python - "$STAGE" "$OUT_DIR/$ZIP_NAME" <<'PYZIP'
+import os, sys, zipfile
+stage, out = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    for root, dirs, files in os.walk(stage):
+        for f in files:
+            if f == ".DS_Store":
+                continue
+            full = os.path.join(root, f)
+            z.write(full, os.path.relpath(full, stage).replace(os.sep, "/"))
+PYZIP
+fi
 
 # confirma que o arquivo oculto sobreviveu ao zip
-if ! unzip -l "$OUT_DIR/$ZIP_NAME" | grep -q 'assets/dist/.vite/manifest.json'; then
-  echo "ERRO: o manifest não está dentro do zip"; exit 1
-fi
+python - "$OUT_DIR/$ZIP_NAME" <<'PYCHK'
+import sys, zipfile
+names = zipfile.ZipFile(sys.argv[1]).namelist()
+need = "arena/assets/dist/.vite/manifest.json"
+if need not in names:
+    print(f"ERRO: '{need}' não está dentro do zip"); sys.exit(1)
+print(f"    manifest presente no zip | arquivos: {len(names)}")
+PYCHK
 
 echo
 echo "==> PRONTO"
 echo "    $OUT_DIR/$ZIP_NAME  ($(du -h "$OUT_DIR/$ZIP_NAME" | cut -f1))"
-echo "    arquivos no zip: $(unzip -l "$OUT_DIR/$ZIP_NAME" | tail -1 | awk '{print $2}')"
 echo
 echo "    Leia DEPLOY.md antes de subir — em especial a seção 3 (arquivos ocultos no FTP)."
