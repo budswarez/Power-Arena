@@ -82,4 +82,47 @@ class AccordionsTest extends WP_UnitTestCase {
         $this->assertStringNotContainsString('<script>', $html);
         $this->assertStringContainsString('texto seguro', $html);
     }
+
+    /**
+     * Minor finding #8 (whole-branch review): `the_content` runs
+     * `wpautop()` (priority 10) BEFORE `do_shortcode()` (priority 11), so
+     * real imported content sees the newline right after
+     * `[accordions title=""]` and right before `[/accordions]` turned into
+     * a literal `<br />` before this shortcode handler ever runs — that
+     * stray tag used to survive straight into the rendered box.
+     */
+    public function test_stray_br_from_wpautop_is_stripped_from_wrapper_edges(): void {
+        Accordions::register();
+
+        $raw = "[accordions title=\"\"]\n[accordion title=\"Resumo\" load=\"hide\"]\n- item 1\n- item 2\n[/accordion]\n[/accordions]";
+        $autopd = wpautop($raw);
+        $html = do_shortcode($autopd);
+
+        $wrapperStart = strpos($html, '<div class="arena-accordion">');
+        $this->assertNotFalse($wrapperStart);
+        $afterWrapperOpen = ltrim(substr($html, $wrapperStart + strlen('<div class="arena-accordion">'), 20));
+        $this->assertFalse(str_starts_with($afterWrapperOpen, '<br'));
+
+        $this->assertStringContainsString('<details', $html);
+        $this->assertStringContainsString('- item 1', $html);
+        $this->assertStringContainsString('- item 2', $html);
+    }
+
+    /**
+     * Minor finding #8: unlike `renderAccordion()`, the wrapper previously
+     * ran no sanitization at all on its own `$content` — raw HTML placed
+     * directly between `[accordions]...[/accordions]`, outside any
+     * `[accordion]` panel, passed straight through untouched.
+     */
+    public function test_wrapper_strips_disallowed_html_placed_outside_any_panel(): void {
+        Accordions::register();
+
+        $html = do_shortcode(
+            '[accordions title=""]<script>alert(1)</script>[accordion title="X"]conteudo[/accordion][/accordions]'
+        );
+
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringContainsString('<details', $html);
+        $this->assertStringContainsString('conteudo', $html);
+    }
 }

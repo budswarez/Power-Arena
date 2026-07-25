@@ -31,6 +31,30 @@ final class Accordions {
      * the raw, not-yet-processed inner shortcodes; `do_shortcode()` here is
      * what expands the nested `[accordion]` tags into their own markup.
      *
+     * Whole-branch review, minor finding #8 — two fixes to `$content`
+     * before it's expanded:
+     *
+     * 1. Stray `<br />`: `the_content` runs `wpautop()` (priority 10)
+     *    BEFORE `do_shortcode()` (priority 11), so by the time this handler
+     *    runs, wpautop has already turned the newline right after
+     *    `[accordions title=""]` and right before `[/accordions]` into a
+     *    literal `<br />` — measured surviving into the rendered summary
+     *    box on ~96% of imported articles. Stripped here (leading/trailing
+     *    only — never touches whitespace/`<br />` in the MIDDLE of the
+     *    content, i.e. between sibling `[accordion]` tags).
+     * 2. Sanitizing: unlike `renderAccordion()` below, this runs
+     *    `wp_kses_post()` on the RAW text, deliberately BEFORE
+     *    `do_shortcode()`, not after. Doing it after would strip the
+     *    `<details>`/`<summary>` markup the nested `[accordion]` shortcode
+     *    itself produces (neither tag is in `wp_kses_post()`'s default
+     *    allowed-tags list) — i.e. it would delete the very panels this
+     *    shortcode exists to render. Running it on the raw text instead
+     *    only strips disallowed HTML placed directly inside
+     *    `[accordions]...[/accordions]` OUTSIDE any `[accordion]` panel —
+     *    previously the one gap left entirely unsanitized here — while
+     *    leaving the `[accordion ...]` bracket syntax itself untouched
+     *    (kses only acts on `<...>` HTML tags, not `[...]` shortcode text).
+     *
      * @param array<string, mixed>|string $atts
      */
     public static function renderAccordions(array|string $atts, ?string $content = null): string {
@@ -41,7 +65,12 @@ final class Accordions {
             ? '<div class="arena-accordion__heading">' . esc_html($title) . '</div>'
             : '';
 
-        $inner = $content !== null ? do_shortcode($content) : '';
+        $raw = $content ?? '';
+        $raw = (string) preg_replace('/^(?:\s|<br\s*\/?>)+/i', '', $raw);
+        $raw = (string) preg_replace('/(?:\s|<br\s*\/?>)+$/i', '', $raw);
+        $raw = wp_kses_post($raw);
+
+        $inner = do_shortcode($raw);
 
         return '<div class="arena-accordion">' . $heading . $inner . '</div>';
     }
@@ -58,6 +87,20 @@ final class Accordions {
      * escape the intentional HTML producing literal tags on the page),
      * then `wpautop()` turns the raw `- item` newline-separated lines from
      * the reference content into readable paragraphs/line breaks.
+     *
+     * Risk noted in whole-branch review, minor finding #8: because
+     * `do_shortcode()` runs BEFORE `wp_kses_post()`, a nested embed
+     * shortcode (`[embed]`/`[video]`) inside a panel's body that expands to
+     * an `<iframe>` would have that `<iframe>` stripped by the
+     * `wp_kses_post()` pass right after (its default allowed-tags list has
+     * no `<iframe>`). Assessed as a low/theoretical risk for THIS content,
+     * not fixed: these boxes are the "Resumo da matéria" bullet-point
+     * summary box (see the class doc-comment — newline-separated `- item`
+     * lines lifted straight from the reference content), never a place the
+     * reference site puts video embeds. Kept the safe-by-default order
+     * (strip anything unexpected) rather than widen the allowed-tags list
+     * for a use case that doesn't occur in the actual content — revisit if
+     * that ever changes.
      *
      * @param array<string, mixed>|string $atts
      */
