@@ -1402,24 +1402,42 @@
     max-width: calc(100% - 20px);
   }
 
+  /* Single accent colour for EVERY term badge, regardless of category —
+     confirmed against the reference screenshots: "HARDWARE" badges render
+     red there even though the Hardware section heading flag is blue (the
+     per-section colours — --arena-c-hardware/valorant/freefire, above —
+     belong ONLY to those heading flags, supplied per-section as the raw
+     `heading_color` WPBakery shortcode attribute in the imported content,
+     never through these badge rules; see `.section-heading.sh-t6.sh-s6`,
+     further down, and `Arena\Listing\Renderer::renderHeading()`). An
+     earlier pass mis-inferred a per-slug badge colour
+     from the flags and keyed it off `data-slug`; there is no such override
+     anywhere in the reference stylesheets, so it's removed here. `data-
+     slug` itself stays on the markup (card/featured.php, card/hero.php,
+     card/excerpt.php) as a harmless, potentially useful hook — it's just
+     no longer read by this rule.
+     Background is `--arena-accent-text` (the darkened accent), not the
+     raw `--arena-accent` — white text on raw #f42c1a only measures a
+     4.02:1 contrast ratio at this badge's 11.2px (.7rem) size, below the
+     4.5:1 small-text minimum; see the token's own comment, above, for the
+     ~5.74:1 this achieves instead. Still unmistakably the same red.
+     Padding/line-height bumped so the link's own hit area (previously a
+     measured 53.3x19px) clears the 24x24px touch-target minimum — height
+     is `min-height` rather than relying on padding+line-height alone, so
+     it's correct regardless of the exact font-metrics line-height Chrome
+     computes for Barlow at this size. */
   .listing-item .term-badge a {
-    display: inline-block;
-    padding: 3px 9px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 4px 9px;
     font-size: .7rem;
     font-weight: 600;
     text-transform: uppercase;
     color: #fff;
-    background: var(--arena-accent);
+    background: var(--arena-accent-text);
     border-radius: 2px;
   }
-
-  /* Per-category badge color, keyed by the term SLUG emitted as
-     `data-slug` on `.term-badge` (card/featured.php, card/hero.php,
-     card/excerpt.php) — NOT by term_id, which varies per environment.
-     Falls back to `--arena-accent` (rule above) for any other slug. */
-  .listing-item .term-badge[data-slug="hardware"] a { background: var(--arena-c-hardware); }
-  .listing-item .term-badge[data-slug="valorant"] a { background: var(--arena-c-valorant); }
-  .listing-item .term-badge[data-slug="free-fire"] a { background: var(--arena-c-freefire); }
 
   /* card/blog5.php (category/tag/author archives, search results):
      reference overlays the same badge at the BOTTOM-left of the thumb
