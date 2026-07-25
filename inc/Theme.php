@@ -12,5 +12,6 @@ final class Theme {
         Compatibility::register();
         Blocks\Shortcodes::register();
         Blocks\VcMap::register();
+        Blocks\SingleImageHeading::register();
     }
 }

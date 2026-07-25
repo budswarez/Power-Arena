@@ -825,6 +825,54 @@
 }
 
 /* ==========================================================================
+   WPBakery `[vc_single_image]` block title (`.wpb_singleimage_heading`,
+   e.g. "Evento Pichau Arena 2026" above the homepage banner) — measured
+   against the reference: a light-grey full-width bar with slanted (chevron)
+   ends, holding a smaller dark chevron with white uppercase text centered
+   inside it. Markup comes from `Arena\Blocks\SingleImageHeading` (a
+   `wpb_widget_title` filter), which splits the plain `<h2>` js_composer
+   would otherwise render into `.sih-bar` (the grey bar) + `.sih-text` (the
+   dark chevron + text) — see that class's own doc-comment for why 2 layers
+   need 2 elements.
+   ========================================================================== */
+@layer components {
+  .wpb_singleimage_heading {
+    position: relative;
+    margin: 0 0 15px;
+    text-align: center;
+    line-height: 0; /* no direct text of its own now — both children set their own line-height */
+  }
+
+  /* The grey bar: `inset:0` stretches it to match `.sih-text`'s own
+     rendered height (below) exactly, since this pseudo-free `<span>` is the
+     ONLY in-flow (non-absolute) child sizing the `<h2>`'s box. Slanted ends
+     via `clip-path` (a 14px inset at each top corner) — same slant amount
+     as `.sih-text`'s own notch, below, so both read as one consistent
+     chevron angle. */
+  .wpb_singleimage_heading .sih-bar {
+    position: absolute;
+    inset: 0;
+    background: #f2f2f2;
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  }
+
+  .wpb_singleimage_heading .sih-text {
+    position: relative;
+    display: inline-block;
+    padding: 9px 28px;
+    background: #1a1a1a;
+    color: #fff;
+    font-family: var(--arena-font-head);
+    font-size: .9375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  }
+}
+
+/* ==========================================================================
    Listing grids — modern-grid (hero), mix (3-col context), blog (single
    column w/ excerpt), grid (N-column)
    ========================================================================== */
