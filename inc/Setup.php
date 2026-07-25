@@ -38,6 +38,36 @@ final class Setup {
             'search-form', 'gallery', 'caption', 'style', 'script',
             'comment-list', 'comment-form',
         ]);
+
+        /**
+         * task-native-settings: the theme's ONLY configuration UI used to be
+         * an ACF options page (`arena_logo` field) — but ACF is not
+         * installed on production, so the site owner had literally no way
+         * to set a logo. `custom-logo` opts into WordPress' own native
+         * mechanism (Aparência → Personalizar → Identidade do site), which
+         * needs zero plugins.
+         *
+         * `height`/`width` (140×640) match the retina (2×) logo asset the
+         * theme is shipped with (see DEPLOY.md); the header itself renders
+         * the logo at ~64px tall (see `.site-logo`/`.site-branding` in
+         * main.css). `flex-height`/`flex-width` are both true because a
+         * site owner's own logo will rarely be exactly 640×140 — WordPress
+         * only uses the given dimensions as an *aspect-ratio guide* for the
+         * media-library cropper when flex is enabled, not a hard
+         * requirement, so any reasonable logo image works. `header-text` is
+         * an empty array: this theme has no separate "site title displayed
+         * next to the logo" text element for `display_header_text()` to
+         * toggle — template-parts/header/branding.php's own text fallback
+         * (site name + tagline) only ever renders in the ABSENCE of a logo,
+         * never alongside one.
+         */
+        add_theme_support('custom-logo', [
+            'height'      => 140,
+            'width'       => 640,
+            'flex-height' => true,
+            'flex-width'  => true,
+            'header-text' => [],
+        ]);
     }
 
     /**
@@ -45,6 +75,17 @@ final class Setup {
      * `main-menu`, `top-menu`, `resp-menu` — so existing menu assignments
      * carry over on migration without the site owner reassigning anything.
      * `arena_primary` is kept as an extra/alias location.
+     *
+     * `footer-menu` (task-native-settings, migration gap #6): Publisher also
+     * registers this slug (and `off-canvas-menu`, which Arena doesn't need —
+     * its own off-canvas panel re-renders the SAME `main-menu`, see
+     * header.php, rather than reading a separate location). Registering
+     * `footer-menu` here is what lets an owner who had a DIFFERENT menu
+     * assigned to Publisher's footer carry it over; footer.php only reads
+     * from it when something is actually assigned there (see
+     * Setup::footerMenuLocation()), falling back to `main-menu` otherwise —
+     * so a fresh Arena install (nothing assigned yet) keeps rendering
+     * exactly what it always has.
      */
     public static function menusAndSizes(): void {
         register_nav_menus([
@@ -52,8 +93,21 @@ final class Setup {
             'main-menu'     => __('Menu Principal (topo)', 'arena'),
             'top-menu'      => __('Menu Superior', 'arena'),
             'resp-menu'     => __('Menu Responsivo', 'arena'),
+            'footer-menu'   => __('Menu do Rodapé (opcional)', 'arena'),
         ]);
         add_image_size('arena-card', 760, 428, true);
+    }
+
+    /**
+     * Pure resolver (testable): which registered nav-menu location
+     * footer.php should render — `footer-menu` when the site owner actually
+     * assigned a menu there, `main-menu` otherwise (footer.php's own
+     * long-standing behaviour, kept as the fallback so nothing changes for
+     * sites that never touch the new location).
+     */
+    public static function footerMenuLocation(): string {
+        $locations = get_nav_menu_locations();
+        return !empty($locations['footer-menu']) ? 'footer-menu' : 'main-menu';
     }
 
     public static function sidebars(): void {

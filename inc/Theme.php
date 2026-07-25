@@ -9,6 +9,7 @@ final class Theme {
         Setup::register();
         Assets::register();
         OptionsPanel::register();
+        Customizer::register();
         Compatibility::register();
         Blocks\Shortcodes::register();
         Blocks\VcMap::register();

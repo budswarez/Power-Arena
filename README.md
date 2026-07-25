@@ -107,8 +107,10 @@ embaralhada.
 - `inc/Pagination.php` — paginação (`paginate_links` com `type: 'plain'`).
 - `inc/Preview.php` + `mu-plugins/arena-preview.php` — preview do tema em
   produção sem alterar o tema ativo (ver seção própria abaixo).
-- `inc/OptionsPanel.php` + `inc/Options.php` — painel de opções ACF (ver
-  seção própria abaixo).
+- `inc/Customizer.php` — painel nativo do Customizer (**principal** forma de
+  configurar o tema, sem plugins) + `inc/OptionsPanel.php` (painel ACF,
+  opcional) + `inc/Options.php` (leitor único, resolve
+  theme_mod → ACF → default) — ver seção "Onde configurar o tema" abaixo.
 - `inc/Compatibility.php`, `inc/Blocks/` — camada de compatibilidade com
   WPBakery (`Blocks\VcMap`, `Blocks\SingleImageHeading`,
   `Blocks\Accordions`) e os shortcodes `[bs-*]` próprios
@@ -138,16 +140,65 @@ embaralhada.
   ordem das camadas. Ver o comentário equivalente no topo de
   `assets/src/css/main.css`.
 
-## Painel de opções (ACF Options Page)
+## Onde configurar o tema (Customizer — **sem plugins**)
+
+**A partir de `task-native-settings`, o Customizer nativo do WordPress é o
+lugar PRINCIPAL para configurar o Arena** — funciona com zero plugins, ao
+contrário do painel ACF abaixo (que continua existindo como um extra
+opcional, mas ACF **não está instalado em produção**, o que antes deixava o
+tema sem NENHUMA UI de configuração: "não achei onde altero configurações do
+tema, como adicionar a logo").
+
+- **Logo:** *Aparência → Personalizar → Identidade do site* (`custom_logo`,
+  suporte nativo do WordPress — `add_theme_support('custom-logo', …)` em
+  `Arena\Setup::themeSupports()`). Envie a versão em alta resolução (2×) do
+  logo (a arte de referência do tema é 640×140; o header renderiza a logo a
+  ~64px de altura). `flex-height`/`flex-width` estão ativos, então qualquer
+  proporção razoável funciona — os 640×140 são só a proporção-guia usada
+  pelo cropper da biblioteca de mídia.
+- **Cor de destaque / posição da sidebar / fonte base:** *Aparência →
+  Personalizar → **Arena*** (`inc/Customizer.php`, `Arena\Customizer`,
+  registrado em `customize_register`). Painel próprio, com uma seção
+  "Opções do Arena" contendo os 3 controles, cada um com sua própria
+  descrição explicando o efeito.
+
+**Precedência (`inc/Options.php`, ver docblock de cada getter):**
+`theme_mod` (Customizer, PRIMÁRIO) → opção ACF (só se o plugin estiver ativo
+e o campo tiver um valor) → valor padrão do tema. Isso vale para os 4
+valores (`logoId()`/`accentColor()`/`sidebarLayout()`/`baseFont()`, e por
+extensão `cssTokens()`) — testado em `tests/OptionsTest.php` (theme_mod
+definido vence; só ACF definido usa o ACF; nenhum dos dois usa o default).
+A garantia de contraste acessível (`Options::accessibleTextColor()`) se
+aplica **igualmente** a uma cor escolhida no Customizer e a uma escolhida no
+painel ACF — ambos os caminhos convergem em `Options::cssTokens()` antes de
+qualquer coisa ser impressa (ver `tests/OptionsTest.php::test_css_tokens_derive_accessible_text_from_theme_mod_accent`).
+
+- **Menus:** *Aparência → Menus*. Locais registrados: `main-menu`,
+  `top-menu`, `resp-menu` (compatíveis com o Publisher, herdam as
+  atribuições existentes na migração) + `footer-menu` (opcional — só usado
+  pelo rodapé quando algo é de fato atribuído a ele; sem atribuição, o
+  rodapé continua usando `main-menu`, como sempre fez — ver
+  `Arena\Setup::footerMenuLocation()`).
+- **Widgets:** *Aparência → Widgets* → área **Sidebar Principal**
+  (`arena-primary`). **Atenção na migração:** ver DEPLOY.md — os widgets do
+  Publisher vivem em outra área (`primary-sidebar`) e **não são migrados
+  automaticamente**.
+
+Sem nenhuma notificação/nag no admin — a descoberta é só via a própria
+navegação do Customizer (seções com descrição) e esta documentação.
+
+## Painel de opções (ACF Options Page — opcional)
 
 `inc/OptionsPanel.php` registra uma página de opções ACF
 (`acf_add_options_page`, slug `arena-options`, capability
 `edit_theme_options`) com 4 campos (`inc/OptionsPanel::fields()`, puro e
 testável): logo, cor de destaque, fonte base e posição da sidebar.
-Requer o plugin **Advanced Custom Fields** ativo (já incluso em
-`.wp-env.json`); sem ACF, `OptionsPanel::boot()` retorna sem fazer nada
-(`function_exists('acf_add_options_page')` guard) — não fatala. Os valores
-são lidos por `inc/Options.php`.
+Requer o plugin **Advanced Custom Fields** ativo; sem ACF, `OptionsPanel::boot()`
+retorna sem fazer nada (`function_exists('acf_add_options_page')` guard) —
+não fatala. **Mantido como uma alternativa/complemento para sites que já têm
+ACF instalado** — o Customizer (seção acima) é o caminho principal e
+funciona sem ele. Os valores dos dois painéis são lidos pelo mesmo
+`inc/Options.php`, com o Customizer tendo prioridade (ver precedência acima).
 
 **Os 4 campos são todos efetivamente aplicados** (revisão
 `task-review-fixes-3`; antes só a logo era lida por algum template):

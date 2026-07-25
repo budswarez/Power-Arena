@@ -37,3 +37,29 @@ if (!function_exists('yoast_breadcrumb')) {
         echo $before . '<a href="' . esc_url(home_url('/')) . '">Home</a>' . $after;
     }
 }
+
+if (!function_exists('get_field')) {
+    /**
+     * task-native-settings: minimal stand-in for ACF's own `get_field()`,
+     * scoped to the `'option'` location Arena\Options::get() always passes
+     * (the ACF options page, `arena-options`). ACF itself is NOT installed
+     * in this isolated PHPUnit environment (same reasoning as the
+     * `yoast_breadcrumb()` stub above) — but Arena\Options's precedence
+     * chain (theme_mod → ACF → hard default) has a whole rung
+     * (`function_exists('get_field')` true, ACF value SET) that is
+     * otherwise impossible to exercise from a test, since real ACF options
+     * are never present. Mirrors ACF's own default persistence for a
+     * simple options-page field closely enough for this: `get_field($key,
+     * 'option')` reads the plain `wp_options` row named `$key` (that's
+     * literally where ACF puts it for the 'option' location, absent a
+     * custom `update/load_value` filter) and returns `null` if unset —
+     * tests simulate "ACF has this field set" with a plain
+     * `update_option($key, $value)`, exactly like
+     * tests/OptionsTest.php's precedence tests do.
+     */
+    function get_field(string $selector, $post = false) {
+        if ($post !== 'option') { return null; }
+        $value = get_option($selector);
+        return $value === false ? null : $value;
+    }
+}

@@ -30,11 +30,18 @@ README.md              ← documentação de desenvolvimento
 | WordPress | **7.0.2+** | é a versão da produção atual |
 | PHP | **8.5** (mínimo 8.1) | é a versão da produção atual |
 | WPBakery (`js_composer`) | 8.7+ | **obrigatório** — a home é montada com ele |
-| Advanced Custom Fields | qualquer versão recente | usado pelo painel "Arena" (logo, cores, sidebar) |
+| Advanced Custom Fields | **opcional** | painel "Arena" extra — **o tema NÃO precisa dele**, ver seção 6 |
 | Yoast SEO | já instalado | o tema **não** emite SEO próprio; o Yoast continua no controle |
 
-> O tema **não** requer o Publisher. Mas mantenha o Publisher instalado
-> (desativado) até concluir a validação, para permitir rollback imediato.
+> O tema **não** requer o Publisher, nem o ACF. Mas mantenha o Publisher
+> instalado (desativado) até concluir a validação, para permitir rollback
+> imediato.
+>
+> **Nota da produção real:** o ACF **não está instalado** em
+> `pichauarena.com.br` hoje. Isso é esperado e suportado — a partir desta
+> versão, o Customizer nativo (*Aparência → Personalizar*) é o lugar
+> principal para configurar o tema, sem precisar de nenhum plugin. Ver
+> seção 6.
 
 ---
 
@@ -122,20 +129,55 @@ cache do LiteSpeed.
 
 ---
 
-## 6. Configuração do tema
+## 6. Configuração do tema (sem precisar do ACF)
 
-Após ativar (passo 7) ou já durante o preview logado:
+Após ativar (passo 7) ou já durante o preview logado — **clique exatamente
+aqui**:
 
-1. **Logo** — *Arena* (menu lateral do admin) → campo **Logo**.
-   Use a versão em alta resolução (2×): `logo-pichauarena-v2-retina.png`.
-2. **Cor de destaque / posição da sidebar / fonte** — no mesmo painel.
-   Se escolher uma cor personalizada, o tema **calcula automaticamente** uma
-   variante escura para textos, garantindo contraste acessível (WCAG AA).
+1. **Logo** — *Aparência → Personalizar → Identidade do site* (é o
+   Customizer NATIVO do WordPress, não uma tela própria do tema). Envie a
+   versão em alta resolução (2×): `logo-pichauarena-v2-retina.png` (640×140).
+   Funciona **mesmo sem nenhum plugin instalado** — é este exatamente o
+   caminho que faltava antes desta versão ("não achei onde altero
+   configurações do tema, como adicionar a logo").
+2. **Cor de destaque / posição da sidebar / fonte base** — *Aparência →
+   Personalizar → **Arena*** (painel próprio do tema, com uma seção "Opções
+   do Arena" e uma descrição em cada controle). Se escolher uma cor
+   personalizada, o tema **calcula automaticamente** uma variante escura
+   para textos, garantindo contraste acessível (WCAG AA) — mesma garantia
+   valendo aqui e no painel ACF (item 6.1 abaixo).
 3. **Menus** — *Aparência → Menus*. O tema registra os mesmos locais do
    Publisher (`main-menu`, `top-menu`, `resp-menu`), então as atribuições atuais
-   devem ser herdadas. Confirme.
-4. **Widgets** — *Aparência → Widgets* → área **Sidebar Principal**
-   (`arena-primary`). Sem widgets, a coluna lateral não é exibida.
+   devem ser herdadas. Confirme. Um local extra e **opcional**,
+   `footer-menu`, também está disponível — só é usado pelo rodapé se você
+   atribuir algo a ele; sem atribuição, o rodapé continua usando o
+   `main-menu`, como sempre fez.
+4. **Widgets — ⚠️ AÇÃO MANUAL NECESSÁRIA.** *Aparência → Widgets* → área
+   **Sidebar Principal** (`arena-primary`). **O Publisher guarda os widgets
+   da sidebar numa área própria dele (`primary-sidebar`) — a troca de tema
+   NÃO migra esses widgets automaticamente** (é um comportamento padrão do
+   WordPress: widgets de uma área que some do tema ativo ficam "inativos",
+   preservados, mas não aparecem em lugar nenhum). **Sem este passo, a
+   coluna lateral aparece vazia/oculta** em matérias, páginas e categorias.
+   Para corrigir:
+   - Vá em *Aparência → Widgets*.
+   - Se existir uma seção **"Widgets Inativos"**, os widgets antigos do
+     Publisher (`primary-sidebar`) estarão lá — arraste cada um de volta
+     para **Sidebar Principal** (`arena-primary`).
+   - Se a seção de inativos não aparecer, recrie os widgets manualmente
+     (a lista de posts recentes, categorias, etc. que estavam na sidebar
+     antiga) direto em **Sidebar Principal**.
+   - Isto é **intencional, não um bug**: a migração de widgets é um estado
+     controlado pelo dono do site, o tema não tenta adivinhar/mover nada
+     sozinho.
+
+### 6.1 Painel "Arena" do ACF (opcional, só se o plugin estiver instalado)
+
+Se o site tiver o plugin **Advanced Custom Fields** ativo, um painel
+"Arena" adicional aparece no menu do admin, com os mesmos 4 campos (logo,
+cor, fonte, sidebar) — útil como alternativa, mas **não é necessário**: o
+Customizer acima (passos 1-2) já cobre tudo, sem plugin nenhum. Quando
+ambos estão definidos, o valor do Customizer sempre vence.
 
 ---
 

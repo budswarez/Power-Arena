@@ -63,18 +63,57 @@ final class Options {
         return ($value === null || $value === '' || $value === false) ? $default : $value;
     }
 
+    /**
+     * task-native-settings: every public getter below now resolves through
+     * an explicit 3-step precedence chain, checked in this order:
+     *
+     *   1. `get_theme_mod($key)` — set via the native Customizer
+     *      (Arena\Customizer registers these same option names as
+     *      `theme_mod` settings). This is the PRIMARY path: it works with
+     *      zero plugins, which is the whole point of this change (ACF is
+     *      not installed on production, so the ACF options page previously
+     *      left the theme with no configuration UI at all).
+     *   2. `self::get($key, ...)` — the ACF options page (`arena-options`),
+     *      kept as an optional enhancement for sites that DO have ACF.
+     *      Only consulted when step 1 found nothing usable.
+     *   3. The theme's own hard default (`DEFAULT_ACCENT`,
+     *      `DEFAULT_SIDEBAR_POSITION`, `DEFAULT_BASE_FONT`, or `null` for
+     *      the logo) — used when neither of the above set anything.
+     *
+     * A theme_mod value that fails validation (never happens through the
+     * Customizer's own sanitize callbacks, but defensively checked here too
+     * — e.g. a stale/hand-edited option) is treated as "not set", falling
+     * through to the ACF step exactly like an empty theme_mod would.
+     *
+     * `logoId()` returns null on a total default: contrary to the string
+     * options, the theme's own baseline for the logo is the wordless
+     * site-name/tagline fallback rendered by template-parts/header/branding.php,
+     * not a baked-in attachment ID.
+     */
     public static function accentColor(): string {
+        $mod = get_theme_mod('arena_accent_color');
+        if (is_string($mod) && self::isValidHexColor($mod)) {
+            return self::normalizeHexColor($mod) ?? self::DEFAULT_ACCENT;
+        }
+
         $c = self::get('arena_accent_color', self::DEFAULT_ACCENT);
         if (!is_string($c)) { return self::DEFAULT_ACCENT; }
         return self::normalizeHexColor($c) ?? self::DEFAULT_ACCENT;
     }
 
     /**
-     * Sidebar position saved in the ACF options panel (`arena_sidebar_position`),
-     * sanitised against SIDEBAR_POSITIONS — anything else (ACF absent, a
-     * stale/unknown value) degrades to the shell's own default ('right').
+     * Sidebar position: theme_mod (`arena_sidebar_position`, Customizer) →
+     * ACF option (`arena_sidebar_position`, if ACF active) → the shell's own
+     * default ('right'). Sanitised against SIDEBAR_POSITIONS at every step —
+     * anything else (ACF absent, a stale/unknown value) degrades to the
+     * next step in the chain.
      */
     public static function sidebarPosition(): string {
+        $mod = get_theme_mod('arena_sidebar_position');
+        if (is_string($mod) && in_array($mod, self::SIDEBAR_POSITIONS, true)) {
+            return $mod;
+        }
+
         $v = self::get('arena_sidebar_position', self::DEFAULT_SIDEBAR_POSITION);
         return is_string($v) && in_array($v, self::SIDEBAR_POSITIONS, true)
             ? $v
@@ -101,11 +140,16 @@ final class Options {
     }
 
     /**
-     * Base font whitelist key saved in the ACF options panel
-     * (`arena_base_font`), sanitised against FONT_STACKS — anything else
-     * degrades to the theme's own default pairing.
+     * Base font: theme_mod (`arena_base_font`, Customizer) → ACF option (if
+     * active) → the theme's own default pairing. Sanitised against
+     * FONT_STACKS at every step — anything else degrades to the next step.
      */
     public static function baseFont(): string {
+        $mod = get_theme_mod('arena_base_font');
+        if (is_string($mod) && isset(self::FONT_STACKS[$mod])) {
+            return $mod;
+        }
+
         $v = self::get('arena_base_font', self::DEFAULT_BASE_FONT);
         return is_string($v) && isset(self::FONT_STACKS[$v]) ? $v : self::DEFAULT_BASE_FONT;
     }
@@ -276,7 +320,27 @@ final class Options {
         return [(int) round($r * 255), (int) round($g * 255), (int) round($b * 255)];
     }
 
+    /**
+     * Logo attachment ID: WordPress' own native `custom_logo` theme_mod
+     * (set at Aparência → Personalizar → Identidade do site,
+     * `add_theme_support('custom-logo', …)` in Arena\Setup) → the ACF
+     * `arena_logo` option (if ACF active and set) → null (the theme's own
+     * default is the wordless site-name/tagline fallback rendered by
+     * template-parts/header/branding.php, not an attachment ID).
+     *
+     * template-parts/header/branding.php calls `has_custom_logo()`/
+     * `get_custom_logo()` directly for the FIRST step (those core functions
+     * already handle the `<a>` wrapper, `width`/`height`, and retina
+     * `srcset` correctly) — this method exists for call sites that just
+     * need the resolved ID with the full precedence chain applied (and is
+     * itself what branding.php's ACF-fallback branch calls).
+     */
     public static function logoId(): ?int {
+        $mod = self::parseLogoId(get_theme_mod('custom_logo'));
+        if ($mod !== null) {
+            return $mod;
+        }
+
         return self::parseLogoId(self::get('arena_logo', null));
     }
 

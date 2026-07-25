@@ -14,15 +14,22 @@ if (!defined('ABSPATH')) { exit; }
             <nav class="footer-menu-container" aria-label="<?php esc_attr_e('Menu do rodapé', 'arena'); ?>">
                 <?php
                 /*
-                 * `main-menu` is rendered a 3rd time here (desktop nav +
-                 * off-canvas panel in header.php already used it). Same
-                 * reasoning as the off-canvas render above: suppress the
-                 * per-item `id="menu-item-{ID}"` so it doesn't duplicate the
-                 * desktop nav's ids a 2nd time over.
+                 * `footer-menu` (task-native-settings) when the site owner
+                 * assigned a menu there, `main-menu` otherwise — see
+                 * Arena\Setup::footerMenuLocation(). When it falls back to
+                 * `main-menu`, that same menu is rendered a 3rd time here
+                 * (desktop nav + off-canvas panel in header.php already used
+                 * it) — same reasoning as the off-canvas render above:
+                 * suppress the per-item `id="menu-item-{ID}"` so it doesn't
+                 * duplicate the desktop nav's ids a 2nd time over. A
+                 * DIFFERENT menu genuinely assigned to `footer-menu` has no
+                 * such duplicate-id risk, but suppressing unconditionally is
+                 * harmless (footer.php never relied on these ids anyway) and
+                 * keeps this call site simple.
                  */
                 add_filter('nav_menu_item_id', '__return_empty_string');
                 wp_nav_menu([
-                    'theme_location' => 'main-menu',
+                    'theme_location' => \Arena\Setup::footerMenuLocation(),
                     'container'      => false,
                     'menu_class'     => 'footer-menu menu clearfix',
                     'depth'          => 1,

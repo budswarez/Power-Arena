@@ -27,6 +27,31 @@ class SetupTest extends WP_UnitTestCase {
     }
 
     /**
+     * task-native-settings: the theme's only configuration UI used to be an
+     * ACF options page, unusable on a site without ACF installed. Native
+     * `custom-logo` support (Aparência → Personalizar → Identidade do site)
+     * needs zero plugins.
+     */
+    public function test_registers_native_custom_logo_support(): void {
+        $this->setExpectedIncorrectUsage("add_theme_support( 'title-tag' )");
+        do_action('after_setup_theme');
+        $this->assertTrue(current_theme_supports('custom-logo'));
+    }
+
+    public function test_custom_logo_support_dimensions_match_the_header(): void {
+        $this->setExpectedIncorrectUsage("add_theme_support( 'title-tag' )");
+        do_action('after_setup_theme');
+
+        $support = get_theme_support('custom-logo');
+        $args = $support[0];
+
+        $this->assertSame(140, $args['height']);
+        $this->assertSame(640, $args['width']);
+        $this->assertTrue($args['flex-height']);
+        $this->assertTrue($args['flex-width']);
+    }
+
+    /**
      * Publisher (the legacy theme) assigns existing menus to the location
      * slugs `main-menu`, `top-menu` and `resp-menu`. Registering the same
      * slugs here lets those assignments carry over untouched on migration.
@@ -40,6 +65,34 @@ class SetupTest extends WP_UnitTestCase {
         $this->assertArrayHasKey('top-menu', $locations);
         $this->assertArrayHasKey('resp-menu', $locations);
         $this->assertArrayHasKey('arena_primary', $locations);
+    }
+
+    /**
+     * task-native-settings, migration gap #6: Publisher also registers
+     * `footer-menu` (and `off-canvas-menu`, which Arena doesn't need — its
+     * off-canvas panel re-renders `main-menu` directly). Registering
+     * `footer-menu` here lets a footer-specific menu assignment carry over.
+     */
+    public function test_registers_optional_footer_menu_location(): void {
+        $this->setExpectedIncorrectUsage("add_theme_support( 'title-tag' )");
+        do_action('after_setup_theme');
+        $this->assertArrayHasKey('footer-menu', get_registered_nav_menus());
+    }
+
+    /** footer.php must fall back to `main-menu` when nothing is assigned to `footer-menu`. */
+    public function test_footer_menu_location_falls_back_to_main_menu_when_unassigned(): void {
+        $this->assertSame('main-menu', Setup::footerMenuLocation());
+    }
+
+    /** footer.php must use `footer-menu` once the site owner actually assigns something there. */
+    public function test_footer_menu_location_uses_footer_menu_when_assigned(): void {
+        register_nav_menus(['footer-menu' => 'Footer']);
+        $menuId = wp_create_nav_menu('Arena Footer Menu ' . __METHOD__);
+        $locations = get_theme_mod('nav_menu_locations', []);
+        $locations['footer-menu'] = $menuId;
+        set_theme_mod('nav_menu_locations', $locations);
+
+        $this->assertSame('footer-menu', Setup::footerMenuLocation());
     }
 
     /** Closes the Fatia-1 gap: the `arena-primary` sidebar must be registered. */

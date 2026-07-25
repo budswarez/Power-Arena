@@ -192,4 +192,113 @@ class OptionsTest extends WP_UnitTestCase {
             Options::contrastWithWhite($tokens['--arena-accent-text'])
         );
     }
+
+    // ------------------------------------------------------------------
+    // task-native-settings: precedence chain — theme_mod (Customizer) →
+    // ACF option (if active) → hard default. `get_field()` is stubbed in
+    // tests/bootstrap.php to read a plain wp_options row, letting these
+    // tests simulate "ACF has this field set" with update_option(), the
+    // same way real ACF persists a simple options-page field.
+    // ------------------------------------------------------------------
+
+    public function tearDown(): void {
+        remove_theme_mod('arena_accent_color');
+        remove_theme_mod('arena_sidebar_position');
+        remove_theme_mod('arena_base_font');
+        remove_theme_mod('custom_logo');
+        parent::tearDown();
+    }
+
+    public function test_accent_color_theme_mod_wins_over_acf(): void {
+        update_option('arena_accent_color', '#00aa55');
+        set_theme_mod('arena_accent_color', '#0000ff');
+
+        $this->assertSame('#0000ff', Options::accentColor());
+    }
+
+    public function test_accent_color_falls_back_to_acf_when_theme_mod_unset(): void {
+        update_option('arena_accent_color', '#00aa55');
+
+        $this->assertSame('#00aa55', Options::accentColor());
+    }
+
+    public function test_accent_color_falls_back_to_default_when_neither_set(): void {
+        $this->assertSame(Options::DEFAULT_ACCENT, Options::accentColor());
+    }
+
+    public function test_sidebar_position_theme_mod_wins_over_acf(): void {
+        update_option('arena_sidebar_position', 'left');
+        set_theme_mod('arena_sidebar_position', 'none');
+
+        $this->assertSame('none', Options::sidebarPosition());
+    }
+
+    public function test_sidebar_position_falls_back_to_acf_when_theme_mod_unset(): void {
+        update_option('arena_sidebar_position', 'left');
+
+        $this->assertSame('left', Options::sidebarPosition());
+    }
+
+    public function test_sidebar_position_falls_back_to_default_when_neither_set(): void {
+        $this->assertSame(Options::DEFAULT_SIDEBAR_POSITION, Options::sidebarPosition());
+    }
+
+    /** An invalid theme_mod (never produced by the Customizer's own sanitizer, but defensively checked) must fall through to ACF. */
+    public function test_sidebar_position_theme_mod_invalid_falls_back_to_acf(): void {
+        update_option('arena_sidebar_position', 'left');
+        set_theme_mod('arena_sidebar_position', 'bogus');
+
+        $this->assertSame('left', Options::sidebarPosition());
+    }
+
+    public function test_base_font_theme_mod_wins_over_acf(): void {
+        update_option('arena_base_font', 'system');
+        set_theme_mod('arena_base_font', 'barlow-oswald');
+
+        $this->assertSame('barlow-oswald', Options::baseFont());
+    }
+
+    public function test_base_font_falls_back_to_acf_when_theme_mod_unset(): void {
+        update_option('arena_base_font', 'system');
+
+        $this->assertSame('system', Options::baseFont());
+    }
+
+    public function test_base_font_falls_back_to_default_when_neither_set(): void {
+        $this->assertSame(Options::DEFAULT_BASE_FONT, Options::baseFont());
+    }
+
+    public function test_logo_id_native_theme_mod_wins_over_acf(): void {
+        update_option('arena_logo', '55');
+        set_theme_mod('custom_logo', 77);
+
+        $this->assertSame(77, Options::logoId());
+    }
+
+    public function test_logo_id_falls_back_to_acf_when_theme_mod_unset(): void {
+        update_option('arena_logo', '55');
+
+        $this->assertSame(55, Options::logoId());
+    }
+
+    public function test_logo_id_null_when_neither_set(): void {
+        $this->assertNull(Options::logoId());
+    }
+
+    /**
+     * cssTokens()/accessibleTextColor() must apply identically to a
+     * Customizer-chosen (theme_mod) accent as to an ACF-chosen one — the
+     * WCAG AA contrast guarantee must hold on this path too.
+     */
+    public function test_css_tokens_derive_accessible_text_from_theme_mod_accent(): void {
+        set_theme_mod('arena_accent_color', '#ffe0b2'); // a pale colour that fails 4.5:1 raw.
+
+        $tokens = Options::cssTokens();
+
+        $this->assertSame('#ffe0b2', $tokens['--arena-accent']);
+        $this->assertGreaterThanOrEqual(
+            Options::SAFE_ACCESSIBLE_CONTRAST,
+            Options::contrastWithWhite($tokens['--arena-accent-text'])
+        );
+    }
 }
