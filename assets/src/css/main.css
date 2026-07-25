@@ -694,10 +694,38 @@
    regardless of the bar's own hue).
    ========================================================================== */
 @layer components {
+  /* `.section-heading-row`: flex row pairing the colored flag with its
+     light-grey continuation bar (`.h-flag-continuation`, below) — see the
+     comment on `Arena\Listing\Renderer::renderHeading()` for why the
+     continuation is a sibling `<span>` rather than a 3rd pseudo-element on
+     `.section-heading` (which already uses both `::before` and `::after`).
+     Carries the `0 0 15px` bottom margin that used to live on
+     `.section-heading` itself, now that the flag is one child of this row
+     rather than the whole heading. */
+  .section-heading-row {
+    display: flex;
+    align-items: center;
+    margin: 0 0 15px;
+  }
+
+  /* Fills the rest of the column's width to the right of the flag —
+     measured on the reference: every heading flag (the dark bar above the
+     homepage banner, the 3 category-column flags) is followed by this same
+     light-grey bar picking up where the colored part ends. `align-self:
+     stretch` matches its own height to the flag's (the row's tallest
+     child, `.section-heading`, sized by `.h-text` below), not a fixed px
+     value, so it stays correct if the flag's own padding/line-height ever
+     changes. */
+  .h-flag-continuation {
+    flex: 1 1 auto;
+    align-self: stretch;
+    background: #e6e6e6;
+  }
+
   .section-heading.sh-t6.sh-s6 {
     position: relative;
     display: inline-block;
-    margin: 0 0 15px;
+    flex: 0 0 auto;
     color: var(--arena-accent); /* fallback bar color when no heading_color is set */
   }
 
@@ -1024,6 +1052,19 @@
   .listing-item .post-author-a { color: #888; }
   .listing-item .post-author { font-style: normal; }
 
+  /* Author • date separator — measured on the reference ("Nicole Pereira •
+     24 jul, 2026"): a bullet between the author link and the date. Scoped
+     via the adjacent-sibling combinator (only `.time` immediately preceded
+     by `.post-author-a`) so cards with no author — the `.post-author-a`
+     link only renders when the post has one, see card/*.php — don't grow a
+     leading bullet in front of a lone date (e.g. the compact text-list
+     rows in `card/text.php`, which the reference itself shows date-only). */
+  .listing-item .post-meta .post-author-a + .time::before {
+    content: '•';
+    margin-right: 10px;
+    color: #ccc;
+  }
+
   .listing-item .post-meta .comments {
     display: inline-flex;
     align-items: center;
@@ -1123,6 +1164,14 @@
 
   .hero-tile .post-meta .post-author { color: #fff; }
   .hero-tile .post-meta .time { color: rgba(255, 255, 255, .62); }
+
+  /* Same author • date separator as the generic Cards block above, but on
+     the dark image-overlay scrim, so the bullet needs a light color of its
+     own instead of the light-surface `#ccc` (barely visible on the dark
+     overlay). */
+  .hero-tile .post-meta .post-author-a + .time::before {
+    color: rgba(255, 255, 255, .5);
+  }
 
   @media (max-width: 640px) {
     .listing-modern-grid .mg-row,

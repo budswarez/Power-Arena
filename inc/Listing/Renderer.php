@@ -61,6 +61,17 @@ final class Renderer {
      * pai; o texto em si é forçado a branco via regra própria de
      * `.section-heading.sh-t6.sh-s6 .h-text`.
      *
+     * The colored flag is followed by a light-grey continuation bar
+     * (`.h-flag-continuation`) that stretches to the right edge of the
+     * column — measured on the reference, every heading flag (the dark
+     * "Evento Pichau Arena 2026" bar above the banner, and the 3 category-
+     * column flags) has this same grey bar picking up where the colored
+     * part ends. It's a plain sibling `<span>`, not a 3rd pseudo-element on
+     * `.section-heading` (which already uses both `::before`, the flag's
+     * own rectangle, and `::after`, the pointed notch), wrapped together in
+     * `.section-heading-row` so a flex `flex:1 1 auto` on the span can fill
+     * whatever width the flag itself doesn't use.
+     *
      * @param array<string, mixed> $atts
      */
     private static function renderHeading(array $atts): string {
@@ -74,13 +85,12 @@ final class Renderer {
 
         $link = self::headingLink($atts);
 
-        if ($link !== '') {
-            return '<div class="section-heading sh-t6 sh-s6"' . $wrapperStyle . '><a class="h-text main-link" href="'
-                . esc_url($link) . '">' . esc_html($title) . '</a></div>';
-        }
+        $flagInner = $link !== ''
+            ? '<a class="h-text main-link" href="' . esc_url($link) . '">' . esc_html($title) . '</a>'
+            : '<span class="h-text">' . esc_html($title) . '</span>';
 
-        return '<div class="section-heading sh-t6 sh-s6"' . $wrapperStyle . '><span class="h-text">'
-            . esc_html($title) . '</span></div>';
+        return '<div class="section-heading-row"><div class="section-heading sh-t6 sh-s6"' . $wrapperStyle . '>'
+            . $flagInner . '</div><span class="h-flag-continuation" aria-hidden="true"></span></div>';
     }
 
     /** @param array<string, mixed> $atts */
