@@ -1165,6 +1165,36 @@
 }
 
 /* ==========================================================================
+   WPBakery filled-column inset — the "Últimas notícias" row above is a
+   `[vc_row]/[vc_column]` with a background fill, which js_composer's OWN
+   stylesheet (`.vc_col-has-fill > .vc_column-inner{padding-top:35px}`)
+   pads on top of before our block's own `bs-dark-scheme` padding-block
+   (32px) ever runs — stacking to a locally-measured ~84px gap before the
+   row's visible content. Reference measurement of the same filled-column
+   case: `.vc_col-has-fill > .bs-vc-wrapper{padding-top:≈41.5px}`, overridden
+   by the more specific `.vc_col-has-fill > .bs-vc-wrapper.wpb_wrapper
+   {padding-top:30px !important}`, PLUS `.vc_col-has-fill .bs-listing
+   {padding-top:0 !important}` so the listing's own inset doesn't stack on
+   top of it. Same fix, our own markup's selectors (`.wpb_wrapper` is the
+   actual immediate child of `.vc_column-inner` here, there's no
+   `.bs-vc-wrapper` class in Arena's DOM) — neutralize js_composer's own
+   inset, then apply the reference's measured 30px once, in one place.
+   ========================================================================== */
+@layer components {
+  /* !important: js_composer's own stylesheet (`js_composer.min.css`) is
+     enqueued AFTER arena-main-css (verified in the rendered <head> — the
+     plugin registers its `wp_enqueue_scripts` callback later than the
+     theme does), so at equal specificity its `padding-top:35px` rule wins
+     the cascade by source order alone. Matches the reference's own use of
+     `!important` for this same override. */
+  .vc_col-has-fill > .vc_column-inner { padding-top: 0 !important; }
+
+  .vc_col-has-fill > .vc_column-inner > .wpb_wrapper { padding-top: 30px; }
+
+  .vc_col-has-fill .bs-listing { padding-top: 0 !important; }
+}
+
+/* ==========================================================================
    Utilities
    ========================================================================== */
 @layer utilities {
