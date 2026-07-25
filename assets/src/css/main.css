@@ -1189,7 +1189,22 @@
     .mobile-menu-toggle { order: -1; }
 
     .offcanvas-menu { display: flex; }
-    .offcanvas-overlay { display: block; }
+    /* task-final-ui item 2 (CDP-driven finding, never caught by code review
+       alone): this used to be a bare `.offcanvas-overlay { display: block; }`
+       — same (0,0,1,0) specificity as the UA `[hidden] { display: none }`
+       rule it was meant to coexist with, but author-origin CSS always wins
+       over user-agent CSS regardless of specificity. That silently forced
+       the dimmed overlay to `display:block` at EVERY mobile width the
+       moment the page loaded, `hidden` attribute or not — an invisible
+       (opacity:0 until `.is-open`) but fully hit-testable `position:fixed;
+       inset:0; z-index:9990` layer sitting over the ENTIRE viewport,
+       intercepting every tap before the menu was ever opened. In practice
+       that meant NOTHING on the page was tappable below 860px — not the
+       hamburger, not the header search toggle, not a single link — since
+       `document.elementFromPoint()` always resolved to this overlay first.
+       `:not([hidden])` keeps the same "only matters on mobile" scoping
+       while actually respecting the attribute main.js already toggles. */
+    .offcanvas-overlay:not([hidden]) { display: block; }
 
     .main-menu.menu { display: none; }
 

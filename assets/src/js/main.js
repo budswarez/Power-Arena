@@ -35,6 +35,21 @@ function initOffCanvasMenu() {
         window.requestAnimationFrame(() => {
             panel.classList.add('is-open');
             overlay.classList.add('is-open');
+            // task-final-ui item 2 (CDP-driven finding): `.offcanvas-menu`'s
+            // CLOSED state is `visibility:hidden` (main.css) — only
+            // `.is-open` flips it to `visibility:visible`. A `visibility:
+            // hidden` element can never become `document.activeElement`
+            // (the browser silently no-ops the .focus() call), so calling
+            // closeBtn.focus() BEFORE this class lands (as this used to do,
+            // synchronously in open() itself, a whole frame earlier) left
+            // focus stuck on the hamburger toggle — the exact
+            // dialog-never-receives-focus bug the comment below already
+            // warns about, just reintroduced by the ordering. Moving the
+            // focus call to right after `is-open` is added (still
+            // synchronous within this same rAF callback, so no extra frame
+            // of delay) means `visibility` has already resolved to
+            // `visible` by the time `.focus()` runs.
+            if (closeBtn) { closeBtn.focus(); }
         });
         panel.setAttribute('aria-hidden', 'false');
         toggle.setAttribute('aria-expanded', 'true');
@@ -46,7 +61,6 @@ function initOffCanvasMenu() {
         // sitting on the now off-screen-again hamburger button while the
         // dialog itself is announced. The close button is the panel's
         // first focusable element in DOM order.
-        if (closeBtn) { closeBtn.focus(); }
     };
 
     const close = () => {

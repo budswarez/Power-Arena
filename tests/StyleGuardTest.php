@@ -194,4 +194,53 @@ final class StyleGuardTest extends WP_UnitTestCase {
 
         $this->assertTrue($found, 'Expected `.site-footer { margin-top: 0; … }`.');
     }
+
+    /**
+     * task-final-ui item 2 (found only by actually driving a click via CDP,
+     * never by code review): `.offcanvas-overlay` carries a bare `hidden`
+     * attribute in header.php, cleared by JS only while the off-canvas
+     * panel is open. A bare `.offcanvas-overlay { display: block; }` inside
+     * the mobile media query has the SAME (0,0,1,0) specificity as the UA
+     * `[hidden] { display: none }` rule it's meant to coexist with — but
+     * author CSS always beats user-agent CSS regardless of specificity, so
+     * that bare rule silently forced the dimmed overlay to `display:block`
+     * at every mobile width REGARDLESS of the `hidden` attribute: an
+     * invisible (opacity:0 until `.is-open`) but fully hit-testable
+     * `position:fixed;inset:0;z-index:9990` layer sitting over the entire
+     * viewport, intercepting every tap before the menu was ever opened —
+     * including taps on the hamburger and header-search toggles
+     * themselves. The fix scopes the mobile `display:block` override with
+     * `:not([hidden])` so it only applies once JS has actually opened the
+     * panel.
+     */
+    public function test_offcanvas_overlay_mobile_display_rule_respects_the_hidden_attribute(): void {
+        $rules = $this->rules($this->css());
+
+        $guardedRuleFound = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (!str_contains($declarations, 'display')) {
+                continue;
+            }
+
+            $this->assertNotContains(
+                '.offcanvas-overlay',
+                $selectors,
+                'A bare `.offcanvas-overlay { display: … }` selector has the SAME specificity as the ' .
+                    '`[hidden]` UA rule it is meant to coexist with, and author CSS always wins over ' .
+                    'user-agent CSS — this forces the dimmed overlay to display REGARDLESS of the ' .
+                    '`hidden` attribute JS toggles, turning it into an invisible full-viewport layer that ' .
+                    "intercepts every tap. Offending declarations: {$declarations}"
+            );
+
+            if (in_array('.offcanvas-overlay:not([hidden])', $selectors, true) && str_contains($declarations, 'display: block')) {
+                $guardedRuleFound = true;
+            }
+        }
+
+        $this->assertTrue(
+            $guardedRuleFound,
+            'Expected a `.offcanvas-overlay:not([hidden]) { display: block; … }` rule (scoped so the ' .
+                '`hidden` attribute still governs the closed state).'
+        );
+    }
 }
