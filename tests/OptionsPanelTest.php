@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use Arena\Options;
 use Arena\OptionsPanel;
 
 class OptionsPanelTest extends WP_UnitTestCase {
@@ -11,6 +12,26 @@ class OptionsPanelTest extends WP_UnitTestCase {
         $this->assertContains('arena_accent_color', $keys);
         $this->assertContains('arena_base_font', $keys);
         $this->assertContains('arena_sidebar_position', $keys);
+    }
+
+    /**
+     * The accent field's own ACF default must come from the SAME shared
+     * constant as Options::accentColor()'s fallback — previously each
+     * carried its own `#e00000` literal, one hex value off from the real
+     * `#f42c1a` accent (assets/src/css/main.css's `--arena-accent`).
+     */
+    public function test_accent_field_default_matches_shared_constant(): void {
+        $fields = OptionsPanel::fields();
+        $accentField = null;
+        foreach ($fields as $field) {
+            if (($field['name'] ?? null) === 'arena_accent_color') {
+                $accentField = $field;
+                break;
+            }
+        }
+
+        $this->assertNotNull($accentField, 'arena_accent_color field must exist.');
+        $this->assertSame(Options::DEFAULT_ACCENT, $accentField['default_value']);
     }
 
     public function test_register_is_noop_without_acf(): void {

@@ -20,6 +20,11 @@ add_action('setup_theme', static function (): void {
 
     if (!$enable) { return; }
 
+    // Literal 'arena' kept inline on purpose: this runs at 'setup_theme',
+    // before themes/arena/functions.php's own autoloader is available, so
+    // Arena\Preview::THEME can't be referenced directly here. That constant
+    // is the documented single source of truth for this slug — keep the
+    // two in sync (see Arena\Preview's own docblock + PreviewTest).
     add_filter('template', static fn (): string => 'arena');
     add_filter('stylesheet', static fn (): string => 'arena');
 });
