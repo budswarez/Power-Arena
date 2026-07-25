@@ -1107,6 +1107,57 @@
     .listing-blog .listing-item-blog .featured { flex-basis: auto; }
   }
 
+  /* --- archive ("blog-5"): thumb 300px + text column, reused by
+     category/tag/author archives and by search results (Task 3 brief) —
+     the wrapper carries BOTH `listing-blog` and `listing-blog-5` (measured
+     reference: `<div class="listing listing-blog listing-blog-5
+     clearfix">`), so it already inherits `.listing-blog`'s flex-column
+     stacking and `.post-summary` excerpt styling above; only the item's own
+     spacing/border and the 300px thumb column are specific to `-5`.
+     Measured: `.listing-item-blog-1,.listing-item-blog-5{margin-bottom:
+     25px}` plus the same divider as `.listing-item-blog`
+     (border-bottom:1px solid rgba(0,0,0,.078); padding-bottom:20px), with
+     the divider dropped on the last item. ------------------------------- */
+  .listing-blog-5 .listing-item-blog-5 {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  .listing-blog-5 .listing-item-blog-5:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .listing-blog-5 .listing-item-blog-5 .item-inner {
+    display: flex;
+    gap: 26px;
+  }
+
+  /* Cancels the generic `.listing-item .featured{margin-bottom:13px}`
+     (Cards block, below): here the thumb sits beside the text column
+     (flex row), not stacked above it. Measured thumb column: 300px. */
+  .listing-blog-5 .listing-item-blog-5 .featured {
+    flex: 0 0 300px;
+    margin-bottom: 0;
+  }
+
+  .listing-blog-5 .listing-item-blog-5 .featured .img-holder {
+    display: block;
+    aspect-ratio: 760 / 428;
+    overflow: hidden;
+  }
+
+  .listing-blog-5 .listing-item-blog-5 .content-container { flex: 1 1 auto; min-width: 0; }
+
+  /* Below 768px: stack the 300px thumb above the text column, full-width,
+     instead of squeezing a fixed 300px column beside it. */
+  @media (max-width: 768px) {
+    .listing-blog-5 .listing-item-blog-5 .item-inner { flex-direction: column; gap: 14px; }
+    .listing-blog-5 .listing-item-blog-5 .featured { flex-basis: auto; width: 100%; }
+  }
+
   /* --- grid: N-column card grid — measured item margin-bottom 15px
      (translated to the grid's own row-gap, since gap replaces per-item
      margin in a CSS grid layout); column-gap unchanged. ------------------ */
@@ -1767,6 +1818,62 @@
     .next-prev { flex-direction: column; gap: 12px; }
     .next-prev .nav-next { text-align: left; }
   }
+}
+
+/* ==========================================================================
+   Pagination — `Arena\Pagination::render()` / template-parts/pagination.php,
+   reused by category/tag/author archives and by search results (Task 3
+   brief). `paginate_links(['type' => 'plain'])` prints a flat string of
+   `<a>`/`<span>` elements each carrying `.page-numbers`, plus one of
+   `.current`, `.dots`, `.prev` or `.next`.
+   ========================================================================== */
+@layer components {
+  .arena-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: var(--arena-block-spacing) 0 0;
+    font-family: var(--arena-font-body);
+  }
+
+  /* >=40px tap target both ways (height fixed, min-width fixed, horizontal
+     padding grows it further for 2-digit page numbers and the prev/next
+     labels). */
+  .arena-pagination .page-numbers {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 4px;
+    font-size: .9rem;
+    font-weight: 600;
+    color: #1b1b1b;
+    background: #f2f2f2;
+    text-decoration: none;
+    transition: background-color .15s ease, color .15s ease;
+  }
+
+  .arena-pagination a.page-numbers:hover {
+    background: var(--arena-accent);
+    color: #fff;
+  }
+
+  .arena-pagination .page-numbers.current {
+    background: var(--arena-accent);
+    color: #fff;
+  }
+
+  /* The "…" ellipsis span: not a link, not a page — no button chrome. */
+  .arena-pagination .page-numbers.dots {
+    background: transparent;
+    color: #888;
+  }
+
+  .arena-pagination__chevron { font-size: .85em; }
 }
 
 /* ==========================================================================

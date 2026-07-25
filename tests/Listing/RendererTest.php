@@ -135,4 +135,90 @@ class RendererTest extends WP_UnitTestCase {
 
         $this->assertSame('24 Jul, 2026', Renderer::articleDate($postId));
     }
+
+    /**
+     * Layout `archive` ("blog-5"): reused by category/tag/author archives
+     * and by search results (Task 3 brief). One post is deliberately left
+     * without a thumbnail to prove the thumbless degrade never leaves an
+     * empty `<img src="">` box behind.
+     *
+     * @return array{0: int, 1: int, 2: int} [$oldestNoThumb, $middleWithThumb, $newestWithThumb]
+     */
+    private function createArchiveFixturePosts(): array {
+        $now = time();
+
+        $postA = $this->factory()->post->create([
+            'post_title'  => 'Arena Archive Post Alpha',
+            'post_status' => 'publish',
+            'post_date'   => gmdate('Y-m-d H:i:s', $now - 300),
+        ]);
+
+        $postB = $this->factory()->post->create([
+            'post_title'  => 'Arena Archive Post Beta',
+            'post_status' => 'publish',
+            'post_date'   => gmdate('Y-m-d H:i:s', $now - 200),
+        ]);
+        $attachmentB = $this->factory()->attachment->create_upload_object(DIR_TESTDATA . '/images/canola.jpg', $postB);
+        set_post_thumbnail($postB, $attachmentB);
+
+        $postC = $this->factory()->post->create([
+            'post_title'  => 'Arena Archive Post Gamma',
+            'post_status' => 'publish',
+            'post_date'   => gmdate('Y-m-d H:i:s', $now - 100),
+        ]);
+        $attachmentC = $this->factory()->attachment->create_upload_object(DIR_TESTDATA . '/images/canola.jpg', $postC);
+        set_post_thumbnail($postC, $attachmentC);
+
+        return [$postA, $postB, $postC];
+    }
+
+    public function test_render_archive_layout_shows_blog5_cards_and_degrades_thumbless_post(): void {
+        $this->createArchiveFixturePosts();
+
+        $html = Renderer::render('archive', ['count' => '3']);
+
+        $this->assertStringContainsString('listing-blog-5', $html);
+        $this->assertStringContainsString('listing-item-blog-5', $html);
+        foreach (['Arena Archive Post Alpha', 'Arena Archive Post Beta', 'Arena Archive Post Gamma'] as $title) {
+            $this->assertStringContainsString(esc_html($title), $html);
+        }
+        $this->assertStringContainsString('<svg class="icon-comment"', $html);
+        // Alpha has no thumbnail: the card must degrade to text-only, never
+        // an empty <img src="">.
+        $this->assertStringNotContainsString('src=""', $html);
+    }
+
+    public function test_render_archive_layout_marks_only_the_first_item_for_lcp(): void {
+        $this->createArchiveFixturePosts();
+
+        // Query order is date DESC by default, so Gamma (newest) renders
+        // first, then Beta, then Alpha (which has no thumbnail at all).
+        $html = Renderer::render('archive', ['count' => '3']);
+
+        $this->assertSame(1, substr_count($html, 'fetchpriority="high"'));
+
+        $fetchPos = strpos($html, 'fetchpriority="high"');
+        // NOT strpos($html, 'title text') here: the thumb's own `alt`
+        // attribute already carries the post title and is written before
+        // `fetchpriority` in attribute order (same order as
+        // card/featured.php and card/hero.php), so comparing against the
+        // raw title string would just match inside that `alt="..."` and
+        // always come out "before". The `<h2 class="title">` heading is
+        // the actual title element and is unambiguous.
+        $firstTitleHeadingPos = strpos($html, '<h2 class="title">');
+
+        $this->assertNotFalse($fetchPos);
+        $this->assertNotFalse($firstTitleHeadingPos);
+        // fetchpriority sits inside the first item's own thumb markup,
+        // which precedes that item's <h2 class="title"> heading in the DOM.
+        $this->assertLessThan($firstTitleHeadingPos, $fetchPos);
+
+        // And that first item really is the newest post (Gamma): its title
+        // is already visible (inside the thumb's alt text) before the very
+        // first <h2> heading is reached.
+        $this->assertStringContainsString(
+            'Arena Archive Post Gamma',
+            substr($html, 0, $firstTitleHeadingPos)
+        );
+    }
 }
