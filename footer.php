@@ -33,8 +33,19 @@ if (!defined('ABSPATH')) { exit; }
             </nav>
 
             <div class="copy-footer">
+                <?php
+                // Was a bare, untranslated string hardcoding the site name
+                // literally ("Pichau Arena") outside any translation
+                // function instead of reading it from bloginfo('name')
+                // (whole-branch review, minor finding #7). Now driven by
+                // the "Site Title" option and wrapped for i18n — the
+                // visual output for THIS site is unchanged, since its own
+                // Site Title option is "Pichau Arena".
+                /* translators: %s: site name (bloginfo('name')). */
+                $rightsText = sprintf(esc_html__('%s. Todos os Direitos Reservados', 'arena'), esc_html(get_bloginfo('name')));
+                ?>
                 <p class="footer-copyright">
-                    &copy; <?php echo esc_html(gmdate('Y')); ?> - Pichau Arena. Todos os Direitos Reservados
+                    &copy; <?php echo esc_html(gmdate('Y')); ?> - <?php echo $rightsText; ?>
                 </p>
             </div>
         </div>

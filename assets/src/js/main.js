@@ -98,7 +98,18 @@ function initOffCanvasMenu() {
         expandBtn.setAttribute('aria-expanded', 'false');
         expandBtn.setAttribute('aria-controls', submenu.id);
         const label = link.textContent ? link.textContent.trim() : '';
-        expandBtn.setAttribute('aria-label', label ? `Expandir ${label}` : 'Expandir submenu');
+        // i18n strings localized via wp_localize_script() (see
+        // Arena\Assets::enqueue()) — `window.arenaI18n` is only absent
+        // outside a real WP page load, so the literal pt-BR copy below is
+        // strictly a defensive fallback, never the normal path.
+        const i18n = window.arenaI18n || {
+            expandSubmenuWithLabel: 'Expandir %s',
+            expandSubmenu: 'Expandir submenu',
+        };
+        expandBtn.setAttribute(
+            'aria-label',
+            label ? i18n.expandSubmenuWithLabel.replace('%s', label) : i18n.expandSubmenu
+        );
         expandBtn.innerHTML = '<span aria-hidden="true"></span>';
 
         item.insertBefore(expandBtn, submenu);
@@ -181,9 +192,27 @@ function initSmartStickyMenuBar() {
         }
     };
 
+    // Throttled the same way onScroll() is (whole-branch review, minor
+    // finding #12): `measure()` forces 3 reflows (unpin()'s style reset,
+    // getBoundingClientRect()'s layout read, pin()'s style write) and used
+    // to run on EVERY raw `resize` event — which can fire far more than
+    // once per animation frame while a window edge is being dragged.
+    // Coalescing to at most one `measure()` per frame keeps the cost the
+    // same regardless of how many raw events land in that frame.
+    let resizeTicking = false;
+    const onResize = () => {
+        if (!resizeTicking) {
+            resizeTicking = true;
+            window.requestAnimationFrame(() => {
+                resizeTicking = false;
+                measure();
+            });
+        }
+    };
+
     measure();
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', measure);
+    window.addEventListener('resize', onResize);
 }
 
 /**
