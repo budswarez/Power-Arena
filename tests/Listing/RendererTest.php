@@ -116,6 +116,81 @@ class RendererTest extends WP_UnitTestCase {
         $this->assertStringContainsString('color:#ff0000', $html);
     }
 
+    public function test_render_honors_short_hex_heading_color(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Short Hex Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('grid', [
+            'count'         => '1',
+            'title'         => 'Destaques',
+            'heading_color' => '#f00',
+        ]);
+
+        $this->assertStringContainsString('color:#f00', $html);
+    }
+
+    /**
+     * FIX B.4: `heading_color` reaches `style="color:..."` with only
+     * `esc_attr()` guarding it — that stops it breaking OUT of the
+     * attribute, but not from injecting extra CSS declarations inside it.
+     * The ACF/VC field behind it is a colorpicker, so hex is the only
+     * legitimate contract; anything else must be dropped, not echoed.
+     */
+    public function test_render_drops_invalid_heading_color_instead_of_injecting_css(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Bad Color Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('grid', [
+            'count'         => '1',
+            'title'         => 'Destaques',
+            'heading_color' => 'red;position:fixed;inset:0;background:#000',
+        ]);
+
+        $this->assertStringContainsString('Destaques', $html);
+        $this->assertStringNotContainsString('position:fixed', $html);
+        $this->assertStringNotContainsString('style=', $html);
+    }
+
+    /**
+     * FIX B.1: `count="-1"` used to feed `posts_per_page => -1` straight
+     * into WP_Query, which treats that as "no limit" — a free VcMap
+     * textfield means an editor typo like this is one keystroke away.
+     * Prove the clamp: only COUNT_MAX (see Query.php) posts render, not
+     * every published post.
+     */
+    public function test_render_clamps_negative_count_instead_of_returning_every_post(): void {
+        for ($i = 0; $i < 5; $i++) {
+            $this->factory()->post->create(['post_title' => "Arena Clamp Post $i", 'post_status' => 'publish']);
+        }
+
+        $html = Renderer::render('grid', ['count' => '-1']);
+
+        // Clamped to the minimum (1): exactly one card renders, not all 5.
+        $this->assertSame(1, substr_count($html, 'class="title"'));
+    }
+
+    /**
+     * FIX B.2: a comma-separated `category` list (Publisher supports
+     * `category="14236,17458"`) used to collapse to just the first ID via
+     * `(int) $category`. Both categories' posts must appear.
+     */
+    public function test_render_comma_separated_category_returns_posts_from_both_categories(): void {
+        $catA = wp_insert_term('Arena Cat A ' . time(), 'category');
+        $catB = wp_insert_term('Arena Cat B ' . (time() + 1), 'category');
+        $this->assertIsArray($catA);
+        $this->assertIsArray($catB);
+        $catAId = (int) $catA['term_id'];
+        $catBId = (int) $catB['term_id'];
+
+        $postA = $this->factory()->post->create(['post_title' => 'Arena Multi Cat Post A', 'post_status' => 'publish']);
+        $postB = $this->factory()->post->create(['post_title' => 'Arena Multi Cat Post B', 'post_status' => 'publish']);
+        wp_set_post_categories($postA, [$catAId]);
+        wp_set_post_categories($postB, [$catBId]);
+
+        $html = Renderer::render('grid', ['count' => '10', 'category' => $catAId . ',' . $catBId]);
+
+        $this->assertStringContainsString('Arena Multi Cat Post A', $html);
+        $this->assertStringContainsString('Arena Multi Cat Post B', $html);
+    }
+
     public function test_comment_icon_is_an_inline_svg_not_an_icon_font_glyph(): void {
         $icon = Renderer::commentIcon();
 

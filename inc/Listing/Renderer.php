@@ -106,7 +106,7 @@ final class Renderer {
     private static function buildOptions(array $atts): array {
         return [
             'heading_html'   => self::renderHeading($atts),
-            'columns'        => self::intOrDefault($atts['columns'] ?? null, 4),
+            'columns'        => Attrs::intOrDefault($atts['columns'] ?? null, 4, 1),
             'featured_image' => self::boolOrDefault($atts['featured_image'] ?? null, true),
             'show_excerpt'   => self::boolOrDefault($atts['show_excerpt'] ?? null, true),
             'dark_scheme'    => self::isDarkScheme($atts['bs-text-color-scheme'] ?? null),
@@ -134,6 +134,18 @@ final class Renderer {
      * `.section-heading-row` so a flex `flex:1 1 auto` on the span can fill
      * whatever width the flag itself doesn't use.
      *
+     * `heading_color` is validated with `sanitize_hex_color()` before it
+     * reaches the `style` attribute. The WPBakery/ACF field behind it is a
+     * `colorpicker`, so a hex string is the only value the UI is meant to
+     * produce — but nothing stops a hand-edited shortcode from putting
+     * arbitrary text there. `esc_attr()` alone stops it from breaking OUT
+     * of the `style="..."` attribute, but does NOT stop it from injecting
+     * extra CSS declarations inside that same attribute value (e.g.
+     * `heading_color="red;position:fixed;inset:0;background:#000"` still
+     * passes `esc_attr()` unchanged and lands verbatim in `style`). An
+     * invalid value simply drops the inline style — the heading still
+     * renders, just without a custom colour.
+     *
      * @param array<string, mixed> $atts
      */
     private static function renderHeading(array $atts): string {
@@ -142,8 +154,9 @@ final class Renderer {
             return '';
         }
 
-        $color = isset($atts['heading_color']) ? trim((string) $atts['heading_color']) : '';
-        $wrapperStyle = $color !== '' ? ' style="color:' . esc_attr($color) . '"' : '';
+        $rawColor = isset($atts['heading_color']) ? trim((string) $atts['heading_color']) : '';
+        $color = $rawColor !== '' ? sanitize_hex_color($rawColor) : '';
+        $wrapperStyle = (is_string($color) && $color !== '') ? ' style="color:' . esc_attr($color) . '"' : '';
 
         $link = self::headingLink($atts);
 
@@ -218,15 +231,6 @@ final class Renderer {
         return '<svg class="icon-comment" width="14" height="13" viewBox="0 0 16 15" aria-hidden="true" focusable="false">'
             . '<path fill="currentColor" d="M2 1.5h12A1.5 1.5 0 0 1 15.5 3v6A1.5 1.5 0 0 1 14 10.5H6.8L3 14v-3.5H2A1.5 1.5 0 0 1 .5 9V3A1.5 1.5 0 0 1 2 1.5z"/>'
             . '</svg>';
-    }
-
-    private static function intOrDefault(mixed $value, int $default): int {
-        if ($value === null || $value === '' || !is_numeric($value)) {
-            return $default;
-        }
-        $int = (int) $value;
-
-        return $int > 0 ? $int : $default;
     }
 
     private static function boolOrDefault(mixed $value, bool $default): bool {

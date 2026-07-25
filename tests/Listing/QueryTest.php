@@ -149,4 +149,75 @@ class QueryTest extends WP_UnitTestCase {
         $args = Query::args(['tag' => '0']);
         $this->assertArrayNotHasKey('tag_id', $args);
     }
+
+    /**
+     * FIX B.1: a free VcMap textfield lets an editor type `count="-1"`,
+     * which used to feed `posts_per_page => -1` straight into WP_Query —
+     * WP_Query's own "no limit" sentinel, returning every published post
+     * (~846 on this site) in one request. Must clamp to the minimum (1),
+     * never pass a negative value through.
+     */
+    public function test_negative_count_clamps_to_minimum_one(): void {
+        $args = Query::args(['count' => '-1']);
+        $this->assertSame(1, $args['posts_per_page']);
+    }
+
+    public function test_zero_count_clamps_to_minimum_one(): void {
+        $args = Query::args(['count' => '0']);
+        $this->assertSame(1, $args['posts_per_page']);
+    }
+
+    /** FIX B.1: a hard ceiling so an absurd typo can't render the whole table either. */
+    public function test_huge_count_clamps_to_maximum(): void {
+        $args = Query::args(['count' => '999999']);
+        $this->assertSame(50, $args['posts_per_page']);
+    }
+
+    /**
+     * FIX B.2: Publisher supports comma-separated term IDs
+     * (`category="14236,17458"`). `(int) $category` used to silently
+     * collapse this to just the first ID; now it must produce
+     * `category__in` with every ID, and NOT set the single-ID `cat` key.
+     */
+    public function test_comma_separated_category_maps_to_category_in(): void {
+        $args = Query::args(['category' => '14236,17458']);
+        $this->assertSame([14236, 17458], $args['category__in']);
+        $this->assertArrayNotHasKey('cat', $args);
+    }
+
+    public function test_comma_separated_tag_maps_to_tag_in(): void {
+        $args = Query::args(['tag' => '10,20']);
+        $this->assertSame([10, 20], $args['tag__in']);
+        $this->assertArrayNotHasKey('tag_id', $args);
+    }
+
+    public function test_comma_separated_category_with_trailing_comma_filters_blank_token(): void {
+        $args = Query::args(['category' => '14236,17458,']);
+        $this->assertSame([14236, 17458], $args['category__in']);
+    }
+
+    /**
+     * FIX B.3: post dates are stored in the site's LOCAL timezone, but
+     * `time_filter="month"`'s `date_query` used to be built with
+     * `gmdate()` against the injected `$now` timestamp — treating it as if
+     * it were already UTC-agnostic. This site runs America/Sao_Paulo
+     * (UTC-3, no DST since 2019): pick a `$now` that is 01:00 UTC on the
+     * 1st of a month, i.e. still 22:00 local time on the LAST day of the
+     * PREVIOUS month. The old `gmdate()` code would resolve this to the
+     * new month; the site-timezone-aware code must resolve it to the
+     * previous one.
+     */
+    public function test_time_filter_month_uses_site_timezone_not_utc(): void {
+        update_option('timezone_string', 'America/Sao_Paulo');
+
+        // 2026-02-01 01:00:00 UTC == 2026-01-31 22:00:00 America/Sao_Paulo.
+        $now = gmmktime(1, 0, 0, 2, 1, 2026);
+
+        $args = Query::args(['time_filter' => 'month'], $now);
+
+        $this->assertSame(2026, $args['date_query'][0]['year']);
+        $this->assertSame(1, $args['date_query'][0]['month']);
+
+        update_option('timezone_string', '');
+    }
 }
