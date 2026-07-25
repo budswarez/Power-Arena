@@ -1,6 +1,6 @@
 {
     "$schema": "https://schemas.wp.org/trunk/theme.json",
-    "version": 3,
+    "version": 2,
     "settings": {
         "appearanceTools": true,
         "layout": {
@@ -21,12 +21,28 @@
                 {
                     "fontFamily": "'Barlow', sans-serif",
                     "slug": "barlow",
-                    "name": "Barlow"
+                    "name": "Barlow",
+                    "fontFace": [
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "400", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-400-latin.woff2"]},
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "400", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-400-latin-ext.woff2"]},
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "500", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-500-latin.woff2"]},
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "500", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-500-latin-ext.woff2"]},
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "600", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-600-latin.woff2"]},
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "600", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-600-latin-ext.woff2"]},
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "700", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-700-latin.woff2"]},
+                        {"fontFamily": "Barlow", "fontStyle": "normal", "fontWeight": "700", "fontDisplay": "swap", "src": ["file:./assets/fonts/barlow-700-latin-ext.woff2"]}
+                    ]
                 },
                 {
                     "fontFamily": "'Oswald', sans-serif",
                     "slug": "oswald",
-                    "name": "Oswald"
+                    "name": "Oswald",
+                    "fontFace": [
+                        {"fontFamily": "Oswald", "fontStyle": "normal", "fontWeight": "400", "fontDisplay": "swap", "src": ["file:./assets/fonts/oswald-400-latin.woff2"]},
+                        {"fontFamily": "Oswald", "fontStyle": "normal", "fontWeight": "400", "fontDisplay": "swap", "src": ["file:./assets/fonts/oswald-400-latin-ext.woff2"]},
+                        {"fontFamily": "Oswald", "fontStyle": "normal", "fontWeight": "500", "fontDisplay": "swap", "src": ["file:./assets/fonts/oswald-500-latin.woff2"]},
+                        {"fontFamily": "Oswald", "fontStyle": "normal", "fontWeight": "500", "fontDisplay": "swap", "src": ["file:./assets/fonts/oswald-500-latin-ext.woff2"]}
+                    ]
                 }
             ],
             "fontSizes": [
@@ -38,21 +54,6 @@
         },
         "color": {
             "palette": [
-                {
-                    "slug": "hardware",
-                    "color": "#003791",
-                    "name": "Hardware"
-                },
-                {
-                    "slug": "valorant",
-                    "color": "#129e11",
-                    "name": "VALORANT"
-                },
-                {
-                    "slug": "freefire",
-                    "color": "#e40b20",
-                    "name": "Free Fire"
-                },
                 {
                     "slug": "ultimas",
                     "color": "#f42c1a",
@@ -69,6 +70,12 @@
                     "name": "Acento (texto acessível)"
                 }
             ]
+        }
+    },
+    "styles": {
+        "color": {
+            "background": "#000000",
+            "text": "#ffffff"
         }
     }
 }

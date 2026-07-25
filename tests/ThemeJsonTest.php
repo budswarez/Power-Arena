@@ -19,9 +19,18 @@ class ThemeJsonTest extends WP_UnitTestCase {
         return $decoded;
     }
 
-    public function test_schema_version_is_3(): void {
+    /**
+     * Whole-branch review, minor finding #11: `"version": 3` needs WP
+     * 6.6+, while style.css's own `Requires at least` is 6.4 — and nothing
+     * this file declares (appearanceTools/spacingSizes/color.palette/
+     * fontFamilies with fontFace) actually needs v3; fontFace support
+     * inside fontFamilies landed in the v2 schema back in WP 6.4.
+     * Reconciled DOWN to 2 (matching the real requirement) rather than
+     * bumping the site's minimum WP version up to 6.6.
+     */
+    public function test_schema_version_matches_the_style_css_wp_requirement(): void {
         $json = $this->themeJson();
-        $this->assertSame(3, $json['version'] ?? null);
+        $this->assertSame(2, $json['version'] ?? null);
     }
 
     public function test_appearance_tools_enabled(): void {
@@ -49,5 +58,38 @@ class ThemeJsonTest extends WP_UnitTestCase {
         $colors = array_column($json['settings']['color']['palette'] ?? [], 'color', 'slug');
         $this->assertArrayHasKey('accent-text', $colors);
         $this->assertSame('#c81f10', $colors['accent-text']);
+    }
+
+    /**
+     * Minor finding #11: fontFamilies declared Barlow/Oswald as selectable
+     * in the block editor with no `fontFace` entries backing them — the
+     * editor offered fonts it could never actually render, silently
+     * falling back to a substitute. Every family must now carry at least
+     * one real fontFace pointing at the self-hosted assets/fonts/ file.
+     */
+    public function test_every_font_family_has_at_least_one_font_face(): void {
+        $json = $this->themeJson();
+        foreach ($json['settings']['typography']['fontFamilies'] ?? [] as $family) {
+            $this->assertNotEmpty($family['fontFace'] ?? [], $family['slug'] . ' must declare at least one fontFace.');
+            foreach ($family['fontFace'] as $face) {
+                $this->assertNotEmpty($face['src'] ?? [], $family['slug'] . ' fontFace must have a src.');
+                $src = $face['src'][0];
+                $this->assertStringStartsWith('file:./assets/fonts/', $src);
+                $path = get_template_directory() . '/' . substr($src, strlen('file:./'));
+                $this->assertFileExists($path, "$src must point at a real self-hosted font file.");
+            }
+        }
+    }
+
+    /**
+     * Minor finding #11: with no `styles.color.background`, the editor
+     * canvas rendered white while the front end's own `body{}` (main.css)
+     * is black (`background-color:#000`, `color:#fff`) — the two should
+     * match.
+     */
+    public function test_editor_canvas_background_matches_the_front_end_body(): void {
+        $json = $this->themeJson();
+        $this->assertSame('#000000', $json['styles']['color']['background'] ?? null);
+        $this->assertSame('#ffffff', $json['styles']['color']['text'] ?? null);
     }
 }
