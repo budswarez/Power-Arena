@@ -2167,6 +2167,51 @@
 }
 
 /* ==========================================================================
+   Attachment/media page (attachment.php, GAP B) — the image itself reuses
+   `.single-featured` (single.php's featured-image wrapper, main.css above)
+   so it gets the same width/border-radius treatment for free; only the
+   caption/description/back-link need their own rules.
+   ========================================================================== */
+@layer components {
+  .attachment-media__link a {
+    display: inline-block;
+    padding: 10px 18px;
+    background: #f2f2f2;
+    border-radius: 4px;
+    color: #1b1b1b;
+    font-weight: 600;
+  }
+  .attachment-media__link a:hover { background: var(--arena-accent); color: #fff; }
+
+  .attachment-caption {
+    margin: 10px 0 0;
+    font-size: 13px;
+    font-style: italic;
+    color: #6b6b6b; /* same contrast fix as .listing-item .post-meta / .listing-empty */
+  }
+
+  .attachment-description {
+    margin-top: 24px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #1b1b1b;
+  }
+
+  .attachment-back-link {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #eaeaea;
+  }
+  .attachment-back-link a {
+    display: inline-block;
+    padding: 6px 0;
+    color: #1b1b1b;
+    font-weight: 600;
+  }
+  .attachment-back-link a:hover { color: var(--arena-accent); }
+}
+
+/* ==========================================================================
    Pagination — `Arena\Pagination::render()` / template-parts/pagination.php,
    reused by category/tag/author archives and by search results (Task 3
    brief). `paginate_links(['type' => 'plain'])` prints a flat string of
