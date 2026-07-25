@@ -10,7 +10,11 @@ if (!defined('ABSPATH')) { exit; }
  * small partials in template-parts/single/, mirroring the reference's
  * measured markup order inside <article>: featured image, header/H1, meta,
  * entry-content (+ wp_link_pages() for paginated posts), tags, then
- * previous/next navigation. Comments render via comments_template() alone —
+ * previous/next navigation. A related-posts section
+ * (template-parts/single/related.php) follows the closing </article>, still
+ * inside `.single-container`, before comments — see that partial's own
+ * docblock for its query/fallback shape. Comments render via
+ * comments_template() alone —
  * wpDiscuz (when active) ships its own CSS, so nothing here styles its
  * internals, and the theme carries no comments.php of its own, so a locally
  * missing comments plugin degrades to WordPress's own default comment form
@@ -51,6 +55,8 @@ while (have_posts()):
             <?php get_template_part('template-parts/single/tags'); ?>
             <?php get_template_part('template-parts/single/nav'); ?>
         </article>
+
+        <?php get_template_part('template-parts/single/related'); ?>
     </div>
     <?php
     if (comments_open() || (int) get_comments_number() > 0) {
