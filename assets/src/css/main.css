@@ -663,14 +663,16 @@
 
   .listing-blog .listing-item-blog .item-inner {
     display: flex;
-    gap: 20px;
+    /* Reference: thumb floats left with a 26px gutter (text column starts at
+       237px = 210px thumb + 26px). */
+    gap: 26px;
   }
 
   .listing-blog .listing-item-blog .featured {
     /* Sits beside the content-container (flex row), not stacked above it,
        so cancel the generic `.listing-item .featured{margin-bottom:13px}`
        (Cards block, below). */
-    flex: 0 0 260px;
+    flex: 0 0 210px;
     margin-bottom: 0;
   }
 
@@ -678,7 +680,8 @@
     display: block;
     aspect-ratio: 760 / 428;
     overflow: hidden;
-    border-radius: 4px;
+    /* Reference thumbs are square-cornered (no border-radius on listing
+       images — only avatars/badges/buttons use radii). */
   }
 
   .listing-blog .listing-item-blog .content-container { flex: 1 1 auto; min-width: 0; }
