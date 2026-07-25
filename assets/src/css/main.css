@@ -587,7 +587,16 @@
     z-index: 61;
   }
 
-  .header-search:focus-within .header-search-form,
+  /* aria-expanded alone (NOT `:focus-within` — removed): initSearchToggle()
+     (main.js) now owns the open/closed state entirely. The old
+     `:focus-within` rule predated that JS and kept the form visually open
+     whenever ANY descendant of `.header-search` had focus — including the
+     `.search-toggle` button itself. That collided with
+     close({refocus:true}), which sets `aria-expanded="false"` AND moves
+     focus back onto the toggle on Escape: the toggle regaining focus still
+     satisfies `:focus-within`, so the form stayed visually open while ARIA
+     said closed. The toggle button is still the widget's first focusable
+     element, so keyboard access is unaffected by dropping this rule. */
   .header-search .search-toggle[aria-expanded="true"] ~ .header-search-form {
     /* flex (not the plain `block` this used to be): searchform.php
        (Fatia 2B Task 5) always renders a submit button now, so the shown
