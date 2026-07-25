@@ -10,12 +10,22 @@ if (!defined('ABSPATH')) { exit; }
  * renders the sidebar column (when the layout has one) and closes
  * `.container`/`#content`.
  *
- * Column widths/classes come from Arena\Layout::columnClasses() (pure,
- * unit-tested in tests/LayoutTest.php) — this partial only wires them into
+ * Column widths/classes come from Arena\Layout::columnClasses(); container
+ * classes come from Arena\Layout::containerClasses() (both pure, unit-
+ * tested in tests/LayoutTest.php) — this partial only wires them into
  * markup, reproducing the reference's measured structure:
  *   <main id="content" class="content-container">
  *     <div class="container layout-2-col layout-2-col-1 layout-right-sidebar layout-bc-before">
  *       <div class="content-column col-8">
+ *
+ * `$layout` normally comes from Arena\Options::sidebarLayout() (the ACF
+ * `arena_sidebar_position` option, task-review-fixes-3 FIX 1) — every
+ * caller passes that instead of a hardcoded literal, so an owner's choice
+ * of "Direita"/"Esquerda"/"Sem sidebar" actually changes the rendered
+ * shell. '2col-left' renders the SAME 8/12+4/12 columns as '2col-right'
+ * (Layout::columnClasses() treats them identically) but tags the container
+ * `layout-left-sidebar`, which main.css uses to flip the sidebar's flex
+ * `order` so it appears visually before the content column.
  *
  * `layout-bc-before` signals that breadcrumbs render BEFORE the rest of the
  * content column's own markup — the consuming template (e.g. single.php,
@@ -36,18 +46,7 @@ if (!defined('ABSPATH')) { exit; }
 $args = is_array($args ?? null) ? $args : [];
 $layout = is_string($args['layout'] ?? null) && $args['layout'] !== '' ? $args['layout'] : '2col-right';
 $columns = \Arena\Layout::columnClasses($layout);
-$hasSidebar = $columns['sidebar'] !== '';
-
-$containerClasses = ['container'];
-if ($hasSidebar) {
-    $containerClasses[] = 'layout-2-col';
-    $containerClasses[] = 'layout-2-col-1';
-    $containerClasses[] = 'layout-right-sidebar';
-} else {
-    $containerClasses[] = 'layout-1-col';
-    $containerClasses[] = 'layout-no-sidebar';
-}
-$containerClasses[] = 'layout-bc-before';
+$containerClasses = \Arena\Layout::containerClasses($layout);
 ?>
 <main id="content" class="content-container">
     <div class="<?php echo esc_attr(implode(' ', $containerClasses)); ?>">

@@ -238,6 +238,17 @@
   .content-column.col-8 { flex: 0 0 66.6667%; max-width: 66.6667%; }
   .sidebar-column.col-4 { flex: 0 0 33.3333%; max-width: 33.3333%; }
 
+  /* task-review-fixes-3, FIX 1: 'arena_sidebar_position' === 'left' —
+     Arena\Layout::containerClasses() tags the shell `.container` with
+     `layout-left-sidebar` instead of `layout-right-sidebar`, mirroring the
+     right-sidebar shape above (same 8/12+4/12 split, same DOM order:
+     content-column then sidebar-column) but flipping which side the
+     sidebar renders on via flex `order` alone — no markup-order change
+     needed in template-parts/layout/{content-open,content-close}.php. */
+  .container.layout-2-col.layout-left-sidebar .sidebar-column {
+    order: -1;
+  }
+
   /* Sticky sidebar — gated on `body.active-sticky-sidebar` (added by
      Arena\Setup::shellBodyClasses() on single/archive/search) rather than
      unconditionally on `.sidebar-column`, matching the reference's own

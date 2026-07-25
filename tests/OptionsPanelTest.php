@@ -34,6 +34,40 @@ class OptionsPanelTest extends WP_UnitTestCase {
         $this->assertSame(Options::DEFAULT_ACCENT, $accentField['default_value']);
     }
 
+    /**
+     * task-review-fixes-3, FIX 1: `arena_base_font` is a whitelisted
+     * `select` (2 choices) sharing Options::FONT_STACKS's keys — never a
+     * free-text field, which would need to self-host an arbitrary family.
+     */
+    public function test_base_font_field_is_a_whitelisted_select(): void {
+        $field = self::fieldByName('arena_base_font');
+        $this->assertNotNull($field, 'arena_base_font field must exist.');
+        $this->assertSame('select', $field['type']);
+        $this->assertSame(array_keys(Options::FONT_STACKS), array_keys($field['choices']));
+        $this->assertSame(Options::DEFAULT_BASE_FONT, $field['default_value']);
+    }
+
+    /**
+     * The sidebar field's own ACF default must come from the same shared
+     * constant Options::sidebarPosition() falls back to.
+     */
+    public function test_sidebar_field_default_matches_shared_constant(): void {
+        $field = self::fieldByName('arena_sidebar_position');
+        $this->assertNotNull($field, 'arena_sidebar_position field must exist.');
+        $this->assertSame(Options::DEFAULT_SIDEBAR_POSITION, $field['default_value']);
+        $this->assertSame(Options::SIDEBAR_POSITIONS, array_keys($field['choices']));
+    }
+
+    /** @return array<string, mixed>|null */
+    private static function fieldByName(string $name): ?array {
+        foreach (OptionsPanel::fields() as $field) {
+            if (($field['name'] ?? null) === $name) {
+                return $field;
+            }
+        }
+        return null;
+    }
+
     public function test_register_is_noop_without_acf(): void {
         // Sem ACF carregado, register() não deve lançar erro.
         OptionsPanel::register();

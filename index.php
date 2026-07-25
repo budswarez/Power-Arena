@@ -29,7 +29,7 @@ if (!defined('ABSPATH')) { exit; }
 
 get_header();
 
-get_template_part('template-parts/layout/content-open', null, ['layout' => '2col-right']);
+get_template_part('template-parts/layout/content-open', null, ['layout' => \Arena\Options::sidebarLayout()]);
 
 if (function_exists('yoast_breadcrumb')) {
     yoast_breadcrumb('<nav class="arena-breadcrumb">', '</nav>');
@@ -47,6 +47,6 @@ get_template_part('template-parts/listing/archive', null, [
 
 get_template_part('template-parts/pagination');
 
-get_template_part('template-parts/layout/content-close', null, ['layout' => '2col-right']);
+get_template_part('template-parts/layout/content-close', null, ['layout' => \Arena\Options::sidebarLayout()]);
 
 get_footer();
