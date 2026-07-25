@@ -42,7 +42,7 @@ $permalink = get_permalink($postId);
         <a class="img-cont hero-tile__link" href="<?php echo esc_url($permalink); ?>">
             <?php
             $imgAttr = [
-                'class'    => 'attachment-arena-card hero-tile__img',
+                'class'    => 'attachment-arena-card hero-tile__img' . ($compact ? ' hero-tile__img--compact' : ''),
                 'decoding' => 'async',
                 'alt'      => get_the_title($postId),
             ];
