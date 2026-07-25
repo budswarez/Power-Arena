@@ -13,6 +13,17 @@
 
     --arena-accent: #f42c1a;
 
+    /* Accessible variant of the accent, for small text/backgrounds where
+       the raw --arena-accent fails WCAG AA. Measured: white (#fff, relative
+       luminance 1.0) against #c81f10 (relative luminance ~0.133) gives
+       (1.0 + .05) / (.133 + .05) ≈ 5.74:1 — clears the 4.5:1 small-text
+       threshold with margin (raw --arena-accent only manages 4.02:1 against
+       white/on-white at the sizes this theme uses it: 13px author links,
+       11.2px term badges). Because WCAG contrast is symmetric in which side
+       is foreground vs background, the SAME colour also fixes white-on-
+       accent text (term badges) — one token covers both directions. */
+    --arena-accent-text: #c81f10;
+
     /* Boxed layout width — matches the live site's `--publisher-site-width`
        (2-col boxed layout) so the header/footer/main content line up. */
     --arena-site-width: 1200px;
@@ -51,7 +62,17 @@
   body {
     margin: 0;
     font-family: var(--arena-font-body);
-    color: #1b1b1b;
+    /* NOT #1b1b1b (dark-on-dark bug, bitten twice already — see git
+       history): the page itself sits on a black background, and #1b1b1b
+       text against it measures a 1.21:1 contrast ratio (Lighthouse
+       color-contrast failure). Every light content surface built on top of
+       this black canvas — `.main-content.boxed`, `.content-container`,
+       and every other explicit `background:#fff`/dark-panel block in this
+       file — already sets its OWN explicit `color` for its own text, so
+       the body's default is only ever the fallback for any stray text
+       that ends up directly on the black canvas itself; it must be light
+       to stay legible there, never relied upon by the light surfaces. */
+    color: #fff;
     /* Measured on the reference: the page itself sits on a black
        background — the boxed 1200px content column (`.main-content.boxed`,
        below) supplies its own light background on top of it, so the black
@@ -1186,7 +1207,7 @@
   .listing-mix-3-1 .listing-item-text .post-meta {
     grid-column: 2;
     font-size: .75rem;
-    color: #888;
+    color: #6b6b6b; /* was #888 — same contrast fix as .listing-item .post-meta, above */
   }
 
   /* --- blog: single column with excerpt ---------------------------------- */
@@ -1420,16 +1441,20 @@
 
   .listing-item .post-title:hover { color: var(--arena-accent); }
 
+  /* #6b6b6b, not #888: at this .8rem (12.8px) size #888 (#888888) only
+     measures 3.54:1 against the white card surface (Lighthouse
+     color-contrast failure) — #6b6b6b clears 4.5:1 (measures ~5.33:1;
+     same grey the single-post-meta rule below already uses). */
   .listing-item .post-meta {
     display: flex;
     align-items: center;
     gap: 10px;
     font-family: var(--arena-font-body);
     font-size: .8rem;
-    color: #888;
+    color: #6b6b6b;
   }
 
-  .listing-item .post-author-a { color: #888; }
+  .listing-item .post-author-a { color: #6b6b6b; }
   .listing-item .post-author { font-style: normal; }
 
   /* Author • date separator — measured on the reference ("Nicole Pereira •
@@ -1818,8 +1843,12 @@
     margin-bottom: 24px;
     border-bottom: 1px solid #eaeaea;
   }
+  /* --arena-accent-text, not the raw --arena-accent: the author link at
+     this 13px size only measures 4.02:1 against white in the raw accent
+     (below the 4.5:1 small-text minimum) — see the token's own comment,
+     above, for the ~5.74:1 the darker variant achieves instead. */
   .post-meta.single-post-meta .post-author-name a {
-    color: var(--arena-accent);
+    color: var(--arena-accent-text);
     font-weight: 600;
   }
   .post-meta.single-post-meta .comments {
@@ -2112,7 +2141,7 @@
   /* The "…" ellipsis span: not a link, not a page — no button chrome. */
   .arena-pagination .page-numbers.dots {
     background: transparent;
-    color: #888;
+    color: #6b6b6b; /* was #888 — same contrast fix as .listing-item .post-meta, above */
   }
 
   .arena-pagination__chevron { font-size: .85em; }
@@ -2350,5 +2379,5 @@
     white-space: nowrap;
   }
 
-  .listing-empty { padding: 20px 0; color: #888; }
+  .listing-empty { padding: 20px 0; color: #6b6b6b; } /* was #888 — same contrast fix as .listing-item .post-meta, above */
 }
