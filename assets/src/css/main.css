@@ -16,11 +16,26 @@
     /* Boxed layout width — matches the live site's `--publisher-site-width`
        (2-col boxed layout) so the header/footer/main content line up. */
     --arena-site-width: 1200px;
+
+    /* Vertical rhythm between the major home blocks (banner, hero mosaic,
+       3-col row, blog list, dark grid) — measured against the reference's
+       `--publisher-spacing:50` variable, applied as every listing block's
+       own `margin-bottom`. */
+    --arena-block-spacing: 50px;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
 
-  body { margin: 0; font-family: var(--arena-font-body); color: #1b1b1b; }
+  body {
+    margin: 0;
+    font-family: var(--arena-font-body);
+    color: #1b1b1b;
+    /* Measured on the reference: the page itself sits on a black
+       background — the boxed 1200px content column (`.main-content.boxed`,
+       below) supplies its own light background on top of it, so the black
+       only shows as the gutters around/between blocks, not behind text. */
+    background-color: #000;
+  }
 
   h1, h2, h3, h4, h5, h6 { font-family: var(--arena-font-head); margin: 0 0 .5em; }
 
@@ -40,21 +55,36 @@
     padding-inline: 15px;
   }
 
-  body.boxed { background-color: #eee; }
+  /* Arena has no separate `.main-wrap`/`.content-wrap` element wrapping the
+     whole page (unlike Publisher) — `<body>` is already the outermost box
+     and spans the full page, so the `body` background-color rule above is
+     what actually paints the black page background; this `body.boxed`
+     rule is kept for parity/forward-compat with the measured selector even
+     though no `.boxed` class is currently applied to `<body>`. */
+  body.boxed { background-color: #000; }
 
   /* `.full-width` bars (header/footer) span the viewport; their own inner
      content is still boxed to --arena-site-width via .container/.header-main
-     /.footer-inner below. */
+     /.footer-inner below. No shared background here on purpose: both
+     `.site-header.header-style-2` and `.site-footer` (further down) set
+     their own dark fill, and a `background` on THIS 2-class selector would
+     out-specificity `.site-footer`'s later 1-class rule, silently forcing
+     the footer back to white — invisible while the page itself was also
+     white/transparent, glaring now that `body` is black. */
   .site-header.full-width,
   .site-footer.full-width {
     width: 100%;
-    background: #fff;
   }
 
+  /* The boxed 1200px content column is "the main content block" the
+     reference's black page background sits behind/around: it needs its own
+     light background so the blocks inside it (hero mosaic, category
+     columns, blog list) stay legible against the new black `body`. */
   .main-content.boxed {
     max-width: var(--arena-site-width);
     margin-inline: auto;
     padding: 24px 15px 48px;
+    background: #fff;
   }
 
   .main-content.boxed > *:first-child { margin-top: 0; }
@@ -436,12 +466,20 @@
 }
 
 /* ==========================================================================
-   Section headings — colored skewed "ribbon" bar (measured against the
-   reference's `.section-heading.sh-t6.sh-s6`: bar skew ~20deg, text
-   padding `0 26px 0 10px`, line-height ~34px). The bar's color comes from
-   `heading_color` (Arena\Listing\Renderer::renderHeading() puts it as an
-   inline `color:` on THIS wrapper, not on `.h-text`), read here via
-   `background: currentColor` on the `::before`; the text itself is always
+   Section headings — colored "notched flag" (measured against the
+   reference's heading style `sh-t1 sh-s8`: text block padding
+   `4px 17px 4px 21px`, a pointed notch at the top-left made from a CSS
+   border-triangle `::before` — `border-top:15px solid transparent;
+   border-bottom:0 solid transparent; border-right:14px solid <color>` —
+   and wrapper margin `0 0 15px`). Clean-room reconstruction: the border-
+   triangle only reproduces the notch itself, so `.h-text` is offset by the
+   notch's own width (`margin-left`, not part of the measured values) so
+   its rectangle body starts exactly where the triangle's point ends,
+   giving one continuous pointed-flag silhouette instead of the triangle
+   and rectangle overlapping. The bar's color comes from `heading_color`
+   (Arena\Listing\Renderer::renderHeading() puts it as an inline `color:`
+   on THIS wrapper, not on `.h-text`), read here via `currentColor` on both
+   the notch and the `.h-text` background; the text itself is always
    forced white, matching the reference (white text on the colored bar
    regardless of the bar's own hue).
    ========================================================================== */
@@ -449,27 +487,49 @@
   .section-heading.sh-t6.sh-s6 {
     position: relative;
     display: inline-block;
-    margin: 0 0 18px;
+    margin: 0 0 15px;
     color: var(--arena-accent); /* fallback bar color when no heading_color is set */
   }
 
+  /* The flag's rectangle body: a wrapper-level `::before` (not `.h-text`'s
+     own background) so its `currentColor` reads the WRAPPER's `color`
+     (the section's accent) rather than `.h-text`'s own forced-white text
+     color — putting `background:currentColor` directly on `.h-text`
+     resolves against ITS OWN `color:#fff`, i.e. a white-on-white,
+     invisible bar. As a `::before` (painted before the in-flow `.h-text`
+     child) it also sits behind the text, not on top of it. */
   .section-heading.sh-t6.sh-s6::before {
     content: '';
     position: absolute;
-    inset: 0 8px 0 0;
+    inset: 0 0 0 14px; /* starts where the notch (::after, below) ends */
     background: currentColor;
-    transform: skewX(-20deg);
-    transform-origin: top left;
+  }
+
+  /* The pointed notch: a CSS border-triangle sitting flush against the
+     wrapper's top-left corner, immediately to the left of the rectangle
+     above. Doesn't spatially overlap `.h-text`/the rectangle, so painting
+     last (`::after`, on top) is harmless. */
+  .section-heading.sh-t6.sh-s6::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-top: 15px solid transparent;
+    border-bottom: 0 solid transparent;
+    border-right: 14px solid currentColor;
   }
 
   .section-heading.sh-t6.sh-s6 .h-text {
     position: relative;
     display: inline-block;
-    padding: 0 26px 0 14px;
-    line-height: 34px;
+    margin-left: 14px; /* = the notch's own width, see comment above */
+    padding: 4px 17px 4px 21px;
+    line-height: 20px;
     color: #fff;
     font-family: var(--arena-font-head);
-    font-size: 1.05rem;
+    font-size: 16px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: .02em;
@@ -486,22 +546,38 @@
    column w/ excerpt), grid (N-column)
    ========================================================================== */
 @layer components {
-  .bs-listing { margin: 0 0 40px; }
+  /* Vertical rhythm between the major home blocks — measured against the
+     reference's `--publisher-spacing:50` variable applied as every
+     block's own margin-bottom. */
+  .bs-listing { margin: 0 0 var(--arena-block-spacing); }
   .bs-listing:last-child { margin-bottom: 0; }
 
   /* --- mix: 1 featured card (thumb + full meta, incl. comments) + a
      compact text list (small thumb, title, date only) below a divider —
      measured against the reference's `listing-mix-3-1` (row-1 =
      `.listing-grid-1` card, row-2 = `.listing-tb-1` rows with an ~86x64
-     thumb each). ------------------------------------------------------- */
-  .listing-mix-3-1 { display: flex; flex-direction: column; gap: 16px; }
+     thumb each). The 1st (large) row carries no extra bottom margin of its
+     own; the divider before row-2 comes purely from row-2's own
+     border-top + padding-top. ------------------------------------------ */
+  .listing-mix-3-1 { display: flex; flex-direction: column; gap: 0; }
+
+  .listing-mix-3-1 .row-1 { margin-bottom: 0; }
 
   .listing-mix-3-1 .row-2 {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
     padding-top: 14px;
     border-top: 1px solid #eee;
+  }
+
+  /* Compact rows: measured margin-bottom 15px + padding-bottom 15px each,
+     with the last row trimmed to margin-bottom 7px and no extra padding. */
+  .listing-mix-3-1 .listing-item-text {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+  }
+
+  .listing-mix-3-1 .listing-item-text:last-child {
+    margin-bottom: 7px;
+    padding-bottom: 0;
   }
 
   /* Grid, not flex: image spans both text rows (title on top, date below),
@@ -516,7 +592,11 @@
     align-items: center;
   }
 
-  .listing-mix-3-1 .listing-item-text .featured { grid-row: 1 / 3; }
+  /* Overrides the generic `.listing-item .featured{margin-bottom:13px}`
+     (Cards block, below): this compact row places the thumb *beside* the
+     title/meta (grid-row spanning both text rows), not stacked above it,
+     so it needs no bottom gap of its own. */
+  .listing-mix-3-1 .listing-item-text .featured { grid-row: 1 / 3; margin-bottom: 0; }
 
   .listing-mix-3-1 .listing-item-text .img-holder {
     display: block;
@@ -542,7 +622,21 @@
   .listing-blog {
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 0;
+  }
+
+  /* Measured: item margin-bottom 25px + a divider (border-bottom +
+     padding-bottom 20px); the last item drops all three. */
+  .listing-blog .listing-item-blog {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  .listing-blog .listing-item-blog:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
   }
 
   .listing-blog .listing-item-blog .item-inner {
@@ -551,7 +645,11 @@
   }
 
   .listing-blog .listing-item-blog .featured {
+    /* Sits beside the content-container (flex row), not stacked above it,
+       so cancel the generic `.listing-item .featured{margin-bottom:13px}`
+       (Cards block, below). */
     flex: 0 0 260px;
+    margin-bottom: 0;
   }
 
   .listing-blog .listing-item-blog .featured .img-holder {
@@ -575,11 +673,14 @@
     .listing-blog .listing-item-blog .featured { flex-basis: auto; }
   }
 
-  /* --- grid: N-column card grid ------------------------------------------ */
+  /* --- grid: N-column card grid — measured item margin-bottom 15px
+     (translated to the grid's own row-gap, since gap replaces per-item
+     margin in a CSS grid layout); column-gap unchanged. ------------------ */
   .listing-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 24px 20px;
+    row-gap: 15px;
+    column-gap: 20px;
   }
 
   .listing-grid.columns-1 { grid-template-columns: 1fr; }
@@ -605,8 +706,11 @@
      `.term-badges.floated` badge (a sibling of `.img-cont`/`.img-holder`
      inside it, per card/featured.php + card/excerpt.php) — without this,
      the badge has no positioned ancestor and escapes to the initial
-     containing block instead of anchoring over its own card's image. */
-  .listing-item .featured { position: relative; }
+     containing block instead of anchoring over its own card's image.
+     Measured: the thumb block itself carries margin-bottom:13px (the gap
+     to the title/content below it), replacing the old padding-top on
+     `.content-container`. */
+  .listing-item .featured { position: relative; margin-bottom: 13px; }
 
   .listing-item .img-cont,
   .listing-item .img-holder {
@@ -663,7 +767,7 @@
   .listing-item .term-badge[data-slug="valorant"] a { background: var(--arena-c-valorant); }
   .listing-item .term-badge[data-slug="free-fire"] a { background: var(--arena-c-freefire); }
 
-  .listing-item .content-container { padding-top: 10px; }
+  .listing-item .content-container { padding-top: 0; }
 
   .listing-item .title {
     font-family: var(--arena-font-head);
@@ -707,13 +811,15 @@
    selector specificity.
    ========================================================================== */
 @layer components {
+  /* Measured: tiles have a 2px gap only (margin-bottom:2px on items),
+     tightened from the earlier 3px approximation. */
   .listing-modern-grid .mg-row {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 3px;
+    gap: 2px;
   }
 
-  .listing-modern-grid .mg-row + .mg-row { margin-top: 3px; }
+  .listing-modern-grid .mg-row + .mg-row { margin-top: 2px; }
 
   .listing-modern-grid .mg-row:not(.mg-row-1) {
     grid-template-columns: repeat(3, 1fr);
@@ -817,6 +923,12 @@
     margin-inline: calc(50% - 50vw);
     padding-block: 32px 40px;
     padding-inline: max(15px, calc((100vw - var(--arena-site-width)) / 2));
+    /* The page background is now pure black (see `body` above) and this
+       row's own dark fill (--arena-c-dark, #1b1b1b) is close enough in
+       value that its top/bottom edges could read as an accidental seam
+       rather than an intentional dark section — a faint top/bottom
+       boundary keeps it legible as its own block. */
+    border-block: 1px solid rgba(255, 255, 255, .08);
   }
 
   .bs-listing.bs-dark-scheme .title,
