@@ -166,13 +166,37 @@ replica a mesma regra inline.
 3. Acessar como admin logado (com a capability `edit_theme_options`), ou usar `?arena_preview=<token-secreto>`.
 4. **Cache:** garantir que o preview rode logado (LiteSpeed/WP Rocket ignoram logados) ou
    excluir o parâmetro `arena_preview` do cache. Sem isso, páginas cacheadas mostram o tema errado.
+5. **Stylesheet previsualizado (opcional):** por padrão o preview força
+   `stylesheet => 'arena'` (o tema pai). Se a produção rodar
+   `arena-child` como tema ativo, defina em `wp-config.php`:
+   `define('ARENA_PREVIEW_STYLESHEET', 'arena-child');` para que o
+   preview mostre exatamente o que vai ao ar (o `template` continua
+   sempre `'arena'` — é o slug do tema PAI, não muda). Lógica espelhada
+   em `Arena\Preview::resolveStylesheet()`.
+
+**Indexação/cache do próprio preview:** uma URL `?arena_preview=<token>`
+vazada (Search Console, header `Referer`, alguém compartilhando o link)
+deixaria o site inteiro rastreável/indexável sob o tema novo enquanto o
+antigo ainda é o que está no ar para todo mundo — conteúdo duplicado, além
+do token vazando em logs de terceiros. Por isso, sempre que o preview é
+ativado (token válido OU admin logado), o mu-plugin também:
+
+- envia `X-Robots-Tag: noindex, nofollow` e `nocache_headers()` na
+  resposta HTTP;
+- imprime `<meta name="robots" content="noindex,nofollow">` via `wp_head`
+  (reforço caso algum cache/CDN no meio do caminho descarte o header).
+
+Uma requisição normal (sem preview ativo) não deve ter nenhum dos dois.
 
 **Testado localmente end-to-end** (não só a lógica pura unitária): montado
 via `.wp-env.override.json` (`mappings` + `config.ARENA_PREVIEW_TOKEN`) com
 outro tema ativo, confirmando por `curl` as 3 combinações — sem parâmetro
-(tema ativo), token certo (Arena), token errado (tema ativo). Ver
-`.superpowers/sdd/task-completeness-report.md` para o resultado exato
-dessa validação.
+(tema ativo), token certo (Arena), token errado (tema ativo) — e, na
+verificação desta rodada de fixes, os headers `X-Robots-Tag`/cache com
+token válido vs. a ausência de ambos numa requisição normal. Ver
+`.superpowers/sdd/task-completeness-report.md` e
+`.superpowers/sdd/task-review-fixes-2-report.md` para os resultados
+exatos dessas validações.
 
 ## Internacionalização (i18n)
 

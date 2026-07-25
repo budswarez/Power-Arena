@@ -26,5 +26,35 @@ add_action('setup_theme', static function (): void {
     // is the documented single source of truth for this slug — keep the
     // two in sync (see Arena\Preview's own docblock + PreviewTest).
     add_filter('template', static fn (): string => 'arena');
-    add_filter('stylesheet', static fn (): string => 'arena');
+
+    // The STYLESHEET (unlike the template/parent theme dir, always
+    // 'arena') is configurable via an optional ARENA_PREVIEW_STYLESHEET
+    // constant — mirrors Arena\Preview::resolveStylesheet(), which this
+    // file can't call directly for the same autoloader-timing reason.
+    // Without this, the preview always forced the PARENT theme even if
+    // production runs `arena-child` as the active theme — previewing
+    // something other than what actually ships.
+    $stylesheet = (defined('ARENA_PREVIEW_STYLESHEET') && is_string(ARENA_PREVIEW_STYLESHEET) && ARENA_PREVIEW_STYLESHEET !== '')
+        ? ARENA_PREVIEW_STYLESHEET
+        : 'arena';
+    add_filter('stylesheet', static fn (): string => $stylesheet);
+
+    // A leaked `?arena_preview=<token>` URL (Search Console, a Referer
+    // header, someone pasting the link) would otherwise let the whole
+    // site be crawled/indexed under the NEW theme while the old one is
+    // still the one actually live for everyone else — duplicate content,
+    // plus the token itself ending up in third-party logs. With a cache
+    // layer (LiteSpeed) in front, the theme-swapped HTML is also
+    // cacheable unless explicitly told not to.
+    header('X-Robots-Tag: noindex, nofollow', true);
+    nocache_headers();
+
+    // Belt-and-braces: nocache_headers()/X-Robots-Tag cover the HTTP
+    // response, but a `<meta name="robots">` in <head> keeps the same
+    // guarantee even if some intermediary (cache, CDN, proxy) strips
+    // headers it doesn't recognise before the response reaches the
+    // browser/crawler.
+    add_action('wp_head', static function (): void {
+        echo '<meta name="robots" content="noindex,nofollow">' . "\n";
+    }, 1);
 });

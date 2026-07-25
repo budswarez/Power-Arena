@@ -24,4 +24,22 @@ final class Preview {
         if ($expectedToken === null || $expectedToken === '') { return false; }
         return is_string($tokenParam) && hash_equals($expectedToken, $tokenParam);
     }
+
+    /**
+     * Resolves which STYLESHEET (not template — the parent theme dir is
+     * always `self::THEME`) the preview should force. Mirrors the same
+     * decision `mu-plugins/arena-preview.php` makes inline for its
+     * `stylesheet` filter (that file can't reference this class directly —
+     * see the class docblock above), from an optional
+     * `ARENA_PREVIEW_STYLESHEET` constant.
+     *
+     * Without this, the mu-plugin hardcoded `stylesheet => 'arena'` — so
+     * if production ever runs `arena-child` as the active theme, the
+     * "preview" would show the PARENT theme, not what actually ships.
+     *
+     * @param string|null $configured The raw `ARENA_PREVIEW_STYLESHEET` constant value, or null if undefined.
+     */
+    public static function resolveStylesheet(?string $configured): string {
+        return ($configured !== null && $configured !== '') ? $configured : self::THEME;
+    }
 }
