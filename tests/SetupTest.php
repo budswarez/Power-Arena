@@ -63,6 +63,21 @@ class SetupTest extends WP_UnitTestCase {
         $this->assertContains('active-sticky-sidebar', $classes);
     }
 
+    /**
+     * GAP 3: the reference's ordinary PAGES use the same 2-column
+     * right-sidebar shell as posts — page.php now opts into it.
+     */
+    public function test_shell_body_classes_present_on_ordinary_page(): void {
+        $pageId = $this->factory()->post->create(['post_type' => 'page', 'post_status' => 'publish']);
+        $this->go_to(get_permalink($pageId));
+
+        $classes = Setup::shellBodyClasses([]);
+
+        $this->assertContains('page-layout-2-col', $classes);
+        $this->assertContains('page-layout-2-col-right', $classes);
+        $this->assertContains('active-sticky-sidebar', $classes);
+    }
+
     /** The home page must not gain the shell's 2-column classes. */
     public function test_shell_body_classes_absent_on_front_page(): void {
         $pageId = $this->factory()->post->create(['post_type' => 'page', 'post_status' => 'publish']);

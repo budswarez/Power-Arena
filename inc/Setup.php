@@ -46,21 +46,27 @@ final class Setup {
 
     /**
      * Adds the reference's 2-column-shell body classes on single/archive/
-     * search — matches the reference's measured `page-layout-2-col
+     * search/page — matches the reference's measured `page-layout-2-col
      * page-layout-2-col-right active-sticky-sidebar` naming so the shell's
      * CSS hooks (main.css) line up with the reference. `is_archive()`
      * already covers category/tag/date/author/custom-taxonomy archives, so
-     * no separate `is_author()` check is needed.
+     * no separate `is_author()` check is needed. `is_page()` covers
+     * ordinary WP pages (page.php, GAP 3), which use the SAME shell as
+     * posts per the reference.
      *
-     * Deliberately does NOT touch the home page's classes: is_front_page()/
-     * is_page() (the front page's static Page) never satisfy
-     * is_single()/is_archive()/is_search(), so this never fires there.
+     * Deliberately excludes the front page even though a static front page
+     * IS a Page and so also satisfies `is_page()`: the home stays on
+     * front-page.php's own full-width WPBakery layout, never the 2-column
+     * shell, so `!is_front_page()` guards that case explicitly rather than
+     * relying on is_single()/is_archive()/is_search() never matching it (as
+     * used to be the whole guard, back when page.php had no shell classes
+     * of its own to worry about).
      *
      * @param array<int, string> $classes
      * @return array<int, string>
      */
     public static function shellBodyClasses(array $classes): array {
-        if (is_single() || is_archive() || is_search()) {
+        if (is_single() || is_archive() || is_search() || (is_page() && !is_front_page())) {
             $classes[] = 'page-layout-2-col';
             $classes[] = 'page-layout-2-col-right';
             $classes[] = 'active-sticky-sidebar';
