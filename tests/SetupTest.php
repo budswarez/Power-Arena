@@ -17,7 +17,53 @@ class SetupTest extends WP_UnitTestCase {
     public function test_registers_primary_menu(): void {
         $this->setExpectedIncorrectUsage("add_theme_support( 'title-tag' )");
         do_action('after_setup_theme');
-        $this->assertArrayHasKey('arena_primary', get_registered_nav_menus());
+        $this->assertArrayHasKey('main-menu', get_registered_nav_menus());
+    }
+
+    /**
+     * Regressão: um local extra `arena_primary` rotulado "Menu Principal"
+     * ficou registrado sem que nenhum template o renderizasse. No Customizer
+     * ele aparecia com o nome mais óbvio, então atribuir o menu ali não
+     * surtia efeito — o cabeçalho sempre renderizou `main-menu`. O invariante
+     * que vale testar é este: TODO local registrado tem de ser realmente
+     * renderizado por algum template do tema.
+     */
+    public function test_every_registered_menu_location_is_rendered_by_a_template(): void {
+        $this->setExpectedIncorrectUsage("add_theme_support( 'title-tag' )");
+        do_action('after_setup_theme');
+
+        /*
+         * Varre TODOS os templates, não só header.php/footer.php: o topbar
+         * mora em template-parts/header/topbar.php, e o rodapé resolve seu
+         * local através de Setup::footerMenuLocation() (por isso o método
+         * entra no palheiro via reflexão).
+         */
+        $dir  = get_template_directory();
+        $hay  = '';
+        $files = array_merge(
+            glob($dir . '/*.php') ?: [],
+            glob($dir . '/template-parts/*.php') ?: [],
+            glob($dir . '/template-parts/*/*.php') ?: []
+        );
+        foreach ($files as $file) {
+            $hay .= (string) file_get_contents($file);
+        }
+
+        $resolver = new \ReflectionMethod(Setup::class, 'footerMenuLocation');
+        $source   = file($resolver->getFileName()) ?: [];
+        $hay .= implode('', array_slice(
+            $source,
+            $resolver->getStartLine() - 1,
+            $resolver->getEndLine() - $resolver->getStartLine() + 1
+        ));
+
+        foreach (array_keys(get_registered_nav_menus()) as $location) {
+            $this->assertStringContainsString(
+                $location,
+                $hay,
+                "O local de menu '{$location}' está registrado mas nenhum template o renderiza."
+            );
+        }
     }
 
     public function test_registers_card_image_size(): void {
@@ -55,7 +101,6 @@ class SetupTest extends WP_UnitTestCase {
      * Publisher (the legacy theme) assigns existing menus to the location
      * slugs `main-menu`, `top-menu` and `resp-menu`. Registering the same
      * slugs here lets those assignments carry over untouched on migration.
-     * `arena_primary` is kept as an extra/alias location.
      */
     public function test_registers_publisher_compatible_menu_locations(): void {
         $this->setExpectedIncorrectUsage("add_theme_support( 'title-tag' )");
@@ -64,7 +109,7 @@ class SetupTest extends WP_UnitTestCase {
         $this->assertArrayHasKey('main-menu', $locations);
         $this->assertArrayHasKey('top-menu', $locations);
         $this->assertArrayHasKey('resp-menu', $locations);
-        $this->assertArrayHasKey('arena_primary', $locations);
+        $this->assertArrayNotHasKey('arena_primary', $locations);
     }
 
     /**

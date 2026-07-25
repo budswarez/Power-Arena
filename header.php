@@ -101,8 +101,14 @@ if (!defined('ABSPATH')) { exit; }
          * desktop nav above keeps its real ids.
          */
         add_filter('nav_menu_item_id', '__return_empty_string');
+        /*
+         * Usa o menu mobile (`resp-menu`) quando o site atribuiu um — o
+         * Publisher também tem esse local, então a atribuição existente é
+         * respeitada. Sem atribuição, cai no menu principal, que é o
+         * comportamento esperado (um único menu para desktop e mobile).
+         */
         wp_nav_menu([
-            'theme_location' => 'main-menu',
+            'theme_location' => has_nav_menu('resp-menu') ? 'resp-menu' : 'main-menu',
             'container'      => false,
             'menu_id'        => 'offcanvas-navigation',
             'menu_class'     => 'offcanvas-menu-list menu clearfix',

@@ -74,7 +74,6 @@ final class Setup {
      * Locations use the same slugs Publisher (the legacy theme) used —
      * `main-menu`, `top-menu`, `resp-menu` — so existing menu assignments
      * carry over on migration without the site owner reassigning anything.
-     * `arena_primary` is kept as an extra/alias location.
      *
      * `footer-menu` (task-native-settings, migration gap #6): Publisher also
      * registers this slug (and `off-canvas-menu`, which Arena doesn't need —
@@ -88,12 +87,21 @@ final class Setup {
      * exactly what it always has.
      */
     public static function menusAndSizes(): void {
+        /*
+         * Slugs deliberadamente iguais aos do Publisher, para que as
+         * atribuições já existentes no site sejam herdadas na troca de tema.
+         *
+         * NÃO registrar locais que nenhum template renderiza: um local extra
+         * chamado "Menu Principal" (`arena_primary`) existia aqui e aparecia
+         * no Customizer sem efeito algum — o cabeçalho sempre renderizou
+         * `main-menu`. Quem atribuísse o menu ao local de nome mais óbvio não
+         * via nada mudar. Cada local abaixo É renderizado por algum template.
+         */
         register_nav_menus([
-            'arena_primary' => __('Menu Principal', 'arena'),
-            'main-menu'     => __('Menu Principal (topo)', 'arena'),
-            'top-menu'      => __('Menu Superior', 'arena'),
-            'resp-menu'     => __('Menu Responsivo', 'arena'),
-            'footer-menu'   => __('Menu do Rodapé (opcional)', 'arena'),
+            'main-menu'   => __('Menu Principal (cabeçalho)', 'arena'),
+            'top-menu'    => __('Menu Superior (barra escura)', 'arena'),
+            'resp-menu'   => __('Menu Mobile (painel lateral)', 'arena'),
+            'footer-menu' => __('Menu do Rodapé', 'arena'),
         ]);
         add_image_size('arena-card', 760, 428, true);
     }

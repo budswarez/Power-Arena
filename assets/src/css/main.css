@@ -3014,3 +3014,119 @@
     .bs-listing-hide-desktop { display: none; }
   }
 }
+
+/* ==========================================================================
+   Alinhamento de mídia (WordPress core) — aligncenter/left/right/wide/full
+   ==========================================================================
+   O WordPress espera que o TEMA forneça estas classes: o editor apenas marca
+   `align":"center"` no bloco e imprime `class="wp-block-image aligncenter"`
+   (ou `.aligncenter` no editor clássico). Sem CSS correspondente, escolher
+   "centralizar" no editor não produz efeito nenhum — foi o que acontecia com
+   uma imagem centralizada num widget da sidebar E com qualquer imagem
+   centralizada dentro de uma matéria.
+
+   Cuidado que motiva o `width: fit-content`: a base do tema define
+   `img { display: block; max-width: 100% }`, então `margin: auto` sozinho não
+   centraliza nada — a imagem já ocupa toda a largura disponível. É preciso
+   encolher a caixa ao tamanho do conteúdo para que as margens automáticas
+   tenham sobra para distribuir.
+   ========================================================================== */
+@layer components {
+  .aligncenter,
+  figure.aligncenter,
+  .wp-block-image.aligncenter,
+  .wp-block-image .aligncenter {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .aligncenter img,
+  .wp-block-image.aligncenter img {
+    margin-inline: auto;
+  }
+
+  /* Blocos que centralizam via `has-text-align-center` (parágrafos, títulos) */
+  .has-text-align-center { text-align: center; }
+  .has-text-align-right  { text-align: right; }
+  .has-text-align-left   { text-align: left; }
+
+  .alignleft,
+  figure.alignleft,
+  .wp-block-image.alignleft {
+    float: left;
+    max-width: 50%;
+    margin: 0 1.5em 1em 0;
+  }
+
+  .alignright,
+  figure.alignright,
+  .wp-block-image.alignright {
+    float: right;
+    max-width: 50%;
+    margin: 0 0 1em 1.5em;
+  }
+
+  .alignnone,
+  .wp-block-image.alignnone { max-width: 100%; }
+
+  /* Larguras estendidas: só fazem sentido na coluna de conteúdo, e nunca
+     podem estourar a caixa (o tema é boxed em 1200px). */
+  .single-post-content .alignwide,
+  .entry-content .alignwide {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .single-post-content .alignfull,
+  .entry-content .alignfull {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+  }
+
+  /* Empilha os floats no mobile: 50% de largura flutuando em 360px deixa o
+     texto ilegível numa coluna de poucos caracteres. */
+  @media (max-width: 600px) {
+    .alignleft,
+    figure.alignleft,
+    .wp-block-image.alignleft,
+    .alignright,
+    figure.alignright,
+    .wp-block-image.alignright {
+      float: none;
+      max-width: 100%;
+      margin: 0 auto 1em;
+      width: fit-content;
+    }
+  }
+
+  /* Mesma regra dentro dos widgets da sidebar, onde o espaço é estreito e o
+     float atrapalha mais do que ajuda. */
+  .widget .alignleft,
+  .widget .alignright,
+  .widget figure.alignleft,
+  .widget figure.alignright {
+    float: none;
+    max-width: 100%;
+    margin-inline: auto;
+    width: fit-content;
+  }
+
+  .widget figure,
+  .widget .wp-block-image { margin-block: 0 1em; }
+
+  .widget figure:last-child,
+  .widget .wp-block-image:last-child { margin-bottom: 0; }
+
+  /* Legenda de imagem também nos widgets (o conteúdo do artigo já tem a sua). */
+  .widget .wp-element-caption,
+  .widget .wp-caption-text {
+    margin: 6px 0 0;
+    font-size: .82rem;
+    line-height: 1.35;
+    color: var(--arena-text-secondary);
+    text-align: center;
+  }
+}
