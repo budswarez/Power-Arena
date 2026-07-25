@@ -80,13 +80,17 @@ if (function_exists('yoast_breadcrumb')) {
 
 $queriedObject = get_queried_object();
 if (!is_paged() && $queriedObject instanceof WP_Term && in_array($queriedObject->taxonomy, ['category', 'post_tag'], true)) {
-    $featuredAtts = ['count' => '5'];
+    // `modern-grid-1`, NOT the home's `modern-grid`: the reference renders
+    // this featured block with an IRREGULAR mosaic (1 large + 1 medium +
+    // 2 small tiles = 4 posts), not the home's uniform 2-large + 3-compact
+    // pattern — see template-parts/listing/modern-grid-1.php's docblock.
+    $featuredAtts = ['count' => '4'];
     if ($queriedObject->taxonomy === 'category') {
         $featuredAtts['category'] = (string) $queriedObject->term_id;
     } else {
         $featuredAtts['tag'] = (string) $queriedObject->term_id;
     }
-    echo \Arena\Listing\Renderer::render('modern-grid', $featuredAtts);
+    echo \Arena\Listing\Renderer::render('modern-grid-1', $featuredAtts);
 }
 
 get_template_part('template-parts/archive-header');

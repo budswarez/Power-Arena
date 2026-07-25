@@ -1565,6 +1565,100 @@
 }
 
 /* ==========================================================================
+   Hero, ARCHIVE variant (`modern-grid-1`) — the category/tag featured
+   mosaic, an IRREGULAR pattern distinct from the home's uniform
+   `modern-grid` above (which stays untouched). Measured against the
+   reference's `listing-modern-grid-1` (ref-category.html): `.mg-col-1
+   {width:56%;float:left;padding-right:1px;overflow:hidden}` /
+   `.mg-col-2{width:44%;float:left;padding-left:1px;overflow:hidden}`, and
+   inside col-2 `.item-3-cont,.item-4-cont{width:50%;float:left;
+   overflow:hidden}` (1px padding each side, same 1px+1px gap pattern).
+   Own class names (`mg1-*`, not `mg-*`) so these rules never collide with
+   `.listing-modern-grid .mg-row`/`.mg-col` above — both layouts can share
+   the same page (archive.php renders only one of them, but a future
+   template could put both on one page). Tiles reuse `.hero-tile` (card/
+   hero.php) for the image/overlay/badge/title chrome; only the
+   aspect-ratio, title size and caption inset are overridden per tile role
+   below (measured `padding-top` percentages converted to `aspect-ratio`:
+   89% → 100/89, 63.74% → 100/63.74, 98.58% → 100/98.58; caption inset
+   `left:15px;right:15px;bottom:10px;max-height:50%`).
+   ========================================================================== */
+@layer components {
+  .listing-modern-grid-1 .mg1-col-1,
+  .listing-modern-grid-1 .mg1-col-2 {
+    box-sizing: border-box;
+    float: left;
+    overflow: hidden;
+  }
+
+  .listing-modern-grid-1 .mg1-col-1 { width: 56%; padding-right: 1px; }
+  .listing-modern-grid-1 .mg1-col-2 { width: 44%; padding-left: 1px; }
+
+  /* Vertical rhythm between the top tile and the bottom row inside col-2 —
+     same 2px rhythm as the home mosaic's own `.mg-row + .mg-row`. */
+  .listing-modern-grid-1 .mg1-row-bottom { margin-top: 2px; }
+
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile {
+    box-sizing: border-box;
+    float: left;
+    width: 50%;
+    overflow: hidden;
+  }
+
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile:first-child { padding-right: 1px; }
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile:last-child { padding-left: 1px; }
+
+  /* Graceful degrade: a lone 3rd post with no 4th sibling fills the whole
+     bottom row instead of leaving half of it empty. */
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile:only-child {
+    width: 100%;
+    padding: 0;
+  }
+
+  .listing-modern-grid-1 .mg1-col-1 .hero-tile { aspect-ratio: 100 / 89; }
+  .listing-modern-grid-1 .mg1-top .hero-tile { aspect-ratio: 100 / 63.74; }
+  .listing-modern-grid-1 .mg1-row-bottom .hero-tile { aspect-ratio: 100 / 98.58; }
+
+  .listing-modern-grid-1 .mg1-col-1 .hero-tile .title { font-size: 1.3rem; }
+  .listing-modern-grid-1 .mg1-top .hero-tile .title { font-size: 1.05rem; }
+  .listing-modern-grid-1 .mg1-row-bottom .hero-tile .title { font-size: .92rem; }
+
+  /* Caption/overlay inset — measured on the reference, narrower than the
+     home mosaic's flush `inset:auto 0 0 0` (higher specificity than the
+     generic `.hero-tile .content-container` rule above, so it wins without
+     needing `!important`). Padding is a clean-room choice (not itself a
+     measured value): kept small since the inset already provides the
+     15px/10px breathing room on every side. */
+  .listing-modern-grid-1 .hero-tile .content-container {
+    left: 15px;
+    right: 15px;
+    bottom: 10px;
+    max-height: 50%;
+    padding: 10px 0;
+  }
+
+  /* Posts 3 & 4 render title-only (card/hero.php's `$compact` tiles carry
+     no badge/meta) in a much smaller tile — trims the caption padding
+     further so the short title never feels cramped against the inset. */
+  .listing-modern-grid-1 .hero-tile-compact .content-container { padding: 8px 0; }
+
+  /* Stack to a single column below 768px, matching the reference's own
+     narrow/stacked variants (`l-3`/`l-5`): both columns full width, the
+     2nd column picking up a small top gap instead of the side gutter. The
+     bottom row keeps its 50/50 split — still legible at 360px. */
+  @media (max-width: 768px) {
+    .listing-modern-grid-1 .mg1-col-1,
+    .listing-modern-grid-1 .mg1-col-2 {
+      width: 100%;
+      float: none;
+      padding: 0;
+    }
+
+    .listing-modern-grid-1 .mg1-col-2 { padding: 2px 0 0; }
+  }
+}
+
+/* ==========================================================================
    Block colour schemes — `bs-light-scheme` (the default: hero mosaic,
    category columns, blog list) vs `bs-dark-scheme` (`bs-text-color-
    scheme="light"` listings, e.g. "Últimas notícias"). The boxed wrapper

@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Arena\Listing;
 
 final class Renderer {
-    private const LAYOUTS = ['modern-grid', 'mix', 'blog', 'grid', 'archive'];
+    private const LAYOUTS = ['modern-grid', 'modern-grid-1', 'mix', 'blog', 'grid', 'archive'];
     private const DEFAULT_LAYOUT = 'grid';
 
     /**
