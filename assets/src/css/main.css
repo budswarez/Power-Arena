@@ -1653,6 +1653,81 @@
     max-width: 100%;
   }
 
+  /* [accordions]/[accordion] — Publisher's "Resumo da matéria" (article
+     summary) box that opens nearly every imported article, now expanded
+     via Arena\Blocks\Accordions (native <details>/<summary>, zero JS —
+     see that class's own doc-comment) instead of rendering as literal
+     shortcode text. Bordered/tinted box echoing the reference's panel
+     look; title row in Oswald with a chevron that rotates on open, body
+     copy in Barlow at the same scale as the rest of .single-post-content
+     rather than introducing a 2nd type scale. No fixed widths anywhere
+     here, so it never overflows its 720px reading column at 360/420/768px
+     — it just wraps like the surrounding prose. */
+  .arena-accordion {
+    margin: 0 0 28px;
+    border: 1px solid #e7cfc2;
+    border-radius: 6px;
+    background: #fdf6f1;
+    overflow: hidden;
+  }
+  .arena-accordion__heading {
+    padding: 12px 18px;
+    font-family: var(--arena-font-head);
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: #fff;
+    background: var(--arena-accent);
+  }
+  .arena-accordion__item + .arena-accordion__item {
+    border-top: 1px solid #e7cfc2;
+  }
+  .arena-accordion__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    margin: 0;
+    font-family: var(--arena-font-head);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #1b1b1b;
+    cursor: pointer;
+    list-style: none;
+  }
+  .arena-accordion__title::-webkit-details-marker { display: none; }
+  .arena-accordion__title::after {
+    content: '';
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform .2s ease;
+  }
+  .arena-accordion__item[open] > .arena-accordion__title::after {
+    transform: rotate(-135deg);
+  }
+  .arena-accordion__title:focus-visible {
+    outline: 2px solid var(--arena-accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+  .arena-accordion__body {
+    padding: 0 18px 16px;
+    font-family: var(--arena-font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    color: #333;
+  }
+  .arena-accordion__body > :first-child { margin-top: 0; }
+  .arena-accordion__body > :last-child { margin-bottom: 0; }
+  .arena-accordion__body p { margin: 0 0 .6em; }
+
   /* Tags — get_the_tag_list() already wraps each tag in its own <a>; no
      extra per-tag markup needed for the chip look. */
   .post-tags {

@@ -13,5 +13,6 @@ final class Theme {
         Blocks\Shortcodes::register();
         Blocks\VcMap::register();
         Blocks\SingleImageHeading::register();
+        Blocks\Accordions::register();
     }
 }
