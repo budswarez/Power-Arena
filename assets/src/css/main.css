@@ -76,15 +76,25 @@
     width: 100%;
   }
 
-  /* The boxed 1200px content column is "the main content block" the
-     reference's black page background sits behind/around: it needs its own
-     light background so the blocks inside it (hero mosaic, category
-     columns, blog list) stay legible against the new black `body`. */
+  /* The boxed 1200px content column is transparent (the black `body` shows
+     through it) — matching how the reference actually works: the WRAPPER
+     is black end-to-end, and each CONTENT BLOCK below (hero mosaic,
+     category columns, blog list — `.bs-listing.bs-light-scheme`, further
+     down) supplies its own light background. This was previously reversed
+     (this wrapper painted white, with bottom padding on top of that) —
+     harmless while every block inside happened to be light, but the dark
+     full-bleed "Últimas notícias" row (`.bs-listing.bs-dark-scheme`) breaks
+     out of this column and is the LAST block on the page, so that white
+     fill + its bottom padding kept rendering as a leftover white band
+     between the dark row and the dark footer. No vertical padding here for
+     the same reason: any top/bottom inset on this element renders in
+     whatever colour it is (now black) rather than the intended block's own
+     colour — the light blocks add their own padding, and the last block
+     (light or dark) simply meets the footer with nothing in between. */
   .main-content.boxed {
     max-width: var(--arena-site-width);
     margin-inline: auto;
-    padding: 24px 15px 48px;
-    background: #fff;
+    padding-inline: 15px;
   }
 
   .main-content.boxed > *:first-child { margin-top: 0; }
@@ -550,7 +560,19 @@
      reference's `--publisher-spacing:50` variable applied as every
      block's own margin-bottom. */
   .bs-listing { margin: 0 0 var(--arena-block-spacing); }
-  .bs-listing:last-child { margin-bottom: 0; }
+
+  /* NOT `.bs-listing:last-child` — every `.bs-listing` is already the sole/
+     last child of its own WPBakery `.wpb_wrapper` (each `[bs-*]` shortcode
+     renders as the lone child of its `vc_column`), so that selector was
+     silently zeroing EVERY block's bottom margin, not just the page's
+     final one — invisible while `.main-content.boxed` painted one
+     continuous white background behind every block (no visible margin to
+     lose), but it meant the 50px rhythm above never actually rendered once
+     each block got its own background. The block that actually needs to
+     meet the footer with no trailing gap is the dark full-bleed row
+     (`bs-dark-scheme` — "Últimas notícias" on the home page, always the
+     last block before `</main>`), so zero it specifically instead. */
+  .bs-listing.bs-dark-scheme { margin-bottom: 0; }
 
   /* --- mix: 1 featured card (thumb + full meta, incl. comments) + a
      compact text list (small thumb, title, date only) below a divider —
@@ -903,13 +925,24 @@
 }
 
 /* ==========================================================================
-   Dark section — `bs-text-color-scheme="light"` listings (e.g. "Últimas
-   notícias") ask for light TEXT, which Arena\Listing\Renderer maps to the
-   `bs-dark-scheme` wrapper class; render those on a dark background.
-   `bs-light-scheme` (the default, everything else on the home page) stays
-   the plain light-background/dark-text look and needs no extra rule here.
+   Block colour schemes — `bs-light-scheme` (the default: hero mosaic,
+   category columns, blog list) vs `bs-dark-scheme` (`bs-text-color-
+   scheme="light"` listings, e.g. "Últimas notícias"). Since the boxed
+   wrapper (`.main-content.boxed`, above) is transparent/black, EACH BLOCK
+   supplies its own background — light blocks paint themselves white so the
+   boxed column still reads as a light page in the areas the reference
+   does; the dark block paints itself dark and additionally breaks full-
+   bleed out of the 1200px column.
    ========================================================================== */
 @layer components {
+  /* The light content blocks: own white background + breathing-room
+     padding (this used to be `.main-content.boxed`'s job — see the comment
+     there for why it moved down here). */
+  .bs-listing.bs-light-scheme {
+    background: #fff;
+    padding: 24px 15px;
+  }
+
   /* Full-bleed: `.bs-listing` sits inside `.main-content.boxed`
      (max-width 1200px, 15px side padding), but the reference's dark
      "Últimas notícias" row paints edge-to-edge across the viewport while
