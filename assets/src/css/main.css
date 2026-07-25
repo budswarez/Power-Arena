@@ -1332,6 +1332,16 @@
   }
 
   .bs-listing.bs-dark-scheme .post-summary { color: rgba(255, 255, 255, .85); }
+
+  /* The heading's grey continuation bar (`.h-flag-continuation`, above) is
+     a light-SURFACE grey (`#e6e6e6`) by default — on the dark section that
+     reads as an odd light-grey stripe against the `#1b1b1b` fill. Measured
+     against the reference's own light-text scheme (`border-color:
+     rgba(255,255,255,.15)` / heading `::after{opacity:.15;background:#fff}`
+     on that scheme): a translucent white, not a solid light grey. */
+  .bs-listing.bs-dark-scheme .h-flag-continuation {
+    background: rgba(255, 255, 255, .15);
+  }
 }
 
 /* ==========================================================================
@@ -1349,7 +1359,20 @@
    actual immediate child of `.vc_column-inner` here, there's no
    `.bs-vc-wrapper` class in Arena's DOM) — neutralize js_composer's own
    inset, then apply the reference's measured 30px once, in one place.
-   ========================================================================== */
+
+   EXCEPT for `bs-dark-scheme` ("Últimas notícias"): that block paints its
+   OWN full-bleed dark fill only on `.bs-listing` itself (not on the
+   `.wpb_wrapper` ancestor, which stays transparent) — so putting the 30px
+   gap on the wrapper, as done below for the ordinary light-scheme case,
+   would render it as plain (non-dark) space ABOVE the dark box, with the
+   heading landing flush against the box's own top edge once the fill
+   begins (no breathing room, reads as a seam between the light content
+   above and the dark section rather than as part of the dark section's own
+   title). Excluding it from both overrides instead lets its own
+   `padding-block` top inset (32px, see `.bs-dark-scheme` above) render AS
+   dark padding — the fill covers it since padding paints within the
+   border box — so the gap above the heading is visibly part of the dark
+   fill, matching the reference. */
 @layer components {
   /* !important: js_composer's own stylesheet (`js_composer.min.css`) is
      enqueued AFTER arena-main-css (verified in the rendered <head> — the
@@ -1359,9 +1382,11 @@
      `!important` for this same override. */
   .vc_col-has-fill > .vc_column-inner { padding-top: 0 !important; }
 
-  .vc_col-has-fill > .vc_column-inner > .wpb_wrapper { padding-top: 30px; }
+  .vc_col-has-fill > .vc_column-inner > .wpb_wrapper:not(:has(> .bs-listing.bs-dark-scheme)) {
+    padding-top: 30px;
+  }
 
-  .vc_col-has-fill .bs-listing { padding-top: 0 !important; }
+  .vc_col-has-fill .bs-listing:not(.bs-dark-scheme) { padding-top: 0 !important; }
 }
 
 /* ==========================================================================
