@@ -13,6 +13,14 @@ if (!defined('ABSPATH')) { exit; }
         <div class="footer-inner">
             <nav class="footer-menu-container" aria-label="<?php esc_attr_e('Menu do rodapé', 'arena'); ?>">
                 <?php
+                /*
+                 * `main-menu` is rendered a 3rd time here (desktop nav +
+                 * off-canvas panel in header.php already used it). Same
+                 * reasoning as the off-canvas render above: suppress the
+                 * per-item `id="menu-item-{ID}"` so it doesn't duplicate the
+                 * desktop nav's ids a 2nd time over.
+                 */
+                add_filter('nav_menu_item_id', '__return_empty_string');
                 wp_nav_menu([
                     'theme_location' => 'main-menu',
                     'container'      => false,
@@ -20,6 +28,7 @@ if (!defined('ABSPATH')) { exit; }
                     'depth'          => 1,
                     'fallback_cb'    => false,
                 ]);
+                remove_filter('nav_menu_item_id', '__return_empty_string');
                 ?>
             </nav>
 

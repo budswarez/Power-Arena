@@ -91,6 +91,16 @@ if (!defined('ABSPATH')) { exit; }
 
     <nav class="offcanvas-nav" aria-label="<?php esc_attr_e('Menu principal (móvel)', 'arena'); ?>">
         <?php
+        /*
+         * `main-menu` is rendered a 2nd time here (desktop nav above is the
+         * 1st). Walker_Nav_Menu prints a per-item `id="menu-item-{ID}"` that
+         * MegaMenuWalker doesn't touch, so without this filter the exact
+         * same id would appear twice in the document — invalid HTML, and it
+         * breaks any `aria-controls="menu-item-…"`/fragment link relying on
+         * ids being unique. Suppressed only for this secondary render; the
+         * desktop nav above keeps its real ids.
+         */
+        add_filter('nav_menu_item_id', '__return_empty_string');
         wp_nav_menu([
             'theme_location' => 'main-menu',
             'container'      => false,
@@ -99,6 +109,7 @@ if (!defined('ABSPATH')) { exit; }
             'walker'         => new \Arena\Menus\MegaMenuWalker(),
             'fallback_cb'    => false,
         ]);
+        remove_filter('nav_menu_item_id', '__return_empty_string');
         ?>
     </nav>
 </div>
