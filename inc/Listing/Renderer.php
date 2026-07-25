@@ -105,12 +105,39 @@ final class Renderer {
      */
     private static function buildOptions(array $atts): array {
         return [
-            'heading_html'   => self::renderHeading($atts),
-            'columns'        => Attrs::intOrDefault($atts['columns'] ?? null, 4, 1),
-            'featured_image' => self::boolOrDefault($atts['featured_image'] ?? null, true),
-            'show_excerpt'   => self::boolOrDefault($atts['show_excerpt'] ?? null, true),
-            'dark_scheme'    => self::isDarkScheme($atts['bs-text-color-scheme'] ?? null),
+            'heading_html'      => self::renderHeading($atts),
+            'columns'           => Attrs::intOrDefault($atts['columns'] ?? null, 4, 1),
+            'featured_image'    => self::boolOrDefault($atts['featured_image'] ?? null, true),
+            'show_excerpt'      => self::boolOrDefault($atts['show_excerpt'] ?? null, true),
+            'dark_scheme'       => self::isDarkScheme($atts['bs-text-color-scheme'] ?? null),
+            'visibility_class'  => self::visibilityClass($atts),
         ];
+    }
+
+    /**
+     * `bs-show-desktop`/`bs-show-tablet`/`bs-show-phone` (whole-branch
+     * review, minor finding #9): per-breakpoint visibility, each defaulting
+     * to shown (`true`) — set any to `"0"` and the block's own wrapper
+     * picks up a `.bs-listing-hide-{breakpoint}` class, matched by a plain
+     * `display: none` media-query rule in main.css. Cheap on purpose: no
+     * JS, no layout-shift concern beyond what any responsive `display:
+     * none` already implies.
+     *
+     * @param array<string, mixed> $atts
+     */
+    private static function visibilityClass(array $atts): string {
+        $classes = [];
+        if (!self::boolOrDefault($atts['bs-show-desktop'] ?? null, true)) {
+            $classes[] = 'bs-listing-hide-desktop';
+        }
+        if (!self::boolOrDefault($atts['bs-show-tablet'] ?? null, true)) {
+            $classes[] = 'bs-listing-hide-tablet';
+        }
+        if (!self::boolOrDefault($atts['bs-show-phone'] ?? null, true)) {
+            $classes[] = 'bs-listing-hide-phone';
+        }
+
+        return implode(' ', $classes);
     }
 
     /**
@@ -149,6 +176,10 @@ final class Renderer {
      * @param array<string, mixed> $atts
      */
     private static function renderHeading(array $atts): string {
+        if (self::boolOrDefault($atts['hide_title'] ?? null, false)) {
+            return '';
+        }
+
         $title = isset($atts['title']) ? trim((string) $atts['title']) : '';
         if ($title === '') {
             return '';
@@ -208,8 +239,8 @@ final class Renderer {
 
     /**
      * Inline SVG speech-bubble icon printed before the comment count in a
-     * card's `.post-meta` (`template-parts/card/featured.php` and
-     * `card/excerpt.php`) — measured against the reference, which shows a
+     * card's `.post-meta` (`template-parts/card/meta.php`, shared by every
+     * card) — measured against the reference, which shows a
      * small bubble glyph before the number (e.g. "💬 0"), never a bare
      * digit. A shared helper (rather than duplicating the markup in both
      * card templates) so there's exactly one clean-room shape to maintain;

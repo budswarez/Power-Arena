@@ -66,6 +66,15 @@ final class Query {
         $postIds = Attrs::parseIdList(isset($atts['post_ids']) ? (string) $atts['post_ids'] : '');
         if ($postIds !== []) {
             $args['post__in'] = $postIds;
+            // Whole-branch review, minor finding #9: `post_ids` is a
+            // curated, editor-ordered pick — without `orderby: 'post__in'`,
+            // WP_Query re-sorts the result by `$args['orderby']` (date, or
+            // even `rand`) instead of respecting that order, silently
+            // undoing the curation. `post__in` always wins here regardless
+            // of `order_by`/`order`, since an explicit curated list is a
+            // stronger signal of intended order than the shortcode's
+            // generic date/rand default.
+            $args['orderby'] = 'post__in';
         }
 
         $timeFilter = isset($atts['time_filter']) ? (string) $atts['time_filter'] : '';

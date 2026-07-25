@@ -45,6 +45,23 @@ class QueryTest extends WP_UnitTestCase {
         $this->assertSame([1, 2, 3], $args['post__in']);
     }
 
+    /**
+     * Minor finding #9 (whole-branch review): `post_ids` is a curated,
+     * editor-ordered pick — without `orderby: 'post__in'`, WP_Query
+     * silently re-sorts it by the shortcode's normal `order_by` (date, or
+     * even `rand`), undoing the curation.
+     */
+    public function test_post_ids_sets_orderby_post_in_overriding_order_by(): void {
+        $args = Query::args(['post_ids' => '3,1,2', 'order_by' => 'rand']);
+        $this->assertSame([3, 1, 2], $args['post__in']);
+        $this->assertSame('post__in', $args['orderby']);
+    }
+
+    public function test_without_post_ids_orderby_is_unaffected(): void {
+        $args = Query::args(['order_by' => 'date']);
+        $this->assertSame('date', $args['orderby']);
+    }
+
     public function test_empty_category_omits_cat_key(): void {
         $args = Query::args(['category' => '']);
         $this->assertArrayNotHasKey('cat', $args);

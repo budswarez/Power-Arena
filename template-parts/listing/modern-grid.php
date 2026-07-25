@@ -24,6 +24,7 @@ $query = $args['query'] instanceof WP_Query ? $args['query'] : new WP_Query(['po
 $options = is_array($args['options'] ?? null) ? $args['options'] : [];
 
 $scheme = ($options['dark_scheme'] ?? false) ? 'bs-dark-scheme' : 'bs-light-scheme';
+$visibilityClass = (string) ($options['visibility_class'] ?? '');
 
 $firstRowSize = 2;
 $otherRowSize = 3;
@@ -56,7 +57,7 @@ if ($query->have_posts()) {
     }
 }
 ?>
-<div class="bs-listing bs-listing-modern-grid <?php echo esc_attr($scheme); ?>">
+<div class="bs-listing bs-listing-modern-grid <?php echo esc_attr(trim($scheme . ' ' . $visibilityClass)); ?>">
     <?php echo $options['heading_html'] ?? ''; ?>
     <div class="listing listing-modern-grid clearfix">
         <?php if ($rows !== []): ?>

@@ -49,10 +49,6 @@ $permalink = get_permalink($postId);
         <div class="title">
             <a href="<?php echo esc_url($permalink); ?>" class="post-url post-title"><?php echo esc_html(get_the_title($postId)); ?></a>
         </div>
-        <div class="post-meta">
-            <span class="time">
-                <time class="post-published updated" datetime="<?php echo esc_attr(get_the_date('c', $postId)); ?>"><?php echo esc_html(\Arena\Listing\Renderer::articleDate($postId)); ?></time>
-            </span>
-        </div>
+        <?php get_template_part('template-parts/card/meta', null, ['post_id' => $postId, 'show_author' => false, 'show_comments' => false]); ?>
     </div>
 </article>

@@ -19,8 +19,9 @@ $query = $args['query'] instanceof WP_Query ? $args['query'] : new WP_Query(['po
 $options = is_array($args['options'] ?? null) ? $args['options'] : [];
 
 $scheme = ($options['dark_scheme'] ?? false) ? 'bs-dark-scheme' : 'bs-light-scheme';
+$visibilityClass = (string) ($options['visibility_class'] ?? '');
 ?>
-<div class="bs-listing bs-listing-archive <?php echo esc_attr($scheme); ?>">
+<div class="bs-listing bs-listing-archive <?php echo esc_attr(trim($scheme . ' ' . $visibilityClass)); ?>">
     <?php echo $options['heading_html'] ?? ''; ?>
     <div class="listing listing-blog listing-blog-5 clearfix">
         <?php if ($query->have_posts()): ?>
@@ -29,9 +30,10 @@ $scheme = ($options['dark_scheme'] ?? false) ? 'bs-dark-scheme' : 'bs-light-sche
             while ($query->have_posts()):
                 $query->the_post();
                 $index++;
-                get_template_part('template-parts/card/blog5', null, [
+                get_template_part('template-parts/card/list', null, [
                     'is_first' => $index === 1,
                     'options'  => $options,
+                    'variant'  => 'archive',
                 ]);
             endwhile;
             ?>

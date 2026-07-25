@@ -15,9 +15,10 @@ if (!defined('ABSPATH')) { exit; }
  * category restriction) when the category query yields fewer than 2 posts —
  * covers posts with no category, or a category too thin to fill the section.
  *
- * Cards reuse template-parts/card/blog5.php (the same "blog-5" card used by
- * archive/search listings) rather than duplicating card markup — this
- * partial only owns the query + the section wrapper/heading.
+ * Cards reuse template-parts/card/list.php (`variant => 'archive'`, the
+ * same "blog-5" card used by archive/search listings) rather than
+ * duplicating card markup — this partial only owns the query + the
+ * section wrapper/heading.
  *
  * Renders NOTHING (no empty heading/section) when there are zero candidates
  * either way — e.g. a site with only the current post.
@@ -79,7 +80,7 @@ if (!$relatedQuery->have_posts()) {
         <?php
         while ($relatedQuery->have_posts()):
             $relatedQuery->the_post();
-            get_template_part('template-parts/card/blog5', null, ['options' => []]);
+            get_template_part('template-parts/card/list', null, ['options' => [], 'variant' => 'archive']);
         endwhile;
         ?>
     </div>

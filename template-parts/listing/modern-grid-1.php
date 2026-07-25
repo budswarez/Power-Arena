@@ -37,6 +37,7 @@ $query = $args['query'] instanceof WP_Query ? $args['query'] : new WP_Query(['po
 $options = is_array($args['options'] ?? null) ? $args['options'] : [];
 
 $scheme = ($options['dark_scheme'] ?? false) ? 'bs-dark-scheme' : 'bs-light-scheme';
+$visibilityClass = (string) ($options['visibility_class'] ?? '');
 
 $tiles = [];
 if ($query->have_posts()) {
@@ -59,7 +60,7 @@ $tile2 = $tiles[1] ?? null;
 $tile3 = $tiles[2] ?? null;
 $tile4 = $tiles[3] ?? null;
 ?>
-<div class="bs-listing bs-listing-modern-grid-1 <?php echo esc_attr($scheme); ?>">
+<div class="bs-listing bs-listing-modern-grid-1 <?php echo esc_attr(trim($scheme . ' ' . $visibilityClass)); ?>">
     <?php echo $options['heading_html'] ?? ''; ?>
     <div class="listing listing-modern-grid-1 clearfix">
         <?php if ($tile1 !== null): ?>

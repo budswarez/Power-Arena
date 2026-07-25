@@ -16,6 +16,12 @@ final class Shortcodes {
         'order'                 => 'DESC',
         'heading_color'         => '',
         'title'                 => '',
+        // Whole-branch review, minor finding #9: an editor can set
+        // `hide_title="1"` on a block that ALSO has a non-empty `title` —
+        // Publisher hides the heading in that case, but this used to
+        // ignore `hide_title` entirely and render it anyway. See
+        // Renderer::renderHeading().
+        'hide_title'            => '0',
         'category'              => '',
         'tag'                   => '',
         'offset'                => '',
@@ -24,6 +30,13 @@ final class Shortcodes {
         'time_filter'           => '',
         'bs-text-color-scheme'  => '',
         'disable_duplicate'     => '0',
+        // Per-breakpoint visibility (minor finding #9) — cheap CSS classes
+        // added to the block's own wrapper; see
+        // Renderer::visibilityClass() and the `.bs-listing-hide-*` rules in
+        // main.css for the 3 breakpoints these map to.
+        'bs-show-desktop'       => '1',
+        'bs-show-tablet'        => '1',
+        'bs-show-phone'         => '1',
     ];
 
     /**
@@ -88,6 +101,27 @@ final class Shortcodes {
         return Renderer::render('blog', $atts);
     }
 
+    /**
+     * `tabs="cat_filter"` (whole-branch review, minor finding #9): on the
+     * home's "Últimas notícias" grid, Publisher renders a category-filter
+     * tab strip above the grid (client-side re-filtering the same block
+     * between a few categories without a page reload) when this attribute
+     * is set. `shortcode_atts()` silently drops it today (not in
+     * COMMON_DEFAULTS), same as before this pass — DECISION: left out of
+     * scope, not implemented, and documented here rather than silently
+     * left alone. Reasoning: this isn't a static-markup gap like
+     * `hide_title`/`bs-show-*`/`post_ids` ordering (a few lines each); a
+     * real `cat_filter` needs its OWN client-side re-query (either a fresh
+     * AJAX request per tab, or pre-rendering every tab's grid up front and
+     * toggling visibility), a new REST/admin-ajax endpoint or a
+     * substantially larger upfront payload, new markup for the tab strip
+     * itself, and its own JS + a11y (tabs need roving tabindex/
+     * `aria-selected`, not just a click handler) — a feature-sized addition
+     * that doesn't belong in a "minor findings" polish pass. No regression
+     * either way: the grid renders exactly as it does today (all posts,
+     * unfiltered, no tab strip), just as an unfiltered attribute typo
+     * would.
+     */
     /** @param array<string, mixed>|string $atts */
     public static function renderGrid(array|string $atts): string {
         $atts = shortcode_atts(

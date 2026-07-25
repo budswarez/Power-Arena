@@ -129,6 +129,55 @@ class RendererTest extends WP_UnitTestCase {
     }
 
     /**
+     * Minor finding #9 (whole-branch review): `hide_title="1"` used to be
+     * silently dropped by `shortcode_atts()` (not in the defaults list at
+     * all) — a block with a non-empty `title` still rendered the heading
+     * even when the editor had explicitly asked to hide it.
+     */
+    public function test_render_hide_title_suppresses_heading_even_with_a_title_set(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Hidden Heading Post', 'post_status' => 'publish']);
+
+        $html = Renderer::render('grid', [
+            'count'      => '1',
+            'title'      => 'Destaques',
+            'hide_title' => '1',
+        ]);
+
+        $this->assertStringNotContainsString('Destaques', $html);
+        $this->assertStringNotContainsString('section-heading', $html);
+    }
+
+    /**
+     * Minor finding #9: `bs-show-desktop`/`bs-show-tablet`/`bs-show-phone`
+     * used to be silently dropped by `shortcode_atts()` — the block always
+     * rendered visible on every breakpoint no matter what an editor set
+     * them to. Now they add a cheap `.bs-listing-hide-*` CSS class to the
+     * block's own wrapper (main.css hides it at the matching breakpoint).
+     */
+    public function test_render_bs_show_flags_add_hide_classes_to_wrapper(): void {
+        $this->factory()->post->create(['post_status' => 'publish']);
+
+        $html = Renderer::render('grid', [
+            'count'           => '1',
+            'bs-show-desktop' => '0',
+            'bs-show-tablet'  => '1',
+            'bs-show-phone'   => '0',
+        ]);
+
+        $this->assertStringContainsString('bs-listing-hide-desktop', $html);
+        $this->assertStringContainsString('bs-listing-hide-phone', $html);
+        $this->assertStringNotContainsString('bs-listing-hide-tablet', $html);
+    }
+
+    public function test_render_bs_show_flags_default_to_all_visible(): void {
+        $this->factory()->post->create(['post_status' => 'publish']);
+
+        $html = Renderer::render('grid', ['count' => '1']);
+
+        $this->assertStringNotContainsString('bs-listing-hide-', $html);
+    }
+
+    /**
      * FIX B.4: `heading_color` reaches `style="color:..."` with only
      * `esc_attr()` guarding it — that stops it breaking OUT of the
      * attribute, but not from injecting extra CSS declarations inside it.

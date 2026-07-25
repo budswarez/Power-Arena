@@ -34,7 +34,6 @@ $showThumb = \Arena\Listing\Renderer::hasUsableThumbnail($postId);
 $categories = get_the_category($postId);
 $primaryCategory = $categories !== [] ? $categories[0] : null;
 
-$authorId = (int) get_the_author_meta('ID');
 $permalink = get_permalink($postId);
 ?>
 <article <?php post_class('listing-item listing-item-hero hero-tile' . ($compact ? ' hero-tile-compact' : '')); ?>>
@@ -68,16 +67,7 @@ $permalink = get_permalink($postId);
             <a href="<?php echo esc_url($permalink); ?>" class="post-url post-title"><?php echo esc_html(get_the_title($postId)); ?></a>
         </h2>
         <?php if (!$compact): ?>
-            <div class="post-meta">
-                <?php if ($authorId > 0): ?>
-                    <a class="post-author-a" href="<?php echo esc_url(get_author_posts_url($authorId)); ?>">
-                        <i class="post-author author"><?php echo esc_html(get_the_author()); ?></i>
-                    </a>
-                <?php endif; ?>
-                <span class="time">
-                    <time class="post-published updated" datetime="<?php echo esc_attr(get_the_date('c', $postId)); ?>"><?php echo esc_html(\Arena\Listing\Renderer::articleDate($postId)); ?></time>
-                </span>
-            </div>
+            <?php get_template_part('template-parts/card/meta', null, ['post_id' => $postId, 'show_comments' => false]); ?>
         <?php endif; ?>
     </div>
 </article>
