@@ -397,7 +397,11 @@
     list-style: none;
   }
 
-  .top-menu.menu a { padding: 4px 0; color: #b0b0b0; }
+  /* padding bumped 4px->5px top/bottom: at .85rem/13.6px the link's own
+     box (no explicit line-height) sits right at the 24px touch-target
+     floor depending on the browser's exact font-metrics line-height for
+     Barlow; the extra 2px buys margin without a visible height change. */
+  .top-menu.menu a { padding: 5px 0; color: #b0b0b0; }
   .top-menu.menu a:hover,
   .top-menu.menu a:focus { color: var(--arena-accent); }
 
@@ -957,7 +961,9 @@
     font-size: .85rem;
   }
 
-  .footer-menu.menu a { color: #ccc; }
+  /* padding: was unset, so the link's own box was just its ~16px
+     line-height — well under the 24x24px touch-target minimum. */
+  .footer-menu.menu a { display: inline-block; padding: 5px 0; color: #ccc; }
   .footer-menu.menu a:hover { color: #fff; }
 
   .copy-footer {
@@ -2100,7 +2106,16 @@
     font-size: 14px;
   }
   .next-prev .nav-next { text-align: right; }
-  .next-prev a { color: #1b1b1b; font-weight: 600; }
+  /* `inline-block` + vertical padding (was a plain inline link, whose box
+     is only as tall as its line-height, ~17px at this 14px size — under
+     the 24x24px touch-target minimum) so the link's own hit area clears
+     24px without changing its visible text size/position. */
+  .next-prev a {
+    display: inline-block;
+    padding: 6px 0;
+    color: #1b1b1b;
+    font-weight: 600;
+  }
   .next-prev a:hover { color: var(--arena-accent); }
 
   @media (max-width: 420px) {
