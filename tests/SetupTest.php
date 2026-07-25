@@ -89,4 +89,43 @@ class SetupTest extends WP_UnitTestCase {
 
         $this->assertSame(['existing-class'], $classes);
     }
+
+    /**
+     * GAP C: templates call __()/esc_html_e() with the `arena` text domain
+     * throughout, but nothing ever loaded a translation file for it — the
+     * hook is the genuinely-assertable part (Setup::register() runs once,
+     * at theme boot, so re-invoking load_theme_textdomain() directly here
+     * wouldn't prove the theme actually wires it up on 'after_setup_theme'
+     * the way production does).
+     */
+    public function test_registers_textdomain_loader_on_after_setup_theme(): void {
+        $this->assertNotFalse(
+            has_action('after_setup_theme', [Setup::class, 'loadTextdomain']),
+            'Setup::register() must hook loadTextdomain() onto after_setup_theme.'
+        );
+    }
+
+    /**
+     * Arena\Setup::loadTextdomain() must point load_theme_textdomain() at
+     * the theme's own languages/ dir. WordPress 6.1+ resolves textdomain
+     * paths lazily via WP_Textdomain_Registry rather than eagerly reading
+     * a .mo file when load_theme_textdomain() itself runs — so the
+     * genuinely-assertable outcome is the path registered with that
+     * registry (WP_Textdomain_Registry::set_custom_path(), called
+     * internally by load_theme_textdomain()), not an eager file read.
+     */
+    public function test_load_textdomain_registers_the_theme_languages_directory(): void {
+        global $wp_textdomain_registry;
+
+        $result = Setup::loadTextdomain();
+        $this->assertTrue($result);
+
+        $path = $wp_textdomain_registry->get('arena', get_locale());
+
+        $this->assertNotFalse($path, 'The "arena" domain must resolve to a registered languages directory.');
+        $this->assertStringContainsString(
+            str_replace('\\', '/', get_template_directory() . '/languages'),
+            str_replace('\\', '/', (string) $path)
+        );
+    }
 }

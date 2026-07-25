@@ -5,16 +5,39 @@ namespace Arena;
 
 final class Setup {
     public static function register(): void {
+        add_action('after_setup_theme', [self::class, 'loadTextdomain']);
         add_action('after_setup_theme', [self::class, 'themeSupports']);
         add_action('after_setup_theme', [self::class, 'menusAndSizes']);
         add_action('widgets_init', [self::class, 'sidebars']);
         add_filter('body_class', [self::class, 'shellBodyClasses']);
     }
 
+    /**
+     * GAP C: templates throughout the theme call __()/esc_html_e() with the
+     * `arena` text domain (e.g. header.php's skip link, all the pt-BR
+     * strings in template-parts/), but nothing ever loaded a .mo/.po file
+     * for it — every string silently rendered its raw (already pt-BR)
+     * source with no actual translation lookup happening. `languages/`
+     * holds the generated `arena.pot` (source template — see README.md for
+     * the `wp i18n make-pot` command) that future `.po`/`.mo` translations
+     * are built from.
+     */
+    public static function loadTextdomain(): bool {
+        return load_theme_textdomain('arena', get_template_directory() . '/languages');
+    }
+
     public static function themeSupports(): void {
         add_theme_support('title-tag');
         add_theme_support('post-thumbnails');
-        add_theme_support('html5', ['search-form', 'gallery', 'caption', 'style', 'script']);
+        // 'comment-list'/'comment-form' (GAP D): opts wp_list_comments()/
+        // comment_form() into WP core's semantic HTML5 output
+        // (Walker_Comment::html5_comment() — <article>/<footer>, and the
+        // built-in threaded reply link/script wiring) instead of the
+        // legacy XHTML fallback markup comments.php would otherwise get.
+        add_theme_support('html5', [
+            'search-form', 'gallery', 'caption', 'style', 'script',
+            'comment-list', 'comment-form',
+        ]);
     }
 
     /**

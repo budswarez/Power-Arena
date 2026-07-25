@@ -1,0 +1,322 @@
+# Copyright (C) 2026 Pichau Arena
+# This file is distributed under the Proprietary.
+msgid ""
+msgstr ""
+"Project-Id-Version: Arena 0.1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/theme/arena\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-07-25T14:53:18+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: arena\n"
+
+#. Theme Name of the theme
+#: style.css
+msgid "Arena"
+msgstr ""
+
+#. Theme URI of the theme
+#: style.css
+msgid "https://www.pichauarena.com.br/"
+msgstr ""
+
+#. Description of the theme
+#: style.css
+msgid "Tema moderno e performático (reconstrução limpa), foco em Core Web Vitals."
+msgstr ""
+
+#. Author of the theme
+#: style.css
+msgid "Pichau Arena"
+msgstr ""
+
+#: 404.php:39
+msgid "Página não encontrada"
+msgstr ""
+
+#: 404.php:41
+msgid "O conteúdo que você procura não existe ou foi movido. Use a busca abaixo ou confira os posts recentes."
+msgstr ""
+
+#: 404.php:48
+#: search.php:87
+msgid "Posts recentes"
+msgstr ""
+
+#. translators: %s: title of the post this attachment belongs to.
+#: attachment.php:98
+#, php-format
+msgid "← Voltar para %s"
+msgstr ""
+
+#. translators: %s: number of comments, formatted for the current locale.
+#: comments.php:49
+#, php-format
+msgid "%s comentário"
+msgid_plural "%s comentários"
+msgstr[0] ""
+msgstr[1] ""
+
+#: comments.php:77
+msgid "Deixe um comentário"
+msgstr ""
+
+#. translators: %s: author of the comment being replied to.
+#: comments.php:79
+#, php-format
+msgid "Deixe uma resposta para %s"
+msgstr ""
+
+#: comments.php:80
+msgid "Cancelar resposta"
+msgstr ""
+
+#: comments.php:81
+msgid "Publicar comentário"
+msgstr ""
+
+#: comments.php:83
+msgid "Comentário"
+msgstr ""
+
+#: comments.php:88
+msgid "Nome"
+msgstr ""
+
+#: comments.php:92
+msgid "E-mail"
+msgstr ""
+
+#: comments.php:96
+msgid "Site"
+msgstr ""
+
+#: comments.php:101
+msgid "Seu e-mail não será publicado."
+msgstr ""
+
+#: comments.php:106
+msgid "Os comentários estão desativados."
+msgstr ""
+
+#: footer.php:14
+msgid "Menu do rodapé"
+msgstr ""
+
+#: header.php:32
+msgid "Pular para o conteúdo"
+msgstr ""
+
+#: header.php:48
+#: header.php:50
+msgid "Abrir menu"
+msgstr ""
+
+#: header.php:54
+msgid "Menu principal"
+msgstr ""
+
+#: header.php:86
+msgid "Menu"
+msgstr ""
+
+#: header.php:87
+msgid "Fechar menu"
+msgstr ""
+
+#: header.php:92
+msgid "Menu principal (móvel)"
+msgstr ""
+
+#: inc/Pagination.php:45
+msgid "Anterior"
+msgstr ""
+
+#: inc/Pagination.php:46
+msgid "Próxima"
+msgstr ""
+
+#: inc/Pagination.php:54
+msgid "Navegação de páginas"
+msgstr ""
+
+#: inc/Setup.php:51
+msgid "Menu Principal"
+msgstr ""
+
+#: inc/Setup.php:52
+msgid "Menu Principal (topo)"
+msgstr ""
+
+#: inc/Setup.php:53
+msgid "Menu Superior"
+msgstr ""
+
+#: inc/Setup.php:54
+msgid "Menu Responsivo"
+msgstr ""
+
+#: inc/Setup.php:62
+msgid "Sidebar Principal"
+msgstr ""
+
+#. translators: %s: the searched term.
+#: search.php:49
+#, php-format
+msgid "Resultados para \"%s\""
+msgstr ""
+
+#. translators: %d: number of results found.
+#: search.php:58
+#, php-format
+msgid "%d resultado encontrado"
+msgid_plural "%d resultados encontrados"
+msgstr[0] ""
+msgstr[1] ""
+
+#: search.php:81
+msgid "Não encontramos nenhum resultado para essa busca. Tente outros termos ou confira os posts recentes abaixo."
+msgstr ""
+
+#: searchform.php:64
+msgid "Buscar por:"
+msgstr ""
+
+#: searchform.php:71
+msgid "Buscar…"
+msgstr ""
+
+#: searchform.php:75
+#: template-parts/header/search.php:27
+#: template-parts/header/search.php:29
+msgid "Buscar"
+msgstr ""
+
+#: single.php:49
+msgid "Páginas:"
+msgstr ""
+
+#: template-parts/archive-header.php:62
+msgid "Navegando pela Categoria"
+msgstr ""
+
+#: template-parts/archive-header.php:64
+msgid "Navegando pela Tag"
+msgstr ""
+
+#: template-parts/archive-header.php:66
+msgid "Autor"
+msgstr ""
+
+#: template-parts/archive-header.php:68
+msgid "Navegando pelo Arquivo"
+msgstr ""
+
+#: template-parts/archive-header.php:70
+msgid "Navegando pelo Termo"
+msgstr ""
+
+#: template-parts/archive-header.php:120
+msgid "Feed RSS"
+msgstr ""
+
+#: template-parts/header/topbar.php:13
+msgid "Menu superior"
+msgstr ""
+
+#: template-parts/listing/archive.php:39
+#: template-parts/listing/blog.php:35
+#: template-parts/listing/grid.php:42
+#: template-parts/listing/mix.php:56
+#: template-parts/listing/modern-grid-1.php:85
+#: template-parts/listing/modern-grid.php:73
+msgid "Nenhum post encontrado."
+msgstr ""
+
+#: template-parts/single/related.php:75
+msgid "Veja também"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Pequeno"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Médio"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Grande"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Extra grande"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "Barlow"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "Oswald"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Pequeno"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Médio"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Grande"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Extra grande"
+msgstr ""
+
+#: theme.json
+msgctxt "Color name"
+msgid "Hardware"
+msgstr ""
+
+#: theme.json
+msgctxt "Color name"
+msgid "VALORANT"
+msgstr ""
+
+#: theme.json
+msgctxt "Color name"
+msgid "Free Fire"
+msgstr ""
+
+#: theme.json
+msgctxt "Color name"
+msgid "Últimas notícias"
+msgstr ""
+
+#: theme.json
+msgctxt "Color name"
+msgid "Dark"
+msgstr ""
+
+#: theme.json
+msgctxt "Color name"
+msgid "Acento (texto acessível)"
+msgstr ""
