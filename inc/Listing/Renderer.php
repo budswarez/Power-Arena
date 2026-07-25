@@ -95,6 +95,32 @@ final class Renderer {
         return is_string($link) ? $link : '';
     }
 
+    /**
+     * Guards `has_post_thumbnail()`: also confirms the attached file still
+     * exists on disk. A post can carry a `_thumbnail_id` that points at an
+     * attachment whose file never made it into `wp-content/uploads` (a
+     * partial import, media not synced from the live site) — in that case
+     * `has_post_thumbnail()` still returns true, and a card template that
+     * trusts it alone renders an `<img>` with a 404 src: the browser shows
+     * a broken-image box instead of the card's intended placeholder.
+     * Card templates should call this instead of `has_post_thumbnail()`
+     * directly, and fall back to a `.thumb-placeholder` block when false.
+     */
+    public static function hasUsableThumbnail(int $postId): bool {
+        if (!has_post_thumbnail($postId)) {
+            return false;
+        }
+
+        $attachmentId = (int) get_post_thumbnail_id($postId);
+        if ($attachmentId <= 0) {
+            return false;
+        }
+
+        $file = get_attached_file($attachmentId);
+
+        return is_string($file) && $file !== '' && file_exists($file);
+    }
+
     private static function intOrDefault(mixed $value, int $default): int {
         if ($value === null || $value === '' || !is_numeric($value)) {
             return $default;

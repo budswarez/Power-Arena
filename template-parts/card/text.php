@@ -22,7 +22,7 @@ if (!$postId) {
 }
 
 $isFirst = (bool) ($args['is_first'] ?? false);
-$showThumb = has_post_thumbnail($postId);
+$showThumb = \Arena\Listing\Renderer::hasUsableThumbnail($postId);
 
 $permalink = get_permalink($postId);
 ?>

@@ -40,7 +40,7 @@ $isFirst  = (bool) ($args['is_first'] ?? false);
 $showMeta = (bool) ($args['show_meta'] ?? true);
 $showComments = (bool) ($args['show_comments'] ?? false);
 $showBadge = (bool) ($args['show_badge'] ?? true);
-$showThumb = has_post_thumbnail($postId);
+$showThumb = \Arena\Listing\Renderer::hasUsableThumbnail($postId);
 
 $categories = get_the_category($postId);
 $primaryCategory = $showBadge && $categories !== [] ? $categories[0] : null;
@@ -74,6 +74,8 @@ $commentCount = (int) get_comments_number($postId);
                     echo get_the_post_thumbnail($postId, 'arena-card', $imgAttr);
                     ?>
                 </a>
+            <?php else: ?>
+                <div class="img-cont thumb-placeholder" aria-hidden="true"></div>
             <?php endif; ?>
         </div>
         <div class="content-container">

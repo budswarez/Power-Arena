@@ -29,7 +29,7 @@ if (!$postId) {
 
 $isFirst = (bool) ($args['is_first'] ?? false);
 $compact = (bool) ($args['compact'] ?? false);
-$showThumb = has_post_thumbnail($postId);
+$showThumb = \Arena\Listing\Renderer::hasUsableThumbnail($postId);
 
 $categories = get_the_category($postId);
 $primaryCategory = $categories !== [] ? $categories[0] : null;
@@ -53,6 +53,8 @@ $permalink = get_permalink($postId);
             echo get_the_post_thumbnail($postId, 'arena-card', $imgAttr);
             ?>
         </a>
+    <?php else: ?>
+        <div class="img-cont hero-tile__link thumb-placeholder" aria-hidden="true"></div>
     <?php endif; ?>
     <?php if (!$compact && $primaryCategory): ?>
         <div class="term-badges floated">

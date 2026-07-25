@@ -64,13 +64,18 @@
    Header (header-style-2) — top bar, branding, sticky mega menu, search
    ========================================================================== */
 @layer components {
+  /* Measured on the reference (header-style-2): the whole header block —
+     topbar row AND branding row — sits on a near-black background, not
+     white. This is load-bearing: the brand mark is a near-white wordmark
+     + red icon, so it's only legible on a dark surface. */
   .site-header.header-style-2 {
+    background-color: #0b0b0b;
     border-bottom: 3px solid #dedede;
   }
 
   .top-bar {
-    background: #f7f7f7;
-    border-bottom: 1px solid rgba(0, 0, 0, .07);
+    background-color: #0b0b0b;
+    border-bottom: 1px solid #1e1e1e;
     font-size: .85rem;
   }
 
@@ -89,7 +94,9 @@
     list-style: none;
   }
 
-  .top-menu.menu a { padding: 4px 0; }
+  .top-menu.menu a { padding: 4px 0; color: #b0b0b0; }
+  .top-menu.menu a:hover,
+  .top-menu.menu a:focus { color: var(--arena-accent); }
 
   /* Row 1: branding only (reference `.header-inner`, `header-style-2`
      padding measured `20px 0`). The mega menu is its own full-width band
@@ -112,17 +119,21 @@
      header-style-2): the boxed logo mark, not the plain text fallback. */
   #site-branding .site-logo { max-height: 64px; width: auto; }
 
+  /* Text fallback (no logo set via the options page) has to read against
+     the same near-black branding row as the image logo, so it needs its
+     own light color rather than inheriting body's dark text. */
   #site-branding .site-name {
     font-family: var(--arena-font-head);
     font-size: 1.4rem;
     font-weight: 600;
     text-transform: uppercase;
+    color: #e0e0e0;
   }
 
   #site-branding .site-description {
     font-family: var(--arena-font-body);
     font-size: .8rem;
-    color: #777;
+    color: #999;
   }
 
   /* Row 2: the mega menu band. Measured: header-style-2's
@@ -611,6 +622,19 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* Neutral branded placeholder for a card whose thumbnail is missing OR
+     unusable (thumbnail ID set but the attached file is gone — common on
+     dev/import content) — see Arena\Listing\Renderer::hasUsableThumbnail().
+     Card templates render this div in place of the `<a class="img-cont">`
+     /`<a class="img-holder">` markup so a bad thumbnail never falls
+     through as an empty box or a broken-image icon. Overrides the plain
+     `#ddd` background above at equal specificity via the extra class. */
+  .listing-item .img-cont.thumb-placeholder,
+  .listing-item .img-holder.thumb-placeholder,
+  .hero-tile .img-cont.thumb-placeholder {
+    background: linear-gradient(135deg, #2b2b2b 0%, var(--arena-c-dark) 55%, rgba(244, 44, 26, .3) 140%);
   }
 
   .listing-item .term-badges.floated {

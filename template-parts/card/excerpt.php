@@ -20,7 +20,7 @@ if (!$postId) {
 
 $options = is_array($args['options'] ?? null) ? $args['options'] : [];
 $isFirst = (bool) ($args['is_first'] ?? false);
-$showThumb = has_post_thumbnail($postId);
+$showThumb = \Arena\Listing\Renderer::hasUsableThumbnail($postId);
 $showExcerpt = ($options['show_excerpt'] ?? true) !== false;
 
 $categories = get_the_category($postId);

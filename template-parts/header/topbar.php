@@ -9,14 +9,16 @@ if (!defined('ABSPATH')) { exit; }
  */
 ?>
 <div class="top-bar">
-    <nav class="top-menu-container" aria-label="<?php esc_attr_e('Menu superior', 'arena'); ?>">
-        <?php
-        wp_nav_menu([
-            'theme_location' => 'top-menu',
-            'container'      => false,
-            'menu_class'     => 'top-menu menu clearfix',
-            'fallback_cb'    => false,
-        ]);
-        ?>
-    </nav>
+    <div class="content-wrap">
+        <nav class="top-menu-container" aria-label="<?php esc_attr_e('Menu superior', 'arena'); ?>">
+            <?php
+            wp_nav_menu([
+                'theme_location' => 'top-menu',
+                'container'      => false,
+                'menu_class'     => 'top-menu menu clearfix',
+                'fallback_cb'    => false,
+            ]);
+            ?>
+        </nav>
+    </div>
 </div>
