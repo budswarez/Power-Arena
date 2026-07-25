@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 428" role="img" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="arena-ph-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2b2b2b"/>
+      <stop offset="55%" stop-color="#1b1b1b"/>
+      <stop offset="100%" stop-color="#151515"/>
+    </linearGradient>
+  </defs>
+  <rect width="760" height="428" fill="url(#arena-ph-bg)"/>
+  <g transform="translate(380 214)">
+    <polygon points="0,-64 55.4,-32 55.4,32 0,64 -55.4,32 -55.4,-32" fill="none" stroke="#f42c1a" stroke-width="6"/>
+    <text x="0" y="20" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700" fill="#f2f2f2">PA</text>
+  </g>
+</svg>

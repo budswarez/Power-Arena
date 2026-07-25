@@ -40,4 +40,52 @@ final class Media {
 
         return $fallback;
     }
+
+    /**
+     * URL of the theme's own DEFAULT placeholder image (BUG 4, task-uifix):
+     * a post with no usable thumbnail (see
+     * Arena\Listing\Renderer::hasUsableThumbnail()) used to leave an empty,
+     * non-clickable box where the thumb would be — every card partial now
+     * renders this image instead, wrapped in the SAME anchor a real
+     * thumbnail gets, so the area stays clickable and never collapses.
+     */
+    public static function placeholderUrl(): string {
+        return get_template_directory_uri() . '/assets/img/placeholder.svg';
+    }
+
+    /**
+     * Builds the `<img>` markup for the placeholder above. Explicit
+     * `width`/`height` match the real `arena-card` registered image size
+     * (760x428, see Arena\Setup::boot()) so a thumbnail-less card reserves
+     * exactly the same box a real thumbnail would — no layout shift if a
+     * thumbnail is added to the post later.
+     *
+     * Callers are responsible for wrapping the returned markup in the same
+     * anchor (`<a href="<?php echo esc_url(get_permalink($postId)); ?>">`)
+     * they'd use for a real thumbnail — this method only ever returns the
+     * `<img>` itself, never a link, so it stays reusable regardless of
+     * which wrapper element (`.img-cont`, `.img-holder`, `.hero-tile__link`)
+     * the calling card partial uses.
+     *
+     * @param string $alt      Accessible name for the image — pass the post
+     *                         title, exactly like a real thumbnail's own
+     *                         `imageAlt()` fallback above, so the wrapping
+     *                         anchor always has a discernible name.
+     * @param string $imgClass Extra class(es) matching the exact classes the
+     *                         calling card partial would give a REAL
+     *                         thumbnail's `<img>` (e.g.
+     *                         `'attachment-arena-card hero-tile__img--compact'`)
+     *                         so size/context-specific CSS keeps applying
+     *                         identically to the placeholder.
+     */
+    public static function placeholderImg(string $alt, string $imgClass = ''): string {
+        $classes = trim('thumb-placeholder-img ' . $imgClass);
+
+        return sprintf(
+            '<img src="%s" width="760" height="428" alt="%s" loading="lazy" decoding="async" class="%s" />',
+            esc_url(self::placeholderUrl()),
+            esc_attr($alt),
+            esc_attr($classes)
+        );
+    }
 }

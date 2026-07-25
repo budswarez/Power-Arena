@@ -73,7 +73,9 @@ $permalink = get_permalink($postId);
                     ?>
                 </a>
             <?php else: ?>
-                <div class="img-cont thumb-placeholder" aria-hidden="true"></div>
+                <a class="img-cont thumb-placeholder" href="<?php echo esc_url($permalink); ?>">
+                    <?php echo \Arena\Media::placeholderImg(get_the_title($postId), 'attachment-arena-card'); ?>
+                </a>
             <?php endif; ?>
         </div>
         <div class="content-container">

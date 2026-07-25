@@ -53,7 +53,12 @@ $permalink = get_permalink($postId);
             ?>
         </a>
     <?php else: ?>
-        <div class="img-cont hero-tile__link thumb-placeholder" aria-hidden="true"></div>
+        <a class="img-cont hero-tile__link thumb-placeholder" href="<?php echo esc_url($permalink); ?>">
+            <?php
+            $placeholderClass = 'attachment-arena-card hero-tile__img' . ($compact ? ' hero-tile__img--compact' : '');
+            echo \Arena\Media::placeholderImg(get_the_title($postId), $placeholderClass);
+            ?>
+        </a>
     <?php endif; ?>
     <?php if (!$compact && $primaryCategory): ?>
         <div class="term-badges floated">

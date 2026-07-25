@@ -51,6 +51,39 @@ class RelatedPostsTest extends WP_UnitTestCase {
         $this->assertStringContainsString('Arena Related Post 1', $html);
     }
 
+    /**
+     * BUG 4 (task-uifix): a related post with no thumbnail used to leave
+     * an empty, non-clickable box where the thumb would be (card/list.php,
+     * 'archive' variant, omitted its whole `.featured` block when
+     * thumbless). Must now render the theme's own default placeholder
+     * image, wrapped in a real link to that related post.
+     */
+    public function test_thumbless_related_post_renders_placeholder_inside_a_link_to_it(): void {
+        $term = wp_insert_term('Arena Related No Thumb Category ' . time(), 'category');
+        $this->assertIsArray($term);
+        $categoryId = (int) $term['term_id'];
+
+        $currentId = $this->factory()->post->create([
+            'post_title'    => 'Arena Related Current',
+            'post_status'   => 'publish',
+            'post_category' => [$categoryId],
+        ]);
+        $noThumbId = $this->factory()->post->create([
+            'post_title'    => 'Arena Related No Thumb',
+            'post_status'   => 'publish',
+            'post_category' => [$categoryId],
+        ]);
+
+        $html = $this->renderRelated($currentId);
+        $permalink = get_permalink($noThumbId);
+        $this->assertIsString($permalink);
+
+        $this->assertMatchesRegularExpression(
+            '#<a[^>]*class="[^"]*thumb-placeholder[^"]*"[^>]*href="' . preg_quote(esc_url($permalink), '#') . '"[^>]*>\s*<img[^>]*src="[^"]*placeholder\.svg[^"]*"#',
+            $html
+        );
+    }
+
     public function test_renders_nothing_when_site_has_only_the_current_post(): void {
         $postId = $this->factory()->post->create([
             'post_title'  => 'Arena Only Post',

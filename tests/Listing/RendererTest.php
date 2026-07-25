@@ -18,6 +18,25 @@ class RendererTest extends WP_UnitTestCase {
         return array_map('intval', $matches[1]);
     }
 
+    /**
+     * BUG 4 (task-uifix): a thumbnail-less post used to leave an empty,
+     * non-clickable box where the thumb would be. Asserts the theme's own
+     * default placeholder image (assets/img/placeholder.svg) renders
+     * INSIDE a real anchor pointing at the post — never a bare
+     * `aria-hidden` div with no link.
+     */
+    private function assertThumbPlaceholderLinksToPost(string $html, int $postId): void {
+        $permalink = get_permalink($postId);
+        $this->assertIsString($permalink);
+
+        $this->assertMatchesRegularExpression(
+            '#<a[^>]*class="[^"]*thumb-placeholder[^"]*"[^>]*href="' . preg_quote(esc_url($permalink), '#') . '"[^>]*>\s*<img[^>]*src="[^"]*placeholder\.svg[^"]*"#',
+            $html,
+            'Expected the default placeholder <img> (assets/img/placeholder.svg) wrapped inside a real <a> ' .
+                'linking to the thumbnail-less post — never a bare aria-hidden div with no link.'
+        );
+    }
+
     public function test_render_grid_contains_post_titles_and_wrapper_class(): void {
         $titles = ['Arena Renderer Post Alpha', 'Arena Renderer Post Beta', 'Arena Renderer Post Gamma'];
         foreach ($titles as $title) {
@@ -101,6 +120,55 @@ class RendererTest extends WP_UnitTestCase {
         $this->assertStringContainsString('decoding="async"', $html);
         $this->assertMatchesRegularExpression('/<img[^>]*width="\d+"/', $html);
         $this->assertMatchesRegularExpression('/<img[^>]*height="\d+"/', $html);
+    }
+
+    /**
+     * BUG 4 (task-uifix): `grid` (card/featured.php) — the home's "Últimas
+     * notícias" layout.
+     */
+    public function test_render_grid_layout_thumbless_post_renders_placeholder_inside_a_link_to_the_post(): void {
+        $postId = $this->factory()->post->create(['post_title' => 'Arena Grid No Thumb', 'post_status' => 'publish']);
+
+        $html = Renderer::render('grid', ['count' => '1']);
+
+        $this->assertThumbPlaceholderLinksToPost($html, $postId);
+    }
+
+    /**
+     * BUG 4 (task-uifix): `modern-grid` (card/hero.php) — the home's hero
+     * mosaic.
+     */
+    public function test_render_modern_grid_thumbless_post_renders_placeholder_inside_a_link_to_the_post(): void {
+        $postId = $this->factory()->post->create(['post_title' => 'Arena Hero No Thumb', 'post_status' => 'publish']);
+
+        $html = Renderer::render('modern-grid', ['count' => '1']);
+
+        $this->assertThumbPlaceholderLinksToPost($html, $postId);
+    }
+
+    /**
+     * BUG 4 (task-uifix): `blog` (card/list.php, 'blog' variant).
+     */
+    public function test_render_blog_layout_thumbless_post_renders_placeholder_inside_a_link_to_the_post(): void {
+        $postId = $this->factory()->post->create(['post_title' => 'Arena Blog No Thumb', 'post_status' => 'publish']);
+
+        $html = Renderer::render('blog', ['count' => '1']);
+
+        $this->assertThumbPlaceholderLinksToPost($html, $postId);
+    }
+
+    /**
+     * BUG 4 (task-uifix): `mix` row-2 (card/text.php) — previously the
+     * ONLY card partial that omitted its `.featured` block entirely (no
+     * placeholder at all, real or otherwise) when a post had no thumbnail.
+     */
+    public function test_render_mix_layout_row_two_thumbless_post_renders_placeholder_inside_a_link_to_the_post(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Mix Row1', 'post_status' => 'publish']);
+        $rowTwoId = $this->factory()->post->create(['post_title' => 'Arena Mix Row2 No Thumb', 'post_status' => 'publish']);
+
+        $html = Renderer::render('mix', ['count' => '2']);
+
+        $this->assertThumbPlaceholderLinksToPost($html, $rowTwoId);
     }
 
     public function test_render_honors_heading_title_and_color(): void {
@@ -311,7 +379,7 @@ class RendererTest extends WP_UnitTestCase {
     }
 
     public function test_render_archive_layout_shows_blog5_cards_and_degrades_thumbless_post(): void {
-        $this->createArchiveFixturePosts();
+        [$alphaId] = $this->createArchiveFixturePosts();
 
         $html = Renderer::render('archive', ['count' => '3']);
 
@@ -324,6 +392,10 @@ class RendererTest extends WP_UnitTestCase {
         // Alpha has no thumbnail: the card must degrade to text-only, never
         // an empty <img src="">.
         $this->assertStringNotContainsString('src=""', $html);
+        // BUG 4 (task-uifix): Alpha's missing thumbnail must render the
+        // theme's own default placeholder image, wrapped in a link to Alpha
+        // itself — never an empty, non-clickable box.
+        $this->assertThumbPlaceholderLinksToPost($html, $alphaId);
     }
 
     public function test_render_archive_layout_marks_only_the_first_item_for_lcp(): void {

@@ -53,4 +53,68 @@ class MediaTest extends WP_UnitTestCase {
 
         $this->assertSame('Placa de video RTX 4090', Media::imageAlt($attachmentId, 'Fallback Title'));
     }
+
+    /**
+     * BUG 4 (task-uifix): a thumbnail-less post used to leave an empty,
+     * non-clickable box where the thumb would be. `placeholderUrl()` must
+     * point at the theme's own shipped default image, not an attachment.
+     */
+    public function test_placeholder_url_points_at_the_theme_asset(): void {
+        $this->assertSame(
+            get_template_directory_uri() . '/assets/img/placeholder.svg',
+            Media::placeholderUrl()
+        );
+    }
+
+    public function test_placeholder_asset_file_actually_exists_on_disk(): void {
+        $this->assertFileExists(get_template_directory() . '/assets/img/placeholder.svg');
+    }
+
+    /**
+     * The placeholder <img> must carry explicit width/height (same 760x428
+     * as the real `arena-card` registered image size) so a thumbnail-less
+     * card takes up exactly the same box a real thumbnail would — no
+     * layout shift once/if a thumbnail is added later.
+     */
+    public function test_placeholder_img_has_explicit_dimensions_matching_arena_card_size(): void {
+        $html = Media::placeholderImg('Fallback Title');
+
+        $this->assertStringContainsString('width="760"', $html);
+        $this->assertStringContainsString('height="428"', $html);
+    }
+
+    public function test_placeholder_img_uses_the_given_alt_text(): void {
+        $html = Media::placeholderImg('Post Sem Thumbnail');
+
+        $this->assertStringContainsString('alt="Post Sem Thumbnail"', $html);
+    }
+
+    public function test_placeholder_img_carries_the_theme_asset_src(): void {
+        $html = Media::placeholderImg('Fallback Title');
+
+        $this->assertStringContainsString(
+            'src="' . esc_url(Media::placeholderUrl()) . '"',
+            $html
+        );
+    }
+
+    /**
+     * Card partials pass through the SAME extra class(es) they'd give a
+     * real thumbnail's `<img>` (e.g. `hero-tile__img--compact`) so
+     * size-specific CSS applies identically to the placeholder.
+     */
+    public function test_placeholder_img_includes_the_given_extra_class(): void {
+        $html = Media::placeholderImg('Fallback Title', 'attachment-arena-card hero-tile__img--compact');
+
+        $this->assertMatchesRegularExpression(
+            '/class="[^"]*attachment-arena-card[^"]*hero-tile__img--compact[^"]*"/',
+            $html
+        );
+    }
+
+    public function test_placeholder_img_never_renders_an_empty_src(): void {
+        $html = Media::placeholderImg('Fallback Title');
+
+        $this->assertStringNotContainsString('src=""', $html);
+    }
 }

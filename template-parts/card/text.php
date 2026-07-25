@@ -10,6 +10,11 @@ if (!defined('ABSPATH')) { exit; }
  * carregam uma thumb pequena (~86x64px); esse atributo não governa a
  * visibilidade da imagem aqui (mesmo raciocínio de `card/featured.php`).
  *
+ * A post with no usable thumbnail renders the theme's own default
+ * placeholder image instead (BUG 4, task-uifix) — still wrapped in the
+ * SAME `<a class="img-holder">` a real thumbnail gets, so the tile never
+ * degrades into an empty, non-clickable box.
+ *
  * @var array<string, mixed> $args {
  *     @type bool                 $is_first Se este é o 1º card da listagem (LCP).
  *     @type array<string, mixed> $options  Opções vindas de Renderer::buildOptions().
@@ -28,8 +33,8 @@ $permalink = get_permalink($postId);
 ?>
 <article <?php post_class('listing-item listing-item-text'); ?>>
     <div class="item-inner clearfix">
-        <?php if ($showThumb): ?>
-            <div class="featured featured-type-featured-image">
+        <div class="featured featured-type-featured-image">
+            <?php if ($showThumb): ?>
                 <a class="img-holder" href="<?php echo esc_url($permalink); ?>">
                     <?php
                     $imgAttr = [
@@ -44,8 +49,12 @@ $permalink = get_permalink($postId);
                     echo get_the_post_thumbnail($postId, 'arena-card', $imgAttr);
                     ?>
                 </a>
-            </div>
-        <?php endif; ?>
+            <?php else: ?>
+                <a class="img-holder thumb-placeholder" href="<?php echo esc_url($permalink); ?>">
+                    <?php echo \Arena\Media::placeholderImg(get_the_title($postId), 'attachment-arena-card'); ?>
+                </a>
+            <?php endif; ?>
+        </div>
         <div class="title">
             <a href="<?php echo esc_url($permalink); ?>" class="post-url post-title"><?php echo esc_html(get_the_title($postId)); ?></a>
         </div>
