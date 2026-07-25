@@ -98,6 +98,39 @@
   }
 
   .main-content.boxed > *:first-child { margin-top: 0; }
+
+  /* Light surface for content that ISN'T one of Arena's own `[bs-*]`
+     listing blocks — WPBakery-native shortcodes (`[vc_single_image]`,
+     `[vc_column_text]`, etc, all rendered wrapped in `.wpb_content_element`)
+     and ordinary (non-WPBakery) page/post content (`.page-content`, from
+     page.php). Neither carries a background of its own (only `.bs-listing.
+     bs-light-scheme`, further down, does), so on the now-black `.main-
+     content.boxed` (see the comment on that rule above) they were sitting
+     on raw black with their native dark text — e.g. the homepage banner's
+     `[vc_single_image title="Evento Pichau Arena 2026"]` heading, rendered
+     as dark-grey-on-black, barely legible.
+
+     Deliberately scoped to THESE two leaf-level selectors rather than to
+     `.main-content.boxed` itself or to any ancestor between it and them
+     (`.wpb-content-wrapper`, `.vc_row`, `.wpb_column`, `.vc_column-inner`,
+     `.wpb_wrapper`): every one of those ancestors either floats
+     (`.vc_row`'s columns, `.vc_col-sm-*`) or is a flex column
+     (`.vc_column-inner{display:flex;flex-direction:column}`, set by
+     js_composer's own CSS) — both establish their own formatting context,
+     so a `.bs-listing`'s trailing `margin-bottom` (the 50px block rhythm,
+     below) can never collapse out of them and ends up baked into THEIR OWN
+     box height. Painting any of those ancestors light would therefore
+     paint OVER that trailing margin too, turning the reference's black
+     inter-block gaps white. `.wpb_content_element`/`.page-content` are
+     leaf boxes with their own independent margin (never shared with a
+     sibling `.bs-listing`'s rhythm spacing), so giving THEM the light fill
+     only ever paints their own content — never a neighbour's gap. */
+  .main-content.boxed .wpb_content_element,
+  .main-content.boxed .page-content {
+    background: #fff;
+    color: #1b1b1b;
+    padding: 24px 15px;
+  }
 }
 
 /* ==========================================================================
