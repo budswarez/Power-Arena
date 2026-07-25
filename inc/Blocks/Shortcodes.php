@@ -23,6 +23,7 @@ final class Shortcodes {
         'ignore_sticky_posts'   => '1',
         'time_filter'           => '',
         'bs-text-color-scheme'  => '',
+        'disable_duplicate'     => '0',
     ];
 
     /**

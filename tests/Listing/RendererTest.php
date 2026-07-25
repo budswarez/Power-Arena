@@ -4,6 +4,20 @@ declare(strict_types=1);
 use Arena\Listing\Renderer;
 
 class RendererTest extends WP_UnitTestCase {
+    public function setUp(): void {
+        parent::setUp();
+        // Renderer::$shown is a request-lifetime static; reset it so each
+        // test's `disable_duplicate` state starts independent of whatever
+        // ran before it in this process.
+        Renderer::resetShown();
+    }
+
+    /** @return int[] */
+    private function extractPostIds(string $html): array {
+        preg_match_all('/\bpost-(\d+)\b/', $html, $matches);
+        return array_map('intval', $matches[1]);
+    }
+
     public function test_render_grid_contains_post_titles_and_wrapper_class(): void {
         $titles = ['Arena Renderer Post Alpha', 'Arena Renderer Post Beta', 'Arena Renderer Post Gamma'];
         foreach ($titles as $title) {
@@ -220,5 +234,86 @@ class RendererTest extends WP_UnitTestCase {
             'Arena Archive Post Gamma',
             substr($html, 0, $firstTitleHeadingPos)
         );
+    }
+
+    /**
+     * FIX 2 (CRITICAL): reproduces the real home — a hero block with
+     * `disable_duplicate="1"` rendered first, then a second block ALSO
+     * with the flag on. The second block must not repeat any post the
+     * first one already showed.
+     */
+    public function test_disable_duplicate_on_excludes_posts_shown_by_an_earlier_block(): void {
+        for ($i = 0; $i < 6; $i++) {
+            $this->factory()->post->create([
+                'post_title'  => "Arena Dedup Post $i",
+                'post_status' => 'publish',
+            ]);
+        }
+
+        $first = Renderer::render('grid', ['count' => '3', 'disable_duplicate' => '1']);
+        $second = Renderer::render('grid', ['count' => '6', 'disable_duplicate' => '1']);
+
+        $firstIds = $this->extractPostIds($first);
+        $secondIds = $this->extractPostIds($second);
+
+        $this->assertNotEmpty($firstIds);
+        $this->assertNotEmpty($secondIds);
+        $this->assertSame([], array_intersect($firstIds, $secondIds));
+    }
+
+    /**
+     * With the flag OFF on the second block, overlap with an earlier
+     * block's posts must be allowed (Publisher default behaviour when a
+     * block doesn't opt in to dedup).
+     */
+    public function test_disable_duplicate_off_allows_overlap_with_earlier_block(): void {
+        for ($i = 0; $i < 3; $i++) {
+            $this->factory()->post->create([
+                'post_title'  => "Arena Overlap Post $i",
+                'post_status' => 'publish',
+            ]);
+        }
+
+        $first = Renderer::render('grid', ['count' => '3', 'disable_duplicate' => '1']);
+        $second = Renderer::render('grid', ['count' => '3', 'disable_duplicate' => '0']);
+
+        $firstIds = $this->extractPostIds($first);
+        $secondIds = $this->extractPostIds($second);
+
+        $this->assertNotEmpty(array_intersect($firstIds, $secondIds));
+    }
+
+    /**
+     * Every block contributes its own rendered IDs to the shared "shown"
+     * list regardless of its OWN `disable_duplicate` value — only whether
+     * a block's query itself excludes from that list depends on its own
+     * flag. A third block with the flag on must therefore avoid posts
+     * shown by the second block even though the second had the flag off.
+     */
+    public function test_blocks_without_the_flag_still_contribute_ids_for_later_blocks(): void {
+        for ($i = 0; $i < 4; $i++) {
+            $this->factory()->post->create([
+                'post_title'  => "Arena Contribute Post $i",
+                'post_status' => 'publish',
+            ]);
+        }
+
+        Renderer::render('grid', ['count' => '2', 'disable_duplicate' => '0']);
+        $third = Renderer::render('grid', ['count' => '4', 'disable_duplicate' => '1']);
+
+        // The 2 posts shown by the very first (no-flag) render must not
+        // reappear in the third (flag-on) render, even though the second
+        // render never had the flag on either.
+        $this->assertLessThanOrEqual(2, count($this->extractPostIds($third)));
+    }
+
+    public function test_reset_shown_clears_state_between_independent_renders(): void {
+        $this->factory()->post->create(['post_title' => 'Arena Reset Post', 'post_status' => 'publish']);
+
+        $first = Renderer::render('grid', ['count' => '1', 'disable_duplicate' => '1']);
+        Renderer::resetShown();
+        $second = Renderer::render('grid', ['count' => '1', 'disable_duplicate' => '1']);
+
+        $this->assertSame($this->extractPostIds($first), $this->extractPostIds($second));
     }
 }

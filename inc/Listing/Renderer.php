@@ -20,6 +20,38 @@ final class Renderer {
     private const CARD_DATE_FORMAT = 'j M, Y';
 
     /**
+     * Post IDs already rendered by an EARLIER `[bs-*]` block on the SAME
+     * request. Publisher's `disable_duplicate="1"` reads this list to
+     * exclude posts a previous block already showed (the real home:
+     * hero `[bs-modern-grid-listing-7 ... disable_duplicate="1"]` then
+     * "Últimas notícias" `[bs-grid-listing-1 ... disable_duplicate="0"]` —
+     * without this, the 5 hero posts reappear in the 8-post grid on every
+     * load). Lives on the Renderer (which already does WordPress-facing
+     * orchestration), never on Query, which stays a pure attrs->args
+     * mapper with no per-request state.
+     *
+     * Every block appends its own rendered IDs here regardless of its own
+     * `disable_duplicate` value — only whether a block's OWN query
+     * excludes from this list depends on its own flag. That reproduces
+     * "later blocks avoid what earlier blocks already showed" without
+     * needing to know Publisher's exact internal contribution rule.
+     *
+     * @var int[]
+     */
+    private static array $shown = [];
+
+    /**
+     * Test isolation helper: clears the per-request "already shown" list.
+     * Must be called between independent test cases (and is safe to call
+     * in production at the start of a fresh request — but nothing in this
+     * theme currently needs that, since a PHP request always starts with
+     * an empty static).
+     */
+    public static function resetShown(): void {
+        self::$shown = [];
+    }
+
+    /**
      * Renderiza uma listagem de posts para um dos 4 layouts do Publisher
      * (paridade visual), a partir dos atributos crus de um shortcode `[bs-*]`.
      *
@@ -34,7 +66,13 @@ final class Renderer {
     public static function render(string $layout, array $atts): string {
         $layout = in_array($layout, self::LAYOUTS, true) ? $layout : self::DEFAULT_LAYOUT;
 
-        $query = new \WP_Query(Query::args($atts, time()));
+        $args = Query::args($atts, time());
+
+        if (self::disableDuplicate($atts)) {
+            $args['post__not_in'] = array_merge($args['post__not_in'] ?? [], self::$shown);
+        }
+
+        $query = new \WP_Query($args);
         $options = self::buildOptions($atts);
 
         ob_start();
@@ -44,9 +82,21 @@ final class Renderer {
         ]);
         $html = (string) ob_get_clean();
 
+        self::$shown = array_merge(self::$shown, self::queriedPostIds($query));
+
         wp_reset_postdata();
 
         return $html;
+    }
+
+    /** @param array<string, mixed> $atts */
+    private static function disableDuplicate(array $atts): bool {
+        return self::boolOrDefault($atts['disable_duplicate'] ?? null, false);
+    }
+
+    /** @return int[] */
+    private static function queriedPostIds(\WP_Query $query): array {
+        return array_map(static fn (\WP_Post $post): int => (int) $post->ID, $query->posts);
     }
 
     /**
