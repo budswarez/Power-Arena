@@ -6,3 +6,4 @@
 .DS_Store
 .phpunit.result.cache
 /.superpowers/sdd/rendered-home.html
+/lh-*.json
