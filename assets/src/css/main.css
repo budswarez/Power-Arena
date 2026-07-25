@@ -395,8 +395,11 @@
     transition: background-color .15s ease, color .15s ease;
   }
 
+  /* --arena-accent-text: white at .85rem/600 is under the bold "large text"
+     AA threshold (~18.66px), so it needs 4.5:1 — raw --arena-accent only
+     clears 4.02:1. */
   .archive-terms__link:hover {
-    background: var(--arena-accent);
+    background: var(--arena-accent-text);
     color: #fff;
   }
 
@@ -496,10 +499,16 @@
      — measured against the reference's `.bs-pinning-block.smart`
      (`position:fixed` + `transform:translateY(-100%)` on scroll-down, not a
      plain CSS `position:sticky`, which can't slide the bar away). */
+  /* Background is `--arena-accent-text`, not the raw `--arena-accent`: this
+     bar carries the site-wide primary nav, white 17px/500 links directly on
+     top of it, on EVERY page — white on raw --arena-accent (#f42c1a) only
+     measures 4.02:1 (fails WCAG AA); --arena-accent-text (#c81f10) clears
+     5.74:1. The border keeps the raw accent (not text on it, no contrast
+     requirement). */
   .main-menu-bar {
     position: relative;
     z-index: 60;
-    background: var(--arena-accent);
+    background: var(--arena-accent-text);
     border-top: 3px solid var(--arena-accent);
     border-bottom: 3px solid #dedede;
     transition: .3s all;
@@ -725,9 +734,12 @@
     border-bottom: 1px solid rgba(0, 0, 0, .04);
   }
 
+  /* --arena-accent-text: white at .9375rem/400 is far below the "large
+     text" AA threshold, so it needs 4.5:1 — raw --arena-accent only clears
+     4.02:1. */
   .main-menu.menu .sub-menu > li:hover > a,
   .main-menu.menu .sub-menu > li.current-menu-item > a {
-    background: var(--arena-accent);
+    background: var(--arena-accent-text);
     color: #fff;
   }
 
@@ -2058,6 +2070,9 @@
     background: #fdf6f1;
     overflow: hidden;
   }
+  /* --arena-accent-text: white at 15px/600 is under the "large text" AA
+     threshold (~18.66px bold), so it needs 4.5:1 — raw --arena-accent only
+     clears 4.02:1. Every accordion in an article renders this heading. */
   .arena-accordion__heading {
     padding: 12px 18px;
     font-family: var(--arena-font-head);
@@ -2066,7 +2081,7 @@
     text-transform: uppercase;
     letter-spacing: .02em;
     color: #fff;
-    background: var(--arena-accent);
+    background: var(--arena-accent-text);
   }
   .arena-accordion__item + .arena-accordion__item {
     border-top: 1px solid #e7cfc2;
@@ -2132,7 +2147,10 @@
     font-size: 13px;
     color: #1b1b1b;
   }
-  .post-tags a:hover { background: var(--arena-accent); color: #fff; }
+  /* --arena-accent-text: white at 13px regular is far below the "large
+     text" AA threshold, so it needs 4.5:1 — raw --arena-accent only clears
+     4.02:1. */
+  .post-tags a:hover { background: var(--arena-accent-text); color: #fff; }
 
   .next-prev {
     display: flex;
@@ -2248,13 +2266,18 @@
     transition: background-color .15s ease, color .15s ease;
   }
 
+  /* --arena-accent-text, not the raw --arena-accent: white text at .9rem/600
+     is well under the ~18.66px-bold "large text" AA threshold, so it needs
+     the normal 4.5:1 minimum — raw --arena-accent only clears 4.02:1.
+     `.current` is rendered on EVERY archive/search page with >1 page of
+     results, so this is a persistent, not just a hover, surface. */
   .arena-pagination a.page-numbers:hover {
-    background: var(--arena-accent);
+    background: var(--arena-accent-text);
     color: #fff;
   }
 
   .arena-pagination .page-numbers.current {
-    background: var(--arena-accent);
+    background: var(--arena-accent-text);
     color: #fff;
   }
 
