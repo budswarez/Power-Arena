@@ -176,12 +176,23 @@ final class Options {
         $accent = self::accentColor();
         $font = self::fontStack(self::baseFont());
 
-        return [
+        $base = [
             '--arena-accent'      => $accent,
             '--arena-accent-text' => self::accessibleTextColor($accent, self::SAFE_ACCESSIBLE_CONTRAST),
             '--arena-font-body'   => $font['body'],
             '--arena-font-head'   => $font['head'],
         ];
+
+        /*
+         * As opções de estilização (Arena\Settings — cores do cabeçalho/rodapé,
+         * tipografia, largura, blocos) entram DEPOIS das quatro acima e apenas
+         * quando realmente configuradas: Settings::cssTokens() só devolve o que
+         * tem valor salvo. Assim um site que nunca abriu o painel continua
+         * renderizando exatamente o que o main.css define, sem nenhum override
+         * inline — e quem configura vence o CSS do arquivo, porque estes tokens
+         * são impressos em `:root` no wp_head.
+         */
+        return array_merge($base, Settings::cssTokens());
     }
 
     /** True for a well-formed `#rgb` or `#rrggbb` hex colour string. */

@@ -50,6 +50,22 @@ final class Media {
      * thumbnail gets, so the area stays clickable and never collapses.
      */
     public static function placeholderUrl(): string {
+        /*
+         * O dono do site pode escolher a própria imagem padrão no painel
+         * (Arena → Blocos e listagens → "Imagem padrão dos cards"). Sem opção
+         * salva, ou se o anexo escolhido não existir mais, cai no SVG que vem
+         * com o tema — nunca retorna vazio, porque um card sem imagem volta a
+         * ser uma área não clicável (era exatamente o bug que este
+         * placeholder resolveu).
+         */
+        $escolhida = Settings::defaultThumbnailId();
+        if ($escolhida !== null) {
+            $url = wp_get_attachment_image_url($escolhida, 'arena-card');
+            if (is_string($url) && $url !== '') {
+                return $url;
+            }
+        }
+
         return get_template_directory_uri() . '/assets/img/placeholder.svg';
     }
 

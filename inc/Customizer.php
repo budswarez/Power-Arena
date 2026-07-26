@@ -59,6 +59,106 @@ final class Customizer {
         self::registerAccentColor($wp_customize);
         self::registerSidebarPosition($wp_customize);
         self::registerBaseFont($wp_customize);
+        self::registerSchemaSections($wp_customize);
+    }
+
+    /**
+     * Seções geradas a partir de Arena\Settings — cores do cabeçalho/rodapé,
+     * tipografia, layout e blocos. Ficam aqui além do menu próprio
+     * (Arena\AdminPanel) porque no Customizer o dono do site vê o efeito ao
+     * vivo antes de publicar, o que para cor e tipografia faz toda a
+     * diferença. As duas telas escrevem no MESMO `theme_mod`, então não há
+     * sincronização a fazer nem valor divergente possível.
+     *
+     * `arena_sidebar_position` é pulado: já é registrado acima, na seção
+     * original, e registrar duas vezes o mesmo id criaria dois controles para
+     * o mesmo valor.
+     */
+    private static function registerSchemaSections(\WP_Customize_Manager $wp_customize): void {
+        $prioridade = 20;
+
+        foreach (Settings::GROUPS as $grupo => $titulo) {
+            $campos = Settings::fieldsByGroup($grupo);
+            if ($campos === []) {
+                continue;
+            }
+
+            $secao = 'arena_grupo_' . $grupo;
+            $wp_customize->add_section($secao, [
+                'title'       => $titulo,
+                'description' => __('Deixe um campo vazio para manter o padrão do tema.', 'arena'),
+                'panel'       => self::PANEL_ID,
+                'priority'    => $prioridade,
+            ]);
+            $prioridade += 10;
+
+            foreach ($campos as $id => $campo) {
+                if ($wp_customize->get_setting($id) !== null) {
+                    continue; // já registrado na seção original
+                }
+
+                $wp_customize->add_setting($id, [
+                    'type'              => 'theme_mod',
+                    'default'           => '',
+                    'sanitize_callback' => static fn (mixed $valor): string => Settings::sanitize($id, $valor),
+                    'transport'         => 'refresh',
+                ]);
+
+                self::addSchemaControl($wp_customize, $secao, $id, $campo);
+            }
+        }
+    }
+
+    /** @param array<string, mixed> $campo */
+    private static function addSchemaControl(
+        \WP_Customize_Manager $wp_customize,
+        string $secao,
+        string $id,
+        array $campo
+    ): void {
+        $base = [
+            'section'     => $secao,
+            'label'       => (string) ($campo['label'] ?? $id),
+            'description' => (string) ($campo['description'] ?? ''),
+        ];
+
+        switch ((string) ($campo['type'] ?? 'text')) {
+            case 'color':
+                $wp_customize->add_control(new \WP_Customize_Color_Control($wp_customize, $id, $base + ['settings' => $id]));
+                return;
+
+            case 'image':
+                $wp_customize->add_control(new \WP_Customize_Media_Control($wp_customize, $id, $base + [
+                    'settings'  => $id,
+                    'mime_type' => 'image',
+                ]));
+                return;
+
+            case 'select':
+                $wp_customize->add_control($id, $base + [
+                    'type'    => 'select',
+                    'choices' => (array) ($campo['choices'] ?? []),
+                ]);
+                return;
+
+            case 'number':
+                $wp_customize->add_control($id, $base + [
+                    'type'        => 'number',
+                    'input_attrs' => array_filter([
+                        'min'  => $campo['min'] ?? null,
+                        'max'  => $campo['max'] ?? null,
+                        'step' => $campo['step'] ?? null,
+                    ], static fn ($v): bool => $v !== null),
+                ]);
+                return;
+
+            case 'checkbox':
+                $wp_customize->add_control($id, $base + ['type' => 'checkbox']);
+                return;
+
+            default:
+                $wp_customize->add_control($id, $base + ['type' => 'text']);
+        }
     }
 
     private static function registerAccentColor(\WP_Customize_Manager $wp_customize): void {

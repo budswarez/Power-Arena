@@ -231,6 +231,11 @@
        that ends up directly on the black canvas itself; it must be light
        to stay legible there, never relied upon by the light surfaces. */
     color: #fff;
+    /* Tipografia configurável pelo painel. Os fallbacks reproduzem o
+       comportamento atual: `inherit` = 16px do html, `normal` = sem
+       line-height explícito. Nada muda sem opção salva. */
+    font-size: var(--arena-font-size-base, inherit);
+    line-height: var(--arena-line-height, normal);
     /* Measured on the reference: the page itself sits on a black
        background — the boxed 1200px content column (`.main-content.boxed`,
        below) supplies its own light background on top of it, so the black
@@ -238,7 +243,12 @@
     background-color: #000;
   }
 
-  h1, h2, h3, h4, h5, h6 { font-family: var(--arena-font-head); margin: 0 0 .5em; }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--arena-font-head);
+    /* `bold` é o padrão do navegador para h1-h6: fallback fiel ao de hoje. */
+    font-weight: var(--arena-headline-weight, bold);
+    margin: 0 0 .5em;
+  }
 
   img { max-width: 100%; height: auto; display: block; }
 
@@ -601,12 +611,13 @@
      white. This is load-bearing: the brand mark is a near-white wordmark
      + red icon, so it's only legible on a dark surface. */
   .site-header.header-style-2 {
-    background-color: #0b0b0b;
+    /* Token com fallback: sem opção salva no painel, continua exatamente #0b0b0b. */
+    background-color: var(--arena-header-bg, #0b0b0b);
     border-bottom: 3px solid var(--arena-c-border);
   }
 
   .top-bar {
-    background-color: #0b0b0b;
+    background-color: var(--arena-topbar-bg, #0b0b0b);
     border-bottom: 1px solid #1e1e1e;
     font-size: .85rem;
   }
@@ -851,13 +862,14 @@
     display: block;
     padding: 0 12px;
     line-height: 48px;
-    color: #fff;
+    color: var(--arena-menu-color, #fff);
   }
 
   .main-menu.menu > li:hover > a,
   .main-menu.menu > li.current-menu-item > a,
   .main-menu.menu > li.current-menu-parent > a {
-    color: #fff;
+    /* Sem opção no painel, mantém o branco de hoje. */
+    color: var(--arena-menu-hover, #fff);
   }
 
   /* Active/hover indicator: a white bar that grows from 20% to 100% width,
@@ -871,7 +883,7 @@
     bottom: 0;
     width: 20%;
     height: 3px;
-    background: #fff;
+    background: var(--arena-menu-hover, #fff);
     transform: translateX(-50%);
     transition: width .3s ease;
     visibility: hidden;
@@ -1226,8 +1238,8 @@
      wants belongs inside `.footer-inner`'s own padding, not out here where
      it paints on bare body background. */
   .site-footer {
-    background: var(--arena-c-dark);
-    color: #ccc;
+    background: var(--arena-footer-bg, var(--arena-c-dark));
+    color: var(--arena-footer-text, #ccc);
     margin-top: 0;
   }
 
@@ -1314,7 +1326,8 @@
     position: relative;
     display: inline-block;
     flex: 0 0 auto;
-    color: var(--arena-accent); /* fallback bar color when no heading_color is set */
+    /* `--arena-block-title-color` vem do painel; sem ela, a cor de destaque. */
+    color: var(--arena-block-title-color, var(--arena-accent)); /* fallback bar color when no heading_color is set */
   }
 
   /* The flag's rectangle body: a wrapper-level `::before` (not `.h-text`'s
@@ -2176,7 +2189,7 @@
   /* The ONLY h1 on the template (see template-parts/single/header.php). */
   .single-post-title {
     font-family: var(--arena-font-head);
-    font-size: clamp(26px, 4vw, 38px);
+    font-size: var(--arena-post-title-size, clamp(26px, 4vw, 38px));
     line-height: 1.25;
     font-weight: 600;
     color: var(--arena-c-dark);

@@ -38,7 +38,18 @@ final class Query {
     public static function args(array $atts, ?int $now = null): array {
         $args = [
             'post_status'         => 'publish',
-            'posts_per_page'      => Attrs::intOrDefault($atts['count'] ?? null, self::COUNT_DEFAULT, self::COUNT_MIN, self::COUNT_MAX),
+            /*
+             * `count` do bloco vence; sem ele, o padrão global do painel
+             * (Arena → Blocos e listagens → "Itens por bloco"); sem painel,
+             * COUNT_DEFAULT. A faixa COUNT_MIN..COUNT_MAX continua valendo
+             * para qualquer origem, então nem o painel pode pedir 500 posts.
+             */
+            'posts_per_page'      => Attrs::intOrDefault(
+                $atts['count'] ?? null,
+                \Arena\Settings::itemsPerBlock() ?? self::COUNT_DEFAULT,
+                self::COUNT_MIN,
+                self::COUNT_MAX
+            ),
             'order'               => self::normalizeOrder($atts['order'] ?? null),
             'orderby'             => self::normalizeOrderBy($atts['order_by'] ?? null),
             'ignore_sticky_posts' => self::normalizeBool($atts['ignore_sticky_posts'] ?? null, true),

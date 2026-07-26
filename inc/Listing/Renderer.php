@@ -104,12 +104,22 @@ final class Renderer {
      * @return array<string, mixed>
      */
     private static function buildOptions(string $layout, array $atts): array {
+        /*
+         * Opções globais do painel (Arena\Settings) entram apenas como PADRÃO:
+         * o atributo escrito no bloco do WPBakery sempre vence, porque é a
+         * escolha específica daquela seção da home. Sem atributo, vale o que
+         * está no painel; sem painel, o padrão histórico do tema.
+         */
+        $colunasPadrao = \Arena\Settings::cardsPerRow() ?? 4;
+        $faixaEscura = self::isDarkScheme($atts['bs-text-color-scheme'] ?? null)
+            && \Arena\Settings::darkLatestRowEnabled();
+
         return [
             'heading_html'      => self::renderHeading($layout, $atts),
-            'columns'           => Attrs::intOrDefault($atts['columns'] ?? null, 4, 1),
+            'columns'           => Attrs::intOrDefault($atts['columns'] ?? null, $colunasPadrao, 1),
             'featured_image'    => self::boolOrDefault($atts['featured_image'] ?? null, true),
             'show_excerpt'      => self::boolOrDefault($atts['show_excerpt'] ?? null, true),
-            'dark_scheme'       => self::isDarkScheme($atts['bs-text-color-scheme'] ?? null),
+            'dark_scheme'       => $faixaEscura,
             'visibility_class'  => self::visibilityClass($atts),
         ];
     }

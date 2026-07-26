@@ -9,6 +9,10 @@ final class Theme {
         Setup::register();
         Assets::register();
         OptionsPanel::register();
+        // Painel próprio no admin: funciona sem plugin nenhum. O OptionsPanel
+        // acima só aparece em sites com ACF PRO (páginas de opções são recurso
+        // pago), motivo pelo qual a produção ficou sem tela de configuração.
+        AdminPanel::register();
         Customizer::register();
         Compatibility::register();
         Blocks\Shortcodes::register();
