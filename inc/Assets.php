@@ -19,6 +19,25 @@ final class Assets {
      */
     private const PRELOAD_FONT_PATH = '/assets/fonts/barlow-400-latin.woff2';
 
+    /**
+     * Segunda face pré-carregada: Oswald 500, subset latin.
+     *
+     * Medido na produção (Chrome headless, 1366x768, cache aquecido): acima da
+     * dobra a home usa Barlow 400 em 31 elementos e **Oswald 500 em 21** — é a
+     * fonte dos títulos de card, do menu e dos headings de bloco. Sem preload,
+     * o download dela só começava em ~1.162 ms (depois do CSS agregado ser
+     * baixado e parseado), enquanto o Barlow 400 pré-carregado começava em
+     * ~889 ms. Com `font-display: swap` isso não bloqueia a pintura, mas troca
+     * a fonte no meio da leitura — o "flash" de fonte que o leitor percebe.
+     *
+     * Continuam FORA do preload, de propósito: os 10 outros arquivos
+     * (demais pesos e todos os subsets latin-ext). Cada preload compete pela
+     * mesma banda do LCP; o critério aqui é ter medição de uso acima da dobra,
+     * não completude. Os `latin-ext` têm `unicode-range` correto e só baixam se
+     * algum caractere exigir.
+     */
+    private const PRELOAD_FONT_PATH_2 = '/assets/fonts/oswald-500-latin.woff2';
+
     public static function register(): void {
         add_action('wp_enqueue_scripts', [self::class, 'enqueue']);
         add_action('wp_head', [self::class, 'printPreloadLink'], 1);
@@ -152,12 +171,28 @@ final class Assets {
         return ARENA_URI . self::PRELOAD_FONT_PATH;
     }
 
-    /** Callback `wp_head`: imprime o `<link rel=preload>` da fonte crítica. */
+    /**
+     * Resolvedor puro (testável): as URLs de TODAS as faces pré-carregadas, na
+     * ordem em que são impressas — Barlow 400 primeiro (31 elementos acima da
+     * dobra), Oswald 500 depois (21).
+     *
+     * @return list<string>
+     */
+    public static function preloadFontUrls(): array {
+        return [
+            ARENA_URI . self::PRELOAD_FONT_PATH,
+            ARENA_URI . self::PRELOAD_FONT_PATH_2,
+        ];
+    }
+
+    /** Callback `wp_head`: imprime os `<link rel=preload>` das fontes críticas. */
     public static function printPreloadLink(): void {
-        printf(
-            '<link rel="preload" href="%s" as="font" type="font/woff2" crossorigin="anonymous">' . "\n",
-            esc_url(self::preloadFontUrl())
-        );
+        foreach (self::preloadFontUrls() as $url) {
+            printf(
+                '<link rel="preload" href="%s" as="font" type="font/woff2" crossorigin="anonymous">' . "\n",
+                esc_url($url)
+            );
+        }
     }
 
     /**

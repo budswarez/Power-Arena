@@ -86,6 +86,45 @@ class AssetsTest extends WP_UnitTestCase {
         );
     }
 
+    /**
+     * Medido na produção: acima da dobra a home usa Barlow 400 (31 elementos) e
+     * Oswald 500 (21 — títulos de card, menu, headings de bloco). Sem preload, o
+     * Oswald só começava a baixar em ~1.162 ms, causando troca de fonte no meio
+     * da leitura. As duas faces são pré-carregadas; nenhuma outra é, porque cada
+     * preload disputa a banda do LCP.
+     */
+    public function test_preloads_both_measured_above_the_fold_faces(): void {
+        $urls = Assets::preloadFontUrls();
+
+        $this->assertSame(
+            [
+                ARENA_URI . '/assets/fonts/barlow-400-latin.woff2',
+                ARENA_URI . '/assets/fonts/oswald-500-latin.woff2',
+            ],
+            $urls
+        );
+    }
+
+    /** Os arquivos pré-carregados precisam existir — um preload 404 é pior que nenhum. */
+    public function test_preloaded_font_files_exist_on_disk(): void {
+        foreach (Assets::preloadFontUrls() as $url) {
+            $relativo = str_replace(ARENA_URI, '', $url);
+            $this->assertFileExists(ARENA_DIR . $relativo, "arquivo de fonte ausente: {$relativo}");
+        }
+    }
+
+    public function test_print_preload_link_outputs_one_link_per_face(): void {
+        ob_start();
+        Assets::printPreloadLink();
+        $saida = (string) ob_get_clean();
+
+        $this->assertSame(2, substr_count($saida, '<link rel="preload"'));
+        $this->assertStringContainsString('barlow-400-latin.woff2', $saida);
+        $this->assertStringContainsString('oswald-500-latin.woff2', $saida);
+        $this->assertStringContainsString('crossorigin="anonymous"', $saida);
+        $this->assertSame(2, substr_count($saida, 'as="font"'));
+    }
+
     public function test_card_sizes_default_context_is_760_slot(): void {
         $this->assertSame('(max-width: 768px) 100vw, 760px', Assets::cardSizes());
         $this->assertSame('(max-width: 768px) 100vw, 760px', Assets::cardSizes('default'));
