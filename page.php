@@ -22,9 +22,14 @@ get_header();
 get_template_part('template-parts/layout/content-open');
 get_template_part('template-parts/layout/content-row-open', null, ['layout' => \Arena\Options::sidebarLayout()]);
 
-if (function_exists('yoast_breadcrumb')) {
-    yoast_breadcrumb('<nav class="arena-breadcrumb">', '</nav>');
-}
+/*
+ * Breadcrumb do plugin de SEO ativo, resolvido em um só lugar
+ * (Arena\Seo::breadcrumb() — Rank Math, Yoast ou SEOPress). Antes cada
+ * template chamava `yoast_breadcrumb()` direto, e a trilha desapareceu do site
+ * inteiro no dia em que o Yoast foi substituído pelo Rank Math: a função
+ * deixou de existir e o `function_exists` simplesmente pulava, sem erro.
+ */
+\Arena\Seo::breadcrumb();
 
 while (have_posts()):
     the_post();
