@@ -146,12 +146,21 @@ aqui**:
    personalizada, o tema **calcula automaticamente** uma variante escura
    para textos, garantindo contraste acessível (WCAG AA) — mesma garantia
    valendo aqui e no painel ACF (item 6.1 abaixo).
-3. **Menus** — *Aparência → Menus*. O tema registra os mesmos locais do
-   Publisher (`main-menu`, `top-menu`, `resp-menu`), então as atribuições atuais
-   devem ser herdadas. Confirme. Um local extra e **opcional**,
-   `footer-menu`, também está disponível — só é usado pelo rodapé se você
-   atribuir algo a ele; sem atribuição, o rodapé continua usando o
-   `main-menu`, como sempre fez.
+3. **Menus** — *Aparência → Menus* (ou *Personalizar → Menus*). O tema
+   registra os mesmos locais do Publisher, então as atribuições atuais são
+   herdadas. Cada nome diz **onde** o menu aparece:
+
+   | Local | Nome no painel | Onde aparece |
+   |---|---|---|
+   | `main-menu` | Menu Principal (cabeçalho) | a barra de menu do cabeçalho |
+   | `top-menu` | Menu Superior (barra escura) | a faixa escura acima do logo |
+   | `resp-menu` | Menu Mobile (painel lateral) | o painel que abre no celular |
+   | `footer-menu` | Menu do Rodapé | rodapé — **opcional** |
+
+   O menu do **cabeçalho** é o `main-menu` ("Menu Principal (cabeçalho)").
+   Se `resp-menu` não tiver nada atribuído, o painel mobile reaproveita o
+   `main-menu`; se `footer-menu` estiver vazio, o rodapé também usa o
+   `main-menu` — é o comportamento de sempre.
 4. **Widgets — ⚠️ AÇÃO MANUAL NECESSÁRIA.** *Aparência → Widgets* → área
    **Sidebar Principal** (`arena-primary`). **O Publisher guarda os widgets
    da sidebar numa área própria dele (`primary-sidebar`) — a troca de tema

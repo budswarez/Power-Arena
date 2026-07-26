@@ -3030,8 +3030,17 @@
    centraliza nada — a imagem já ocupa toda a largura disponível. É preciso
    encolher a caixa ao tamanho do conteúdo para que as margens automáticas
    tenham sobra para distribuir.
+
+   POR QUE ESTE BLOCO FICA FORA DE @layer: medido no site real, `margin-inline:
+   auto` dentro de `@layer components` NÃO era aplicado (computava 0px) — o
+   core emite `:where(figure){ margin: 0 0 1em }`, e declarações SEM layer
+   vencem qualquer declaração DENTRO de um layer, independentemente da
+   especificidade (é assim que a cascata de layers funciona: layer perde de
+   não-layer no mesmo origin). Especificidade só desempata entre declarações
+   da mesma camada, então nenhum seletor mais específico dentro do layer
+   resolveria isso. Mantido sem layer de propósito — não mova para dentro de
+   `@layer components` sem re-medir.
    ========================================================================== */
-@layer components {
   .aligncenter,
   figure.aligncenter,
   .wp-block-image.aligncenter,
@@ -3129,4 +3138,3 @@
     color: var(--arena-text-secondary);
     text-align: center;
   }
-}

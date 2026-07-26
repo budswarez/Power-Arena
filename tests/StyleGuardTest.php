@@ -243,4 +243,70 @@ final class StyleGuardTest extends WP_UnitTestCase {
                 '`hidden` attribute still governs the closed state).'
         );
     }
+
+    /**
+     * As regras de alinhamento de mídia (`.aligncenter` & cia.) precisam ficar
+     * FORA de qualquer `@layer`. Medido no site real: dentro de
+     * `@layer components`, o `margin-inline: auto` do `.aligncenter`
+     * simplesmente não era aplicado (computava `0px`) e a imagem continuava
+     * encostada à esquerda — porque o WordPress core emite
+     * `:where(figure){ margin: 0 0 1em }` SEM layer, e na cascata de camadas
+     * declarações sem layer vencem quaisquer declarações dentro de um layer,
+     * independentemente da especificidade. Ou seja: nenhum seletor mais
+     * específico resolveria o problema enquanto a regra estivesse na camada.
+     */
+    public function test_media_alignment_rules_live_outside_any_cascade_layer(): void {
+        $css = (string) preg_replace('#/\*.*?\*/#s', '', $this->css());
+
+        /*
+         * Varre o arquivo uma vez mantendo a pilha de blocos abertos, marcando
+         * cada abertura com "este bloco foi aberto por um `@layer`?". Quando um
+         * seletor de alinhamento aparece, a pilha diz se ele está em camada.
+         */
+        $stack = [];
+        $head = '';
+        $offending = [];
+        $targets = ['.aligncenter', '.alignleft', '.alignright'];
+
+        for ($i = 0, $len = strlen($css); $i < $len; $i++) {
+            $char = $css[$i];
+
+            if ($char === '{') {
+                $stack[] = str_contains($head, '@layer');
+                $head = '';
+                continue;
+            }
+
+            if ($char === '}') {
+                array_pop($stack);
+                $head = '';
+                continue;
+            }
+
+            if ($char === ';') {
+                $head = '';
+                continue;
+            }
+
+            $head .= $char;
+
+            if (!in_array(true, $stack, true)) {
+                continue; // fora de qualquer camada: exatamente o que queremos
+            }
+
+            foreach ($targets as $selector) {
+                if (str_ends_with($head, $selector)) {
+                    $offending[] = $selector;
+                }
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $offending,
+            'Regras de alinhamento dentro de `@layer` são derrotadas pelo `:where(figure){margin:0 0 1em}` ' .
+                'do core (sem layer vence com layer, independente de especificidade) e a imagem ' .
+                'centralizada continua à esquerda. Seletores em camada: ' . implode(', ', array_unique($offending))
+        );
+    }
 }
