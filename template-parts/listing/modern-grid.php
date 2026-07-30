@@ -29,6 +29,24 @@ $visibilityClass = (string) ($options['visibility_class'] ?? '');
 $firstRowSize = 2;
 $otherRowSize = 3;
 
+/*
+ * Quantos tiles do mosaico estão ACIMA DA DOBRA (e portanto não podem ser
+ * lazy-loaded). O número vem de medição, não de estimativa: a 412×823 (Pixel 7,
+ * o pior caso) cabem no primeiro viewport o cabeçalho, o banner e **3** tiles —
+ * todos renderizando com área IDÊNTICA (58.282 px²) porque no mobile o mosaico
+ * empilha em coluna única.
+ *
+ * Área idêntica é o detalhe que importa: qualquer um dos três pode ser eleito
+ * elemento LCP, então deixar um único deles em lazy-load basta para arrastar o
+ * LCP para ~6,5 s (medido nas duas primeiras tentativas desta correção). O custo
+ * de tirar os três do lazy é pequeno — 12 a 29 KB cada, contra os 122 KB do
+ * banner que já baixa eager na mesma janela.
+ *
+ * É um limite, não "todos": o bloco aceita `count` arbitrário pelo WPBakery, e
+ * marcar 10 imagens como eager faria elas disputarem banda com o próprio LCP.
+ */
+$aboveFoldCount = 3;
+
 $rows = [];
 $buffer = [];
 $index = 0;
@@ -41,8 +59,11 @@ if ($query->have_posts()) {
         ob_start();
         get_template_part('template-parts/card/hero', null, [
             'is_first' => $index === 1,
-            'compact'  => $index > $firstRowSize,
-            'options'  => $options,
+            // Ver $aboveFoldCount acima: o limite é medido, e cobre o pior caso
+            // (mobile, onde o mosaico empilha e 3 tiles ficam visíveis).
+            'above_fold' => $index <= $aboveFoldCount,
+            'compact'    => $index > $firstRowSize,
+            'options'    => $options,
         ]);
         $buffer[] = (string) ob_get_clean();
 

@@ -28,6 +28,10 @@ if (!$postId) {
 }
 
 $isFirst = (bool) ($args['is_first'] ?? false);
+// Tiles acima da dobra: saem do lazy-load, mas só o 1º leva `fetchpriority`.
+// Sem `above_fold`, cai em `is_first` — mantém o comportamento de quem chama
+// este partial sem passar a flag (mix.php, por exemplo).
+$aboveFold = (bool) ($args['above_fold'] ?? $isFirst);
 $compact = (bool) ($args['compact'] ?? false);
 $showThumb = \Arena\Listing\Renderer::hasUsableThumbnail($postId);
 
@@ -45,9 +49,12 @@ $permalink = get_permalink($postId);
                 'decoding' => 'async',
                 'alt'      => \Arena\Media::imageAlt((int) get_post_thumbnail_id($postId), get_the_title($postId)),
             ];
-            if ($isFirst) {
-                $imgAttr['fetchpriority'] = 'high';
-                $imgAttr['loading'] = 'eager';
+            if ($aboveFold) {
+                // Todos os tiles de cima saem do lazy-load (`eager` + `skip-lazy`),
+                // mas `fetchpriority="high"` vai só no 1º — três imagens de mesma
+                // área disputando prioridade anula o efeito. Ver
+                // Arena\Media::markAboveTheFold().
+                $imgAttr = \Arena\Media::markAboveTheFold($imgAttr, $isFirst);
             }
             echo get_the_post_thumbnail($postId, 'arena-card', $imgAttr);
             ?>

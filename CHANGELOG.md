@@ -9,6 +9,62 @@ que conta como quebra estão em
 
 ---
 
+## [0.2.4] — 2026-07-30
+
+Correção de performance com efeito grande e medido: **matéria no mobile foi de 68
+para 95 no PageSpeed**, home de 70 para 83.
+
+### Corrigido
+
+- **O lazy-loader adiava justamente a imagem que definia o LCP.** O tema já
+  declarava `loading="eager"` nas imagens acima da dobra, mas o **EWWW Image
+  Optimizer** (lazysizes) ignorava esse atributo: trocava o `src` por um
+  placeholder base64 e movia a URL real para `data-src`. Medido na home mobile
+  (throttling 4G lento + CPU 4×): a imagem do LCP terminava em **6.648 ms** e o
+  LCP era **6.680 ms**. O logotipo, de 3 KB e no topo da página, terminava em
+  5.668 ms pelo mesmo motivo.
+
+  A correção é o tema declarar **`skip-lazy`** junto de `eager` — string que o
+  EWWW tem na própria lista de exclusões e que WP Rocket, Perfmatters e o
+  lazysizes também reconhecem, então não amarra o tema a um plugin. Centralizada
+  em `Arena\Media::markAboveTheFold()`, usada nos 5 pontos que renderizam imagem
+  acima da dobra, e no logotipo via o filtro `get_custom_logo_image_attributes`.
+
+  **`fetchpriority="high"` continua em no máximo uma imagem por página.** No
+  mosaico da home os tiles visíveis têm **área idêntica** (58.282 px²): todos
+  precisam sair do lazy-load, mas três pedidos de prioridade simultâneos anulam o
+  próprio conceito. Daí o segundo parâmetro do helper.
+
+  O limite de **3 tiles** acima da dobra é medido (412×823, onde o mosaico
+  empilha), não estimado — está como constante comentada em
+  `template-parts/listing/modern-grid.php` e travado por teste. Foram três
+  iterações até fechar: proteger só 1 tile deixava o LCP em 6,0 s; proteger 2,
+  em 5,5 s; os 3, em 4,3 s.
+
+### Resultado medido
+
+Medianas de 3 a 5 execuções do Lighthouse, host do antivírus bloqueado, máquina
+sem Docker:
+
+| Página | Antes | Depois |
+|---|---|---|
+| home / mobile | 70 · LCP 6,5 s | **83** · LCP **4,3 s** |
+| home / desktop | 94 · LCP 1,5 s | **99** · LCP **0,9 s** |
+| matéria / mobile | 68 · LCP 7,0 s | **95** · LCP **2,6 s** |
+
+CLS **0,000** em tudo. Hoje **LCP = FCP** — a imagem já está na tela quando a
+página pinta pela primeira vez.
+
+### Notas de atualização
+
+- **Nenhuma ação necessária.** A mudança é de atributos de `<img>`; nenhum
+  template-part removido, nenhuma opção renomeada, nenhum slug alterado.
+- Se você usar outro plugin de lazy-load, ele provavelmente já respeita
+  `skip-lazy`. Se não respeitar, adicione as classes do tema à lista de exclusões
+  dele (`hero-tile__img`, `custom-logo`, `single-featured`).
+
+---
+
 ## [0.2.1] — 2026-07-30
 
 Duas correções de defeito relatado pelo dono do site, ambas medidas na página
@@ -197,6 +253,7 @@ Importantes e 13 Menores**. Os dois críticos:
 Detalhes e o raciocínio de cada correção estão em
 [docs/11-diario-de-bordo.md](docs/11-diario-de-bordo.md).
 
+[0.2.4]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.4
 [0.2.1]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.1
 [0.2.0]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.0
 [0.1.0]: https://github.com/budswarez/arena-wp/releases/tag/v0.1.0

@@ -23,10 +23,13 @@ if (!$postId || !\Arena\Listing\Renderer::hasUsableThumbnail($postId)) {
 ?>
 <div class="single-featured">
     <?php
-    the_post_thumbnail('full', [
-        'fetchpriority' => 'high',
-        'decoding'      => 'async',
-        'alt'           => \Arena\Media::imageAlt((int) get_post_thumbnail_id($postId), get_the_title($postId)),
-    ]);
+    // markAboveTheFold acrescenta `loading="eager"` e `skip-lazy`: esta é a
+    // imagem de destaque da matéria, quase sempre o elemento LCP da página, e
+    // `fetchpriority` sozinho não impede o lazy-loader do EWWW de trocar o
+    // `src` por um placeholder. Ver Arena\Media::markAboveTheFold().
+    the_post_thumbnail('full', \Arena\Media::markAboveTheFold([
+        'decoding' => 'async',
+        'alt'      => \Arena\Media::imageAlt((int) get_post_thumbnail_id($postId), get_the_title($postId)),
+    ]));
     ?>
 </div>

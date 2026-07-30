@@ -42,6 +42,56 @@ final class Media {
     }
 
     /**
+     * Marca um `<img>` como ACIMA DA DOBRA: prioridade alta, sem lazy-load, e
+     * blindado contra lazy-loaders de plugin.
+     *
+     * POR QUE `skip-lazy` E NÃO SÓ `loading="eager"`: declarar `eager` não
+     * basta. Medido na home de produção (mobile, throttling 4G lento + CPU 4×):
+     * o lazy-loader do **EWWW Image Optimizer** (lazysizes) reescreve o `src`
+     * para um placeholder base64, move a URL real para `data-src` e **ignora o
+     * atributo `loading`**. Resultado: a imagem que definia o LCP só começava a
+     * baixar depois de o JavaScript rodar — LCP de **6,7 s**, com a imagem
+     * terminando em 6.648 ms.
+     *
+     * `skip-lazy` é o marcador que o EWWW respeita (está na lista de exclusões
+     * em `classes/class-lazy-load.php`, testada como substring da tag `<img>`).
+     * Não amarra o tema ao EWWW: é a convenção que WP Rocket, Perfmatters,
+     * Autoptimize e o próprio lazysizes também reconhecem. Se um dia não houver
+     * lazy-loader nenhum, a classe é inerte — só um nome de classe sem CSS.
+     *
+     * REGRA DE USO: só para imagens que o tema SABE estarem acima da dobra (a
+     * primeira linha do mosaico, o destaque da matéria, o primeiro card de uma
+     * listagem). Marcar imagens abaixo da dobra é pior que não marcar nenhuma —
+     * cada download eager disputa banda com o próprio LCP.
+     *
+     * POR QUE `$prioridade` É SEPARADO de "acima da dobra": no mosaico da home a
+     * primeira linha tem DOIS tiles do mesmo tamanho. Medido: proteger só o
+     * primeiro não resolveu nada — as três imagens visíveis têm área idêntica
+     * (58.282 px²), então o LCP simplesmente passou para o tile seguinte, que
+     * continuava lazy e só baixava em 5.4 s. Todas precisam sair do lazy; mas
+     * `fetchpriority="high"` em três imagens ao mesmo tempo anula o próprio
+     * sentido de "prioridade" e faz as três disputarem a banda. Então: `eager` +
+     * `skip-lazy` para todas as de cima, `fetchpriority` só para uma.
+     *
+     * @param array<string, string> $attr       Atributos que iriam para
+     *                                          `get_the_post_thumbnail()`/`wp_get_attachment_image()`.
+     * @param bool                  $prioridade Emitir `fetchpriority="high"`. Use `true`
+     *                                          em NO MÁXIMO uma imagem por página — a
+     *                                          candidata a LCP.
+     * @return array<string, string>
+     */
+    public static function markAboveTheFold(array $attr, bool $prioridade = true): array {
+        $attr['loading'] = 'eager';
+        $attr['class']   = trim(($attr['class'] ?? '') . ' skip-lazy');
+
+        if ($prioridade) {
+            $attr['fetchpriority'] = 'high';
+        }
+
+        return $attr;
+    }
+
+    /**
      * URL of the theme's own DEFAULT placeholder image (BUG 4, task-uifix):
      * a post with no usable thumbnail (see
      * Arena\Listing\Renderer::hasUsableThumbnail()) used to leave an empty,

@@ -82,8 +82,9 @@ $showBadge = $primaryCategory !== null && ($variant === 'blog' || $showThumb);
                         'alt'      => \Arena\Media::imageAlt((int) get_post_thumbnail_id($postId), get_the_title($postId)),
                     ];
                     if ($isFirst) {
-                        $imgAttr['fetchpriority'] = 'high';
-                        $imgAttr['loading'] = 'eager';
+                        // Inclui `skip-lazy`: declarar `eager` nao basta contra o lazy-loader
+                        // do EWWW. Ver Arena\Media::markAboveTheFold().
+                        $imgAttr = \Arena\Media::markAboveTheFold($imgAttr);
                     }
                     echo get_the_post_thumbnail($postId, 'arena-card', $imgAttr);
                     ?>

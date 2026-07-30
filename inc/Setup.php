@@ -10,6 +10,7 @@ final class Setup {
         add_action('after_setup_theme', [self::class, 'menusAndSizes']);
         add_action('widgets_init', [self::class, 'sidebars']);
         add_filter('body_class', [self::class, 'shellBodyClasses']);
+        add_filter('get_custom_logo_image_attributes', [self::class, 'logoIsAboveTheFold']);
     }
 
     /**
@@ -158,5 +159,33 @@ final class Setup {
         }
 
         return $classes;
+    }
+
+    /**
+     * O logotipo é a primeira coisa visível de qualquer página — nunca deve ser
+     * lazy-loaded.
+     *
+     * Medido na home de produção (mobile, 4G lento + CPU 4×): o lazy-loader do
+     * EWWW trocava o `src` do logo por um placeholder base64, e o arquivo real
+     * só terminava de baixar em **5.668 ms**. Um logo de 3 KB no topo da página.
+     *
+     * `skip-lazy` é o marcador que faz o EWWW (e os outros lazy-loaders) pularem
+     * a imagem — ver `Arena\Media::markAboveTheFold()` para o porquê de
+     * `loading="eager"` sozinho não resolver.
+     *
+     * **Sem `fetchpriority="high"` de propósito:** essa prioridade é para o
+     * elemento LCP. O logo é pequeno e não é o LCP; competir com a imagem que É
+     * o LCP tornaria o carregamento pior, não melhor.
+     *
+     * Filtro do core: `get_custom_logo_image_attributes`
+     * (`wp-includes/general-template.php`, dentro de `get_custom_logo()`).
+     *
+     * @param mixed $attr Atributos do `<img>` do logo, vindos do core.
+     * @return array<string, string>
+     */
+    public static function logoIsAboveTheFold(mixed $attr): array {
+        // `false`: acima da dobra, mas NÃO é candidato a LCP — ver o segundo
+        // parâmetro de markAboveTheFold().
+        return Media::markAboveTheFold(is_array($attr) ? $attr : [], false);
     }
 }

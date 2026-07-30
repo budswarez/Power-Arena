@@ -503,3 +503,103 @@ contra os 3,5 s do achado 1.
 
 **Não faça:** otimizar o CSS/JS do tema. São 3% do peso; o retorno é nulo
 comparado aos itens 1 a 3.
+
+---
+
+# Rodada de otimização — 30/07/2026 (noite)
+
+Investigação a fundo de LCP em mobile e desktop, com A/B medido a cada passo.
+
+## Resultado
+
+| Página | Início do dia | Final | Ganho |
+|---|---|---|---|
+| home / **mobile** | 70 · LCP 6,5 s | **83** · LCP **4,3 s** | +13 pontos, −2,2 s |
+| home / **desktop** | 94 · LCP 1,5 s | **99** · LCP **0,9 s** | +5 pontos |
+| matéria / **mobile** | 68 · LCP 7,0 s | **95** · LCP **2,6 s** | **+27 pontos, −4,4 s** |
+
+CLS **0,000** em todas as páginas; TBT entre 48 e 76 ms. Medianas de 3 a 5
+execuções do Lighthouse, com o host do antivírus bloqueado e a máquina sem Docker.
+
+## A causa raiz: o lazy-loader adiava justamente a imagem do LCP
+
+O elemento LCP da home mobile era uma imagem do mosaico com a classe
+**`lazyloaded`**:
+
+```html
+<img src="data:image/png;base64,…" class="… lazyload"
+     data-src="…/wouter-sleijffers-…-760x428.webp">
+```
+
+O **EWWW Image Optimizer** (lazysizes) trocava o `src` por um placeholder base64
+e movia a URL real para `data-src` — **ignorando o `loading="eager"` que o tema já
+declarava**. A imagem só começava a baixar depois de o JavaScript rodar: terminava
+em **6.648 ms**, com o LCP em 6.680 ms. O logotipo, de 3 KB e no topo da página,
+terminava em **5.668 ms** pelo mesmo motivo.
+
+**A correção** (tema 0.2.2 → 0.2.4): declarar `skip-lazy` junto de `eager`. É a
+string que o EWWW tem na própria lista de exclusões
+(`classes/class-lazy-load.php`) e que WP Rocket, Perfmatters e o lazysizes também
+reconhecem — não amarra o tema a um plugin específico. Ver
+`Arena\Media::markAboveTheFold()` e `tests/AboveTheFoldTest.php`.
+
+Foram **três iterações**, cada uma medida:
+
+| | O que faltava | LCP |
+|---|---|---|
+| 0.2.1 | nada marcado | 6.680 ms |
+| 0.2.2 | só o 1º tile marcado | 6.020 ms |
+| 0.2.3 | 1ª linha (2 tiles) | 5.508 ms |
+| 0.2.4 | os **3** tiles visíveis | **4.300 ms** |
+
+**Por que precisou de três tentativas:** no mobile o mosaico empilha e os tiles
+visíveis têm **área idêntica** (58.282 px²). Qualquer um pode ser eleito LCP —
+então deixar **um único** deles em lazy-load bastava para segurar o LCP em ~6 s.
+O limite de 3 tiles está no código como constante medida (`$aboveFoldCount`), não
+como estimativa, e há teste travando o valor.
+
+Sinal de que a correção fechou o problema: hoje **LCP = FCP** (medido por CDP:
+4.588/4.444/4.860 ms). A imagem já está na tela quando a página pinta pela
+primeira vez — ela deixou de ser o gargalo.
+
+## O que NÃO funcionou (e o A/B que provou)
+
+Testei consolidar a otimização de CSS no LiteSpeed (desligando o Autoptimize) e
+deixar o mobile usar o cache de página. Objetivamente melhorou a infraestrutura:
+mobile passou a receber **1 CSS combinado em vez de 8** e o TTFB caiu de ~650 ms
+para ~185 ms.
+
+**E o LCP piorou muito.** A/B com 5 execuções de cada, mesma máquina quieta:
+
+| Config | Score | LCP | TTFB |
+|---|---:|---:|---:|
+| **A** — mobile cacheado, 1 CSS, Autoptimize off | **69** | **10,0 s** | 185 ms |
+| **B** — mobile sem cache, 8 CSS, Autoptimize on | **83** | **4,3 s** | 650 ms |
+
+Na config A, **4 das 5 execuções deram LCP de exatamente 10,0 s**; a única boa
+(83 / 4,2 s) foi justamente a que caiu em cache MISS. Ou seja: **toda vez que a
+página mobile vem do cache do LiteSpeed, o LCP colapsa.** Revertido.
+
+**Explicação mais provável:** `autoptimize_css_include_inline = on` — o
+Autoptimize **inline** o CSS crítico, então a primeira pintura não espera um
+round-trip. A cópia cacheada troca isso por um único arquivo de 283 KB que precisa
+chegar inteiro antes de qualquer pintura. É a segunda vez no dia que "menos
+requisições" perde para "não esperar a rede".
+
+> **Meu instrumento não pegou isso.** As medições por CDP deram LCP ~4,6 s para as
+> **duas** configs — só o Lighthouse reproduziu a diferença, e reproduziu 10 de 10
+> vezes. Lição: para score de PageSpeed, o Lighthouse é a autoridade; o CDP serve
+> para entender o *mecanismo*, não para decidir.
+
+## O que sobra, medido
+
+| Item | Peso | Dono |
+|---|---|---|
+| Banner da home `@2x` | **122 KB** para exibir em 352×106 (natural 1170×351) e leva 3,2 s para baixar | conteúdo |
+| Google GTM + GA4 | 437 KB, `gtag` carregado 2× | negócio |
+| Fontes `latin-ext` | 4 arquivos, ~67 KB, **sem nenhum caractere da página exigir** | tema (causa não identificada) |
+| jQuery | único script que ainda bloqueia (17 dos 18 já têm `defer`) | WPBakery depende dele |
+
+O banner é o maior ganho isolado que resta: reduzir a dimensão servida no mobile
+economiza ~90 KB **e** libera prioridade — ele hoje leva `fetchpriority="high"`
+sem ser o elemento LCP.
