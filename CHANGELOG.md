@@ -9,6 +9,71 @@ que conta como quebra estão em
 
 ---
 
+## [0.2.8] — 2026-07-30
+
+Continuação da 0.2.4: **home mobile de 83 para 92**, matéria 94, categoria 95.
+Corrige um defeito que a própria 0.2.4 piorou.
+
+### Corrigido
+
+- **Seis imagens pediam `fetchpriority="high"` na mesma página.** Cada layout de
+  listagem marcava o próprio primeiro card como prioritário — e, desde que a 0.2.4
+  passou a emitir `skip-lazy`, essas seis também saíam do lazy-load. Prioridade em
+  seis imagens não é prioridade: elas disputavam banda exatamente com a imagem que
+  é o LCP.
+
+  Duas peças resolvem:
+
+  - **`Arena\Media::claimAboveTheFoldBlock()`** — trinco por requisição: só o
+    **primeiro** bloco de listagem que renderiza pode marcar imagens acima da
+    dobra. Como os shortcodes executam na ordem do documento, nenhum layout
+    precisa saber onde está na página, e vale igual na home (mosaico primeiro) e
+    no arquivo (mosaico de destaque primeiro). Os cards genéricos
+    (`featured`/`list`/`text`) passaram a ter **padrão `false`** — um primeiro card
+    de bloco lá embaixo da página não está acima da dobra.
+  - **`Arena\Setup::claimHighPriorityImage()`** — na home, o tema reivindica a vaga
+    de prioridade antes de o conteúdo renderizar, via a API do próprio core
+    (`wp_high_priority_element_flag()`). Sem isso o core promove a primeira imagem
+    acima de 50.000 px², que na home é o banner do WPBakery: 122 KB para exibir em
+    352×106, e não é o LCP.
+
+  Resultado: **1** imagem prioritária por página (era 6).
+
+### Resultado medido
+
+| Página | 0.2.4 | 0.2.8 |
+|---|---|---|
+| home / mobile | 83 · LCP 4,3 s | **92** · LCP **2,9 s** |
+| home / desktop | 99 · LCP 0,9 s | 97 · LCP 1,2 s |
+| matéria / mobile | 95 · LCP 2,6 s | **94** · LCP 2,6 s |
+| categoria / mobile | — | **95** · LCP 2,5 s |
+
+CLS **0,000** em tudo. A home mobile deu 92 nas três execuções — variância zero.
+
+### Trade-off declarado
+
+Tirar a prioridade do banner **ajuda o mobile e atrapalha o desktop** (no desktop
+o banner é grande o bastante para ser o próprio LCP). A/B isolado: com o tema
+reivindicando, mobile 93 / desktop 97; deixando o core decidir, mobile 89 /
+desktop 99.
+
+Escolhemos o mobile: num portal de notícias ele domina o tráfego, é o score mais
+fraco e é a versão que o Google usa para indexar.
+
+**O trade-off desaparece se o banner da home for redimensionado** — hoje ele é
+servido em 1170×351 para exibir em 352×106. Com imagem adequada, carrega rápido
+mesmo em prioridade baixa e o desktop volta a 99 sem custo para o mobile.
+
+### Notas de atualização
+
+- **Nenhuma ação necessária.** Só atributos de `<img>` e um hook novo.
+- Se você mantém um layout de listagem próprio em tema filho, ele agora deve
+  reivindicar o trinco (`\Arena\Media::claimAboveTheFoldBlock()`) e repassar
+  `above_fold` ao card — sem isso o card simplesmente não marca nada, que é o
+  padrão seguro.
+
+---
+
 ## [0.2.4] — 2026-07-30
 
 Correção de performance com efeito grande e medido: **matéria no mobile foi de 68
@@ -253,6 +318,7 @@ Importantes e 13 Menores**. Os dois críticos:
 Detalhes e o raciocínio de cada correção estão em
 [docs/11-diario-de-bordo.md](docs/11-diario-de-bordo.md).
 
+[0.2.8]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.8
 [0.2.4]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.4
 [0.2.1]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.1
 [0.2.0]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.0

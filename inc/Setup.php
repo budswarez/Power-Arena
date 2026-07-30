@@ -11,6 +11,7 @@ final class Setup {
         add_action('widgets_init', [self::class, 'sidebars']);
         add_filter('body_class', [self::class, 'shellBodyClasses']);
         add_filter('get_custom_logo_image_attributes', [self::class, 'logoIsAboveTheFold']);
+        add_action('template_redirect', [self::class, 'claimHighPriorityImage']);
     }
 
     /**
@@ -187,5 +188,37 @@ final class Setup {
         // `false`: acima da dobra, mas NÃO é candidato a LCP — ver o segundo
         // parâmetro de markAboveTheFold().
         return Media::markAboveTheFold(is_array($attr) ? $attr : [], false);
+    }
+
+    /**
+     * Na HOME, o tema reivindica a vaga de `fetchpriority="high"` antes de o
+     * conteúdo renderizar — porque ele sabe qual é a imagem do LCP e o WordPress
+     * não.
+     *
+     * O QUE ACONTECIA: o core promove automaticamente a **primeira** imagem acima
+     * de `wp_min_priority_img_pixels` (50.000 px²) que encontra. Na home, a
+     * primeira é o banner do WPBakery — 1170×351 no arquivo, exibido em 352×106,
+     * **122 KB**, e que leva 3,2 s para baixar no mobile. Ele ganhava
+     * `fetchpriority="high"` sem ser o elemento LCP, disputando banda justamente
+     * com o tile do mosaico que É o LCP (medido: 18 KB, deveria vir primeiro).
+     *
+     * `wp_high_priority_element_flag(false)` é a API do próprio core para dizer
+     * "a prioridade já tem dono" (`wp-includes/media.php`; o core a usa
+     * internamente pelo mesmo motivo). O tile do mosaico não é afetado: ele
+     * recebe `fetchpriority` **explicitamente** por
+     * `Arena\Media::markAboveTheFold()`, não pela heurística do core.
+     *
+     * ESCOPO SÓ NA HOME, de propósito: na matéria a heurística do core já acerta,
+     * porque a imagem de destaque renderiza ANTES do conteúdo e portanto é a
+     * primeira que o core vê (é parte do motivo de a matéria pontuar 95 no
+     * PageSpeed mobile). Desligar a heurística onde ela acerta seria perder
+     * otimização de graça.
+     */
+    public static function claimHighPriorityImage(): void {
+        if (!is_front_page() || !function_exists('wp_high_priority_element_flag')) {
+            return;
+        }
+
+        wp_high_priority_element_flag(false);
     }
 }

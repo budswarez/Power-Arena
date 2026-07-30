@@ -35,6 +35,11 @@ if (!defined('ABSPATH')) { exit; }
 
 $query = $args['query'] instanceof WP_Query ? $args['query'] : new WP_Query(['post__in' => [0]]);
 $options = is_array($args['options'] ?? null) ? $args['options'] : [];
+// Só o PRIMEIRO bloco de listagem da requisição pode conter o elemento LCP.
+// Ver Arena\Media::claimAboveTheFoldBlock(): sem esse trinco, cada bloco marcava
+// o próprio primeiro card e a home ficava com 6 imagens em fetchpriority=high.
+$blocoAcimaDaDobra = \Arena\Media::claimAboveTheFoldBlock();
+
 
 $scheme = ($options['dark_scheme'] ?? false) ? 'bs-dark-scheme' : 'bs-light-scheme';
 $visibilityClass = (string) ($options['visibility_class'] ?? '');
@@ -48,6 +53,7 @@ if ($query->have_posts()) {
         ob_start();
         get_template_part('template-parts/card/hero', null, [
             'is_first' => $position === 1,
+            'above_fold' => $blocoAcimaDaDobra && $position === 1,
             'compact'  => $position > 2,
             'options'  => $options,
         ]);

@@ -10,6 +10,9 @@ class RendererTest extends WP_UnitTestCase {
         // test's `disable_duplicate` state starts independent of whatever
         // ran before it in this process.
         Renderer::resetShown();
+        // Mesmo motivo: o trinco de 'acima da dobra' tambem e um static de
+        // vida-de-requisicao (Arena\Media::claimAboveTheFoldBlock()).
+        \Arena\Media::resetAboveTheFoldBlock();
     }
 
     /** @return int[] */

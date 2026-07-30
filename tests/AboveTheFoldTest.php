@@ -77,9 +77,10 @@ final class AboveTheFoldTest extends WP_UnitTestCase {
         $php = (string) file_get_contents(ARENA_DIR . '/template-parts/listing/modern-grid.php');
 
         $this->assertMatchesRegularExpression(
-            '/[\'"]above_fold[\'"]\s*=>\s*\$index\s*<=\s*\$aboveFoldCount/',
+            '/[\'"]above_fold[\'"]\s*=>\s*\$blocoAcimaDaDobra\s*&&\s*\$index\s*<=\s*\$aboveFoldCount/',
             $php,
-            'modern-grid.php deve marcar como acima da dobra os N primeiros tiles ($aboveFoldCount).'
+            'modern-grid.php deve marcar os N primeiros tiles ($aboveFoldCount) E somente se este for o ' .
+                'primeiro bloco de listagem da requisição (o trinco).'
         );
         $this->assertMatchesRegularExpression(
             '/\$aboveFoldCount\s*=\s*3\s*;/',
@@ -128,6 +129,98 @@ final class AboveTheFoldTest extends WP_UnitTestCase {
             has_filter('get_custom_logo_image_attributes', [\Arena\Setup::class, 'logoIsAboveTheFold']),
             'Sem o filtro `get_custom_logo_image_attributes`, o logo volta a ser lazy-loaded.'
         );
+    }
+
+    /**
+     * Na home o tema reivindica a vaga de `fetchpriority="high"` antes do
+     * conteúdo, para o core não promover o banner do WPBakery (122 KB, exibido em
+     * 352×106) em vez do tile do mosaico que é o LCP.
+     */
+    public function test_home_reivindica_a_prioridade_antes_do_conteudo(): void {
+        \Arena\Setup::register();
+
+        $this->assertNotFalse(
+            has_action('template_redirect', [\Arena\Setup::class, 'claimHighPriorityImage']),
+            'Sem este hook, o core dá fetchpriority=high para a primeira imagem grande do conteúdo — ' .
+                'na home, o banner de 122 KB, que não é o elemento LCP. Medido em A/B: com o hook, ' .
+                'mobile 93 / desktop 97; sem ele, mobile 89 / desktop 99. Mantido ligado porque num ' .
+                'portal de notícias o tráfego mobile domina e é o score mais fraco.'
+        );
+    }
+
+    /** Fora da home a heurística do core acerta e não deve ser desligada. */
+    public function test_prioridade_so_e_reivindicada_na_home(): void {
+        $this->assertTrue(wp_high_priority_element_flag(), 'Pré-condição: a flag começa disponível.');
+
+        $post = self::factory()->post->create_and_get();
+        $this->go_to(get_permalink($post));
+        \Arena\Setup::claimHighPriorityImage();
+
+        $this->assertTrue(
+            wp_high_priority_element_flag(),
+            'Numa matéria a imagem de destaque renderiza antes do conteúdo, então a heurística do core ' .
+                'já escolhe certo — desligá-la ali seria perder otimização de graça.'
+        );
+    }
+
+    /**
+     * O trinco: só o PRIMEIRO bloco de listagem da requisição pode marcar imagens
+     * como acima da dobra. Sem ele, cada bloco marcava o próprio primeiro card e a
+     * home servia **6** imagens com `fetchpriority="high"` — prioridade em seis
+     * imagens não é prioridade, e desde o `skip-lazy` elas também saíam do
+     * lazy-load, disputando banda com o LCP de verdade.
+     */
+    public function test_apenas_o_primeiro_bloco_reivindica_acima_da_dobra(): void {
+        \Arena\Media::resetAboveTheFoldBlock();
+
+        $this->assertTrue(\Arena\Media::claimAboveTheFoldBlock(), 'O 1º bloco deve conseguir.');
+        $this->assertFalse(\Arena\Media::claimAboveTheFoldBlock(), 'O 2º bloco não pode.');
+        $this->assertFalse(\Arena\Media::claimAboveTheFoldBlock(), 'Nem o 3º.');
+
+        \Arena\Media::resetAboveTheFoldBlock();
+        $this->assertTrue(\Arena\Media::claimAboveTheFoldBlock(), 'Depois do reset volta a liberar.');
+    }
+
+    /**
+     * Os cards genéricos de listagem não podem cair em `is_first` como padrão —
+     * o primeiro card de um bloco lá embaixo da página não está acima da dobra.
+     */
+    public function test_cards_de_listagem_tem_padrao_seguro(): void {
+        foreach (['featured', 'list', 'text'] as $card) {
+            $php = (string) file_get_contents(ARENA_DIR . "/template-parts/card/{$card}.php");
+
+            $this->assertMatchesRegularExpression(
+                "/\\\$aboveFold\s*=\s*\(bool\)\s*\(\\\$args\['above_fold'\]\s*\?\?\s*false\)/",
+                $php,
+                "card/{$card}.php deve usar `above_fold` com padrão FALSE — cair em `is_first` faz " .
+                    'cada listagem da página marcar um card como prioritário.'
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/if\s*\(\$isFirst\)\s*\{\s*\n\s*\/\/[^\n]*\n\s*\/\/[^\n]*\n\s*\$imgAttr = \\\\Arena\\\\Media::markAboveTheFold/',
+                $php,
+                "card/{$card}.php não pode marcar por `is_first`."
+            );
+        }
+    }
+
+    /** Todas as listagens precisam reivindicar o trinco, senão nenhuma marca nada. */
+    public function test_todas_as_listagens_usam_o_trinco(): void {
+        $layouts = ['grid', 'blog', 'archive', 'mix', 'modern-grid', 'modern-grid-1'];
+
+        foreach ($layouts as $l) {
+            $php = (string) file_get_contents(ARENA_DIR . "/template-parts/listing/{$l}.php");
+
+            $this->assertStringContainsString(
+                'claimAboveTheFoldBlock()',
+                $php,
+                "listing/{$l}.php deve reivindicar o trinco para decidir se pode marcar acima da dobra."
+            );
+            $this->assertStringContainsString(
+                'above_fold',
+                $php,
+                "listing/{$l}.php deve repassar `above_fold` para o card."
+            );
+        }
     }
 
     /** Entrada malformada (outro plugin filtrando antes) não pode gerar TypeError. */

@@ -91,6 +91,52 @@ final class Media {
         return $attr;
     }
 
+    /** @var bool Trinco de `claimAboveTheFoldBlock()`, por requisição. */
+    private static bool $aboveTheFoldDisponivel = true;
+
+    /**
+     * Reivindica, **uma única vez por requisição**, o direito de marcar imagens
+     * como acima da dobra. Devolve `true` para o PRIMEIRO bloco de listagem que
+     * chamar, e `false` para todos os seguintes.
+     *
+     * POR QUE EXISTE: cada layout de listagem marcava o próprio primeiro card
+     * como prioritário. Na home isso dava **6 imagens com
+     * `fetchpriority="high"`** (medido no HTML servido) — uma por bloco, incluindo
+     * blocos a milhares de pixels abaixo da dobra. Prioridade em seis imagens não
+     * é prioridade nenhuma: elas disputam banda exatamente com a imagem que É o
+     * LCP. E, desde que o tema passou a emitir `skip-lazy`, essas seis também
+     * saíam do lazy-load — ou seja, o problema piorou justamente por causa da
+     * correção anterior.
+     *
+     * O único bloco que pode conter o LCP é o **primeiro** que renderiza. Como os
+     * shortcodes executam na ordem do documento, um trinco por requisição resolve
+     * sem que cada layout precise saber onde está na página. Funciona igual na
+     * home (o mosaico vem primeiro) e no arquivo (o mosaico de destaque vem
+     * primeiro).
+     *
+     * A imagem de destaque da matéria (`template-parts/single/featured.php`) NÃO
+     * usa o trinco: ela renderiza fora de listagem e é, por definição, a primeira
+     * imagem grande da página.
+     */
+    public static function claimAboveTheFoldBlock(): bool {
+        if (!self::$aboveTheFoldDisponivel) {
+            return false;
+        }
+
+        self::$aboveTheFoldDisponivel = false;
+
+        return true;
+    }
+
+    /**
+     * Libera o trinco. Existe para os testes: um `static` sobrevive entre casos
+     * de teste no mesmo processo do PHPUnit, e sem isto o segundo teste a chamar
+     * `claimAboveTheFoldBlock()` receberia `false` por contaminação.
+     */
+    public static function resetAboveTheFoldBlock(): void {
+        self::$aboveTheFoldDisponivel = true;
+    }
+
     /**
      * URL of the theme's own DEFAULT placeholder image (BUG 4, task-uifix):
      * a post with no usable thumbnail (see

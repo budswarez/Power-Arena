@@ -22,6 +22,11 @@ if (!defined('ABSPATH')) { exit; }
 
 $query = $args['query'] instanceof WP_Query ? $args['query'] : new WP_Query(['post__in' => [0]]);
 $options = is_array($args['options'] ?? null) ? $args['options'] : [];
+// Só o PRIMEIRO bloco de listagem da requisição pode conter o elemento LCP.
+// Ver Arena\Media::claimAboveTheFoldBlock(): sem esse trinco, cada bloco marcava
+// o próprio primeiro card e a home ficava com 6 imagens em fetchpriority=high.
+$blocoAcimaDaDobra = \Arena\Media::claimAboveTheFoldBlock();
+
 
 $scheme = ($options['dark_scheme'] ?? false) ? 'bs-dark-scheme' : 'bs-light-scheme';
 $visibilityClass = (string) ($options['visibility_class'] ?? '');
@@ -61,7 +66,7 @@ if ($query->have_posts()) {
             'is_first' => $index === 1,
             // Ver $aboveFoldCount acima: o limite é medido, e cobre o pior caso
             // (mobile, onde o mosaico empilha e 3 tiles ficam visíveis).
-            'above_fold' => $index <= $aboveFoldCount,
+            'above_fold' => $blocoAcimaDaDobra && $index <= $aboveFoldCount,
             'compact'    => $index > $firstRowSize,
             'options'    => $options,
         ]);

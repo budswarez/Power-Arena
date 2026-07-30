@@ -37,6 +37,10 @@ if (!$postId) {
 }
 
 $isFirst  = (bool) ($args['is_first'] ?? false);
+// `above_fold` NAO cai em `is_first`: o primeiro card de uma listagem qualquer
+// costuma estar muito abaixo da dobra. Quem sabe a posicao na pagina e o layout,
+// que reivindica o trinco (Arena\Media::claimAboveTheFoldBlock()). Padrao seguro: false.
+$aboveFold = (bool) ($args['above_fold'] ?? false);
 $showMeta = (bool) ($args['show_meta'] ?? true);
 $showComments = (bool) ($args['show_comments'] ?? false);
 $showBadge = (bool) ($args['show_badge'] ?? true);
@@ -65,10 +69,10 @@ $permalink = get_permalink($postId);
                         'decoding' => 'async',
                         'alt'      => \Arena\Media::imageAlt((int) get_post_thumbnail_id($postId), get_the_title($postId)),
                     ];
-                    if ($isFirst) {
+                    if ($aboveFold) {
                         // Inclui `skip-lazy`: declarar `eager` nao basta contra o lazy-loader
                         // do EWWW. Ver Arena\Media::markAboveTheFold().
-                        $imgAttr = \Arena\Media::markAboveTheFold($imgAttr);
+                        $imgAttr = \Arena\Media::markAboveTheFold($imgAttr, true);
                     }
                     echo get_the_post_thumbnail($postId, 'arena-card', $imgAttr);
                     ?>

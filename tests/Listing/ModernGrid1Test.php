@@ -15,6 +15,14 @@ use Arena\Listing\Renderer;
  * gradient/badge/meta stay identical to the home hero cards.
  */
 class ModernGrid1Test extends WP_UnitTestCase {
+    public function setUp(): void {
+        parent::setUp();
+        // Trinco de vida-de-requisicao: sem o reset, o segundo teste do processo
+        // ja encontra a vaga de 'acima da dobra' consumida.
+        // Ver Arena\Media::claimAboveTheFoldBlock().
+        \Arena\Media::resetAboveTheFoldBlock();
+    }
+
     /** @return int[] post IDs, newest first (default query order). */
     private function createPostsInCategory(int $catId, int $count): array {
         $now = time();

@@ -600,6 +600,75 @@ requisições" perde para "não esperar a rede".
 | Fontes `latin-ext` | 4 arquivos, ~67 KB, **sem nenhum caractere da página exigir** | tema (causa não identificada) |
 | jQuery | único script que ainda bloqueia (17 dos 18 já têm `defer`) | WPBakery depende dele |
 
-O banner é o maior ganho isolado que resta: reduzir a dimensão servida no mobile
-economiza ~90 KB **e** libera prioridade — ele hoje leva `fetchpriority="high"`
-sem ser o elemento LCP.
+## Segunda rodada: prioridade concentrada numa única imagem (0.2.5 → 0.2.8)
+
+A correção do `skip-lazy` expôs um defeito **que ela mesma piorou**: cada layout de
+listagem marcava o próprio primeiro card como prioritário. Contado no HTML servido
+da home: **6 imagens com `fetchpriority="high"`** — e, desde o `skip-lazy`, essas
+seis também saíam do lazy-load. Prioridade em seis imagens não é prioridade: elas
+disputavam banda exatamente com a imagem que É o LCP.
+
+Duas correções:
+
+1. **Trinco por requisição** (`Arena\Media::claimAboveTheFoldBlock()`): só o
+   **primeiro** bloco de listagem que renderiza pode marcar imagens acima da
+   dobra. Como os shortcodes executam na ordem do documento, isso resolve sem que
+   cada layout precise saber onde está na página — e vale igual na home (mosaico
+   primeiro) e no arquivo (mosaico de destaque primeiro). Os cards genéricos
+   passaram a ter **padrão `false`**: um primeiro card de bloco lá embaixo não é
+   "acima da dobra".
+
+2. **O tema reivindica a vaga de prioridade na home**
+   (`Arena\Setup::claimHighPriorityImage()`): o core promove automaticamente a
+   primeira imagem acima de 50.000 px² que encontra — na home, o banner do
+   WPBakery (122 KB, exibido em 352×106), que **não** é o LCP.
+
+Resultado: **1** `fetchpriority="high"` por página (era 6), e `skip-lazy` escopado
+(home 4: logo + 3 tiles; matéria e categoria 2 cada).
+
+| | Mobile | LCP |
+|---|---:|---:|
+| 6 imagens prioritárias (0.2.4) | 83 | 4,3 s |
+| 1 imagem prioritária (0.2.6+) | **93** | **2,8 s** |
+
+### O trade-off do banner, medido e decidido
+
+Tirar a prioridade do banner ajuda o mobile e **atrapalha o desktop** — no desktop
+o banner é grande o bastante para ser o próprio LCP. A/B isolado:
+
+| | Mobile | Desktop |
+|---|---:|---:|
+| tema reivindica a prioridade | **93** (LCP 2,8 s) | 97 (LCP 1,2 s) |
+| core decide (banner prioritário) | 89 (LCP 3,4 s) | **99** (LCP 1,0 s) |
+
+**Decisão: o tema reivindica.** Num portal de notícias o tráfego mobile domina, o
+mobile é o score mais fraco, e é a versão que o Google usa para indexar. Trocar 2
+pontos de desktop por 4 de mobile é o lado certo dessa moeda.
+
+> **O trade-off desaparece se o banner for redimensionado.** Ele é servido em
+> 1170×351 (122 KB) para exibir em 352×106. Com uma imagem adequada, ele carrega
+> rápido mesmo em prioridade baixa e o desktop volta a 99 sem custo para o mobile.
+> É a tarefa de conteúdo com melhor retorno hoje.
+
+## Resultado final — Arena 0.2.8
+
+Medianas de 3 execuções por página, host do antivírus bloqueado, máquina sem Docker:
+
+| Página | Score | LCP | FCP | TBT | CLS |
+|---|---:|---:|---:|---:|---:|
+| home / mobile | **92** | 2,9 s | 2,2 s | 66 ms | **0,000** |
+| home / desktop | **97** | 1,2 s | 0,6 s | 0 ms | **0,000** |
+| matéria / mobile | **94** | 2,6 s | 2,1 s | 115 ms | **0,000** |
+| categoria / mobile | **95** | 2,5 s | 2,0 s | 104 ms | **0,000** |
+
+Comparado ao início do dia: **home mobile 70 → 92**, **matéria mobile 68 → 94**,
+desktop 94 → 97. A home mobile deu **92 nas três execuções** — variância zero.
+
+## O que ainda sobra, em ordem de retorno
+
+| # | Item | Ganho estimado | Dono |
+|---|---|---|---|
+| 1 | Redimensionar o banner da home (1170×351 → ~620×190) | ~90 KB, e devolve o desktop a 99 | conteúdo |
+| 2 | Consolidar GTM/GA4 (437 KB, `gtag` 2×) | até ~320 KB | negócio |
+| 3 | Investigar as 4 fontes `latin-ext` (~67 KB sem nenhum caractere exigir) | ~67 KB | tema |
+| 4 | jQuery (único script que ainda bloqueia) | pequeno, risco alto | WPBakery depende |

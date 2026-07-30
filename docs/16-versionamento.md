@@ -178,6 +178,7 @@ do filho. Manter os dois no mesmo histórico torna essa dependência visível nu
 | `0.2.0` | 2026-07-30 | configuração sem plugins, ponte de SEO, documentação completa |
 | `0.2.1` | 2026-07-30 | colunas do WPBakery empilham no celular; breadcrumb redesenhado |
 | `0.2.4` | 2026-07-30 | imagens acima da dobra saem do lazy-load: matéria mobile 68→95, home 70→83 |
+| `0.2.8` | 2026-07-30 | prioridade concentrada em 1 imagem por página: home mobile 83→92, categoria 95 |
 
 Detalhe de cada uma em [CHANGELOG.md](../CHANGELOG.md); a narrativa com os erros
 e as causas-raiz em [11 — Diário de bordo](11-diario-de-bordo.md).
