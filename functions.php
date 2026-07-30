@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) { exit; }
 
 define('ARENA_DIR', get_template_directory());
 define('ARENA_URI', get_template_directory_uri());
-define('ARENA_VERSION', '0.1.0');
+define('ARENA_VERSION', '0.2.0');
 
 // Autoloader PSR-4 próprio: Arena\Foo\Bar -> inc/Foo/Bar.php
 spl_autoload_register(static function (string $class): void {

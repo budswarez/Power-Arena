@@ -1,0 +1,26 @@
+Conteúdo de exemplo para a página usada como home (cole no editor de texto/código,
+não no editor visual). Reproduz a estrutura da home de produção: destaque no topo,
+três colunas de categoria, últimas notícias em faixa escura.
+
+[vc_row][vc_column]
+
+[bs-modern-grid-listing-7 columns="4" count="5" disable_duplicate="1" heading="Destaques" heading_color="#f42c1a"]
+
+[/vc_column][/vc_row]
+
+[vc_row][vc_column width="1/3"]
+[bs-mix-listing-3-1 columns="1" count="4" heading="Hardware" category="ID_DA_CATEGORIA" heading_color="#f42c1a"]
+[/vc_column][vc_column width="1/3"]
+[bs-mix-listing-3-1 columns="1" count="4" heading="eSports" category="ID_DA_CATEGORIA" heading_color="#1e73be"]
+[/vc_column][vc_column width="1/3"]
+[bs-mix-listing-3-1 columns="1" count="4" heading="Games" category="ID_DA_CATEGORIA" heading_color="#81d742"]
+[/vc_column][/vc_row]
+
+[vc_row][vc_column]
+[bs-grid-listing-1 columns="4" count="8" heading="Últimas notícias" bs-text-color-scheme="light" disable_duplicate="0"]
+[/vc_column][/vc_row]
+
+Observações:
+- `bs-text-color-scheme="light"` = texto claro, ou seja, a faixa de fundo ESCURO.
+- `disable_duplicate="1"` evita repetir posts que um bloco anterior já mostrou.
+- Troque ID_DA_CATEGORIA pelos IDs reais (wp term list category --fields=term_id,name).
