@@ -2162,20 +2162,136 @@
 /* ==========================================================================
    Article (single.php) — breadcrumb, featured image, header/H1, meta,
    entry-content typography, tags, prev/next nav.
-   template-parts/single/*.php builds the markup; Yoast owns the breadcrumb
-   trail's own markup/schema (yoast_breadcrumb() in single.php) — the rule
-   below only styles the trail Yoast prints inside the `<nav
-   class="arena-breadcrumb">` wrapper we pass it, it never duplicates schema
-   output of its own.
+   template-parts/single/*.php builds the markup; o PLUGIN de SEO ativo
+   (hoje Rank Math, via Arena\Seo::breadcrumb() — ADR-008) é o dono da
+   marcação e do schema da trilha — as regras abaixo só estilizam o que ele
+   imprime dentro do `<nav class="arena-breadcrumb">` que o tema passa como
+   wrapper; o tema nunca gera trilha nem schema próprios.
    ========================================================================== */
 @layer components {
+  /* --------------------------------------------------------------------------
+     Breadcrumb (trilha) — estilo APENAS; o HTML é do plugin (ADR-008).
+     Marcação real medida em produção (curl da matéria):
+       <nav class="arena-breadcrumb">
+         <a>Início</a><span class="separator"> - </span>
+         <a>Hardware</a><span class="separator"> - </span>
+         <span class="last">título da matéria</span>
+       </nav>
+
+     Fica DENTRO de `@layer components` de propósito: medido no site real
+     (CDP, matéria + arquivo + busca, 390px e 1366px) TODAS as declarações
+     abaixo aplicam a partir da camada — nenhum CSS sem camada disputa
+     `.arena-breadcrumb` (o Rank Math não manda folha para essa trilha, e o
+     `text-decoration: none` do link — a declaração que mais correria risco
+     de perder para um `a{text-decoration:underline}` sem camada — computa
+     `none` no navegador). Não há motivo para repetir aqui o caso do
+     alinhamento de mídia (ADR-007), que precisou sair da camada porque
+     brigava com `:where(figure)` do core.
+     -------------------------------------------------------------------------- */
   .arena-breadcrumb {
-    padding-block: 14px;
-    font-size: 13px;
+    padding-block: 16px 14px;
+    font-family: var(--arena-font-body);
+    font-size: 13px; /* piso: abaixo disso a trilha volta a ser ilegível */
+    line-height: 1.45;
     color: var(--arena-c-text-secondary);
+    /* O último item é o TÍTULO da matéria — no celular ele é mais largo que
+       a tela e, sem isto, um título sem espaços (ou uma URL crua) empurraria
+       o scrollWidth além do clientWidth. Medido em 390px com 3 casos de
+       estresse (título de 118 chars, palavra única gigante, URL crua):
+       scrollWidth === clientWidth === 390 nos três. */
+    overflow-wrap: break-word;
+    border-bottom: 1px solid var(--arena-c-border-light);
   }
-  .arena-breadcrumb a { color: var(--arena-c-text-secondary); text-decoration: underline; }
-  .arena-breadcrumb a:hover { color: var(--arena-accent); }
+
+  /* ESPAÇAMENTO À ESQUERDA (o pedido do dono do site) — mas só onde ele
+     falta. A trilha é renderizada em DOIS lugares diferentes:
+       - single.php e archive.php: filha DIRETA de `main.content-container`,
+         numa faixa de largura total ANTES da linha de colunas (task-uifix
+         BUG 5). Aí ela encostava na borda do bloco branco, enquanto o H1
+         logo abaixo começa 15px adentro (`.content-column`, padding-inline
+         15px) — era isso que fazia a trilha parecer texto solto.
+       - page/search/index/404/attachment.php: DENTRO de `.content-column`,
+         que já dá os mesmos 15px. Medido: left=98 no desktop, igual ao H1.
+     Por isso o recuo é escopado ao primeiro caso — uma regra solta em
+     `.arena-breadcrumb` daria 30px nesses cinco templates, desalinhando a
+     trilha do próprio conteúdo. `margin-inline` (e não `padding-inline`)
+     para que a hairline de baixo também termine alinhada com o conteúdo. */
+  main.content-container > .arena-breadcrumb {
+    margin-inline: 15px;
+  }
+
+  /* `inline-block` + padding vertical: alvo de toque de 26,8px de altura
+     (mínimo 24px), que o link inline de 16px não alcançava. O último item
+     (`.last`) fica inline de propósito — é o título longo, e como texto
+     inline ele quebra no meio, o que um inline-block não faria tão bem. */
+  .arena-breadcrumb a {
+    display: inline-block;
+    padding-block: 4px;
+    color: var(--arena-c-text-secondary);
+    text-decoration: none; /* sublinhado permanente saía: virou estado de hover/foco */
+  }
+
+  /* --arena-accent-text, não --arena-accent: a 13px o destaque cru mede
+     4,02:1 sobre branco (reprova AA). Medido na produção com o destaque
+     configurado hoje, a variante acessível computa rgb(228,29,11) = 4,69:1. */
+  .arena-breadcrumb a:hover,
+  .arena-breadcrumb a:focus-visible {
+    color: var(--arena-accent-text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .arena-breadcrumb a:focus-visible {
+    outline: 2px solid var(--arena-accent-text);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* SEPARADOR. O plugin imprime `<span class="separator"> - </span>` — um
+     hífen literal, feio e, pior, um nó de texto que o leitor de tela anuncia
+     entre cada item (conferido na árvore de acessibilidade via CDP: 2 nós
+     `StaticText " - "` não-ignorados dentro do nav).
+
+     `visibility: hidden` no span (não `display: none`) porque:
+       1. tira o " - " da árvore de acessibilidade — depois da mudança a
+          varredura da árvore não encontra nenhum nó separador;
+       2. PRESERVA a caixa no layout, então o chevron desenhado no
+          `::before` (com `visibility: visible`, que reaparece dentro de um
+          pai hidden) ocupa esse espaço sem precisar de margem em ninguém.
+     O chevron é PURA geometria (`content: ""` + 2 bordas rotacionadas, o
+     mesmo recurso já usado por `.arena-accordion__title::after` neste
+     arquivo): não há texto gerado para o leitor de tela anunciar, então não
+     faz falta um `aria-hidden` que o CSS não poderia acrescentar.
+
+     Ficar FORA do link também importa: dentro do `<a>` o chevron entraria na
+     área clicável e o sublinhado de hover passaria por baixo dele. */
+  .arena-breadcrumb .separator {
+    visibility: hidden;
+    position: relative;
+    display: inline-block;
+    width: 20px;
+  }
+
+  .arena-breadcrumb .separator::before {
+    visibility: visible;
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    margin: -3px 0 0 -4px; /* centro óptico, conferido em zoom 6x */
+    border-top: 1.5px solid var(--arena-c-text-secondary);
+    border-right: 1.5px solid var(--arena-c-text-secondary);
+    transform: rotate(45deg);
+  }
+
+  /* Item ATUAL: o plugin já o entrega sem link. Peso e cor escura fazem a
+     hierarquia que faltava (17,22:1 sobre o branco da página). */
+  .arena-breadcrumb .last {
+    font-weight: 600;
+    color: var(--arena-c-dark);
+  }
 
   .single-container { padding-block: 6px 40px; }
 
@@ -3151,3 +3267,75 @@
     color: var(--arena-text-secondary);
     text-align: center;
   }
+
+/* ==========================================================================
+   Colunas do WPBakery voltam a empilhar no mobile
+   ==========================================================================
+   BUG RELATADO: na home, a linha de três colunas (Hardware / VALORANT / Free
+   Fire) não empilhava no celular — as três lado a lado com ~130px cada num
+   viewport de 390px, uma palavra por linha, e a página estourando 49px.
+
+   CAUSA RAIZ (medida na produção, não inferida): esta instalação tem a opção
+   do WPBakery `wpb_js_not_responsive_css = 1` ("desabilitar elementos
+   responsivos"), herdada da época do tema Publisher. Com ela, o WordPress
+   imprime `vc_non_responsive` na classe do `<body>` e o `js_composer.min.css`
+   passa a valer por esta regra, que NÃO tem media query nenhum:
+
+       .vc_non_responsive .vc_row .vc_col-sm-4 { width: 33.33333333% }
+       .vc_non_responsive .vc_row .vc_col-sm-4 { float: left }
+
+   As regras responsivas nativas do js_composer continuam no arquivo, dentro de
+   `@media (min-width:768px)`, mas nunca chegam a importar: a variante
+   `vc_non_responsive` é mais específica E incondicional. O Publisher
+   compensava com CSS mobile próprio; o Arena não tinha nada equivalente, então
+   a quebra apareceu junto com a troca de tema.
+
+   POR QUE O TEMA CORRIGE, EM VEZ DE DESLIGAR A OPÇÃO: desligar
+   `wpb_js_not_responsive_css` resolveria neste site, mas é configuração global
+   do construtor, não do tema — e um tema revendável não pode depender de um
+   ajuste que qualquer administrador religa sem saber a consequência. Se a
+   opção for desligada algum dia, estas regras se tornam redundantes e inócuas
+   (o seletor exige `.vc_non_responsive` no body), não conflitantes.
+
+   POR QUE ESTE BLOCO FICA FORA DE @layer: mesma armadilha do alinhamento de
+   mídia acima (ADR-007). Medido a 390px na home real, injetando a MESMA regra
+   das duas formas: dentro de `@layer components` as colunas continuaram com
+   130px; fora de qualquer camada foram para 390px. O `js_composer.min.css` não
+   usa camadas, e declaração sem camada vence qualquer declaração DENTRO de uma
+   camada na mesma origem, independentemente da especificidade. Mover este
+   bloco para dentro da camada DESLIGA a correção sem quebrar nenhum teste de
+   marcação — por isso existe o teste-guarda
+   `WpBakeryResponsiveGuardTest::test_regra_responsiva_do_wpbakery_fica_fora_de_qualquer_camada`.
+
+   Os limites reproduzem exatamente o que o js_composer faria se a opção
+   estivesse desligada: `col-sm-*` empilha abaixo de 768px, `col-md-*` abaixo
+   de 992px, `col-lg-*` abaixo de 1200px.
+
+   `vc_col-xs-*` fica DE FORA de propósito: no Bootstrap, `xs` significa "vale
+   também nas telas pequenas", ou seja é escolha explícita de quem montou a
+   página — empilhar isso seria o tema passando por cima do editor.
+
+   Medido depois da correção (home de produção, 7 larguras): 360/390/420/767px
+   empilham com zero overflow; 768/1024/1366px seguem com 3 colunas. Títulos
+   com menos de 120px de largura: 29 antes, 0 depois.
+   ========================================================================== */
+@media (max-width: 767px) {
+  body.vc_non_responsive .vc_row [class*="vc_col-sm-"] {
+    float: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 991px) {
+  body.vc_non_responsive .vc_row [class*="vc_col-md-"] {
+    float: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 1199px) {
+  body.vc_non_responsive .vc_row [class*="vc_col-lg-"] {
+    float: none;
+    width: 100%;
+  }
+}

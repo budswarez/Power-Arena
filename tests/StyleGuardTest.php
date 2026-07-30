@@ -245,6 +245,124 @@ final class StyleGuardTest extends WP_UnitTestCase {
     }
 
     /**
+     * task-breadcrumb: o recuo horizontal da trilha precisa ficar ESCOPADO a
+     * `main.content-container > .arena-breadcrumb`, nunca solto em
+     * `.arena-breadcrumb`.
+     *
+     * O `<nav class="arena-breadcrumb">` do plugin de SEO é renderizado em
+     * DOIS lugares estruturalmente diferentes:
+     *   - single.php / archive.php: filho DIRETO de `main.content-container`,
+     *     numa faixa de largura total ANTES da linha de colunas (task-uifix
+     *     BUG 5) — aí ele encosta na borda do bloco branco e precisa recriar
+     *     por conta própria os 15px de recuo que `.content-column` dá ao
+     *     resto do conteúdo (era o "falta espaçamento à esquerda" relatado);
+     *   - page.php / search.php / index.php / 404.php / attachment.php:
+     *     DENTRO de `.content-column`, que JÁ aplica esses 15px. Medido na
+     *     produção: `left=98` no desktop, exatamente igual ao `<h1>`.
+     *
+     * Um `padding-inline`/`margin-inline` solto em `.arena-breadcrumb`
+     * aplicaria nos dois casos, empurrando a trilha para 30px nesses cinco
+     * templates — desalinhada do próprio conteúdo ao lado, que é justamente
+     * o defeito que a mudança veio corrigir, só invertido.
+     */
+    public function test_breadcrumb_inline_inset_is_scoped_to_the_page_shell(): void {
+        $rules = $this->rules($this->css());
+
+        $scopedRuleFound = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (
+                in_array('main.content-container > .arena-breadcrumb', $selectors, true)
+                && preg_match('/margin-inline:\s*15px/', $declarations) === 1
+            ) {
+                $scopedRuleFound = true;
+            }
+
+            if (!in_array('.arena-breadcrumb', $selectors, true)) {
+                continue;
+            }
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/(?:margin|padding)-(?:inline|inline-start|left)\s*:/',
+                $declarations,
+                'Um recuo horizontal solto em `.arena-breadcrumb` também atinge a trilha renderizada ' .
+                    'DENTRO de `.content-column` (page/search/index/404/attachment.php), que já tem os ' .
+                    'mesmos 15px — resultado: 30px, trilha desalinhada do conteúdo ao lado. Use ' .
+                    "`main.content-container > .arena-breadcrumb`. Declarações: {$declarations}"
+            );
+        }
+
+        $this->assertTrue(
+            $scopedRuleFound,
+            'Esperava `main.content-container > .arena-breadcrumb { margin-inline: 15px }` — é o que ' .
+                'alinha o início da trilha com o `<h1>`/coluna de conteúdo em single.php e archive.php.'
+        );
+    }
+
+    /**
+     * task-breadcrumb: o separador do plugin (`<span class="separator"> - </span>`,
+     * um hífen literal) é escondido com `visibility: hidden` — NÃO com
+     * `display: none` — e o chevron decorativo é desenhado no seu
+     * `::before`.
+     *
+     * As duas metades são interdependentes e uma sozinha não funciona:
+     *   - `visibility: hidden` tira o " - " da árvore de acessibilidade
+     *     (conferido via CDP: antes havia 2 nós `StaticText " - "` não
+     *     ignorados dentro do `<nav>`; depois, nenhum) MAS mantém a caixa no
+     *     layout, que é o espaço onde o chevron é desenhado — e um filho com
+     *     `visibility: visible` volta a aparecer dentro de um pai hidden;
+     *   - trocar por `display: none` removeria a caixa E o `::before` junto:
+     *     o separador desapareceria por completo e os itens ficariam
+     *     colados, sem nenhum separador visível.
+     * O chevron é pura geometria (`content: ""` + 2 bordas rotacionadas), e
+     * não texto gerado, justamente para não haver nada que um leitor de tela
+     * possa anunciar — não existe `aria-hidden` que o CSS pudesse aplicar.
+     */
+    public function test_breadcrumb_separator_is_hidden_without_collapsing_its_box(): void {
+        $rules = $this->rules($this->css());
+
+        $separator = null;
+        $chevron = null;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (in_array('.arena-breadcrumb .separator', $selectors, true)) {
+                $separator = $declarations;
+            }
+            if (in_array('.arena-breadcrumb .separator::before', $selectors, true)) {
+                $chevron = $declarations;
+            }
+        }
+
+        $this->assertNotNull($separator, 'Esperava uma regra `.arena-breadcrumb .separator { … }`.');
+        $this->assertMatchesRegularExpression(
+            '/visibility:\s*hidden/',
+            $separator,
+            'O separador do plugin precisa ser escondido com `visibility: hidden` — é o que o remove da ' .
+                'árvore de acessibilidade (o leitor de tela deixa de anunciar "-" entre cada item) sem ' .
+                'destruir a caixa onde o chevron é desenhado.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/display:\s*none/',
+            $separator,
+            '`display: none` no separador remove também o `::before` que desenha o chevron — a trilha ' .
+                'fica sem separador nenhum, com os itens colados. Use `visibility: hidden`.'
+        );
+
+        $this->assertNotNull($chevron, 'Esperava uma regra `.arena-breadcrumb .separator::before { … }`.');
+        $this->assertMatchesRegularExpression(
+            '/visibility:\s*visible/',
+            $chevron,
+            'O chevron precisa reafirmar `visibility: visible` para reaparecer dentro do separador ' .
+                'escondido — sem isso ele herda o `hidden` do pai e nada é desenhado.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/content:\s*""/',
+            $chevron,
+            'O chevron tem de ser pura geometria (`content: ""` + bordas rotacionadas). Um `content: "›"` ' .
+                'volta a inserir texto gerado, que leitores de tela podem anunciar e que o CSS não tem ' .
+                'como marcar com `aria-hidden`.'
+        );
+    }
+
+    /**
      * As regras de alinhamento de mídia (`.aligncenter` & cia.) precisam ficar
      * FORA de qualquer `@layer`. Medido no site real: dentro de
      * `@layer components`, o `margin-inline: auto` do `.aligncenter`

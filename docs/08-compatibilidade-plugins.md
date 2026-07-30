@@ -116,6 +116,35 @@ dizem coisas diferentes, **o atributo do bloco vence** — é a escolha específ
 daquela seção da home. As opções do painel entram apenas como padrão. Ver
 [07 — Opções e painel](07-opcoes-e-painel.md).
 
+### A opção que desliga a responsividade
+
+Esta instalação tem, no WPBakery, **`wpb_js_not_responsive_css = 1`**
+("desabilitar elementos responsivos"), herdada da época do Publisher. O efeito é
+maior do que o nome sugere:
+
+- o WordPress passa a imprimir **`vc_non_responsive`** na classe do `<body>`;
+- o `js_composer.min.css` então vale por
+  `.vc_non_responsive .vc_row .vc_col-sm-4 { width: 33.33% }` — **sem `@media`
+  nenhum**. Largura fixa de ⅓ em qualquer tela;
+- as regras responsivas nativas do próprio js_composer continuam no arquivo,
+  dentro de `@media (min-width:768px)`, mas **nunca chegam a importar**: a
+  variante `vc_non_responsive` é mais específica **e** incondicional.
+
+O Publisher compensava isso com CSS mobile próprio. O Arena não tinha — e foi
+assim que a home foi para o ar com as três colunas lado a lado no celular,
+estourando 49px. **O tema agora corrige por conta própria**, num bloco fora de
+`@layer` (obrigatoriamente — ver
+[ADR-007](12-decisoes-arquiteturais.md#adr-007--css-em-layer--e-o-preço-disso)),
+travado por `tests/WpBakeryResponsiveGuardTest.php`.
+
+> **Se você desligar essa opção no painel do WPBakery**, nada quebra: as regras
+> do tema exigem `.vc_non_responsive` no `<body>`, então simplesmente deixam de
+> casar e o grid nativo do js_composer assume. Desligar é até desejável — só não
+> é algo de que o tema possa depender.
+
+Histórico do diagnóstico em
+[11 — Diário de bordo](11-diario-de-bordo.md#3007--colunas-que-não-empilhavam-no-celular).
+
 ---
 
 ## wpDiscuz — e a tela de widgets que não salvava

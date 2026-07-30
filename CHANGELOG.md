@@ -9,12 +9,63 @@ que conta como quebra estão em
 
 ---
 
-## Não lançado
+## [0.2.1] — 2026-07-30
 
-Mudanças de ferramenta de build, feitas durante o deploy da 0.2.0. **Não alteram
-o tema entregue** — o que está em produção corresponde exatamente à tag `v0.2.0`.
+Duas correções de defeito relatado pelo dono do site, ambas medidas na página
+real antes de virarem código.
 
 ### Corrigido
+
+- **As colunas do WPBakery não empilhavam no celular.** Na home, a linha de três
+  colunas (Hardware / VALORANT / Free Fire) ficava lado a lado com ~130px cada num
+  viewport de 390px — uma palavra por linha — e a página estourava **49px** para a
+  direita.
+
+  Causa raiz: a instalação tem a opção do WPBakery
+  `wpb_js_not_responsive_css = 1` ("desabilitar elementos responsivos"), herdada
+  da época do Publisher. Com ela, o WordPress imprime `vc_non_responsive` na
+  classe do `<body>` e o `js_composer.min.css` passa a valer por
+  `.vc_non_responsive .vc_row .vc_col-sm-4 { width: 33.33% }` — **sem media query
+  nenhum**, ou seja largura fixa de ⅓ em qualquer tela. As regras responsivas
+  nativas do js_composer continuam no arquivo, mas nunca chegam a importar. O
+  Publisher compensava com CSS mobile próprio; o Arena não tinha nada equivalente.
+
+  Medido depois da correção, em 7 larguras: 360/390/420/767px empilham com
+  **zero overflow**; 768/1024/1366px seguem com 3 colunas. Títulos com menos de
+  120px de largura: **29 antes, 0 depois**.
+
+  O tema corrige em vez de a opção ser desligada, porque é configuração global do
+  construtor e um tema revendável não pode depender de um ajuste que qualquer
+  administrador religa sem saber. `vc_col-xs-*` fica de fora de propósito: `xs`
+  significa "vale também em telas pequenas", é escolha de quem montou a página.
+
+- **Breadcrumb redesenhado.** Estava com aparência de texto solto e colado na
+  borda esquerda, enquanto o `<h1>` logo abaixo começava 15px adentro. Agora:
+  recuo alinhado ao conteúdo, separador em chevron (geometria CSS pura, sem texto
+  gerado), item atual com peso maior, links sem sublinhado permanente, `:focus-visible`
+  visível e hairline inferior.
+
+  O recuo é escopado a `main.content-container > .arena-breadcrumb` porque a
+  trilha é renderizada em **dois** lugares: filha direta de `<main>` em
+  single/archive, e dentro de `.content-column` (que já dá 15px) em
+  page/search/index/404/attachment — uma regra solta produziria 30px e
+  desalinharia cinco templates.
+
+  Acessibilidade medida: links 5,33:1, item atual 17,22:1, hover/foco 4,69:1;
+  alvo de toque de 16px → **26,8px**; e os dois nós de texto `" - "` que o
+  separador antigo deixava na árvore de acessibilidade **desapareceram**.
+
+### Notas de atualização
+
+- **A aparência do breadcrumb muda de propósito** nesta versão — é a correção
+  pedida. É a única mudança visual que não depende de configuração.
+- Nenhuma outra ação necessária: nada de template-part removido, slug de menu
+  alterado ou opção renomeada.
+
+### Ferramenta de build
+
+Mudanças feitas durante o deploy da 0.2.0, que **não alteram o tema entregue** —
+o que foi ao ar naquele dia corresponde exatamente à tag `v0.2.0`.
 
 - `bin/package.sh` lia o tema filho da **cópia legada** `themes/arena-child/` em
   vez da canônica `themes/arena/arena-child/`: o primeiro pacote da 0.2.0 saiu
@@ -146,5 +197,6 @@ Importantes e 13 Menores**. Os dois críticos:
 Detalhes e o raciocínio de cada correção estão em
 [docs/11-diario-de-bordo.md](docs/11-diario-de-bordo.md).
 
+[0.2.1]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.1
 [0.2.0]: https://github.com/budswarez/arena-wp/releases/tag/v0.2.0
 [0.1.0]: https://github.com/budswarez/arena-wp/releases/tag/v0.1.0

@@ -152,6 +152,61 @@ versão.
 
 ---
 
+### 30/07 — colunas que não empilhavam no celular
+
+Relato do dono do site, com print: na home, a linha de três colunas
+(Hardware / VALORANT / Free Fire) ficava lado a lado no celular, uma palavra por
+linha, com conteúdo cortado à direita.
+
+Medido a 390px: três colunas de **130px**, `float:left`, página estourando
+**49px**.
+
+**Causa raiz — e não era CSS do tema mal escrito.** A instalação tem
+`wpb_js_not_responsive_css = 1` no WPBakery, herdado do Publisher. Isso coloca
+`vc_non_responsive` no `<body>`, e o `js_composer.min.css` traz
+`.vc_non_responsive .vc_row .vc_col-sm-4{width:33.33%}` **sem media query
+nenhum**. As regras responsivas nativas dele continuam lá, em
+`@media (min-width:768px)`, mas nunca chegam a importar. O Publisher compensava
+com CSS mobile próprio; o Arena não tinha nada equivalente — daí a quebra ter
+nascido junto com a troca de tema.
+
+Sequência de verificação, toda na página real antes de escrever código:
+
+1. **hipótese testada por injeção**, não por dedução — o CSS candidato foi
+   injetado na home de produção via CDP e medido em **7 larguras**:
+   360/390/420/767px empilharam com zero overflow; 768/1024/1366px seguiram com 3
+   colunas. Títulos com menos de 120px: **29 antes, 0 depois**;
+2. **contraprova de camada**: a MESMA regra dentro de `@layer components` deixou
+   as colunas em 130px; fora de camada, foram para 390px. É a ADR-007 outra vez;
+3. o CSS **minificado do build** foi testado do mesmo jeito, porque o minificador
+   remove as aspas do seletor de atributo (`[class*=vc_col-sm-]`);
+4. o teste-guarda foi **quebrado de propósito** (bloco movido para dentro da
+   camada) e ficou vermelho apontando os três seletores, antes de merecer
+   confiança.
+
+**Decisão registrada:** corrigir no tema em vez de desligar a opção do WPBakery.
+Desligar resolveria neste site, mas é configuração global do construtor — um tema
+revendável não pode depender de um ajuste que qualquer administrador religa sem
+saber. As duas coisas convivem: se a opção for desligada, o seletor do tema
+deixa de casar e o grid nativo assume.
+
+Duas precisões que evitam alarme falso no futuro:
+
+- **só a home está afetada.** As outras 5 páginas com WPBakery usam colunas de
+  largura total, e as `vc_col-sm-3` de "Fotos e Vídeos" medem 0px (colunas
+  vazias);
+- **a imagem que parecia quebrada no print não estava quebrada** — 0 imagens com
+  `naturalWidth === 0`. Era carregamento em andamento.
+
+No mesmo dia, o **breadcrumb foi redesenhado** (recuo alinhado ao conteúdo,
+chevron em geometria CSS pura, item atual com peso maior, alvo de toque de 16px
+para 26,8px). Detalhe que só apareceu por medir: o recuo teve de ser escopado a
+`main.content-container > .arena-breadcrumb`, porque em cinco templates a trilha
+é renderizada **dentro** de `.content-column`, que já dá os 15px — uma regra
+solta produziria 30px e desalinharia essas páginas.
+
+---
+
 ## Erro 1 — desenvolvi na versão errada
 
 O `.wp-env.json` estava em **WordPress 6.4 / PHP 8.2**, enquanto a produção roda
