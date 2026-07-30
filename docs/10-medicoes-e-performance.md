@@ -300,8 +300,38 @@ rastreadores.
 
 Opções (`litespeed.conf.*`): `guest = 1`, `guest_optm = 1`.
 
-**Ação:** desligar o Guest Mode (*LiteSpeed Cache → General → Guest Mode*) e
-remedir. É reversível em um clique.
+### ✅ Corrigido em 30/07 — com números
+
+Guest Mode desligado (`guest` e `guest_optm` → 0). O `.htaccess` **não** mudou
+(md5 idêntico antes e depois), então o bloco de canonicalização seguiu intacto.
+
+Medição direta por CDP, UA de celular real, cache do navegador desligado:
+
+| | Antes | Depois |
+|---|---|---|
+| documentos carregados por visita | **2** (o 2º em +920 ms) | **1** |
+| `litespeed_vary` no HTML | presente | **ausente** |
+| itens renderizados | 29 | 29 (idêntico) |
+
+Lighthouse na home mobile, **3 execuções** para não reportar número de sorte:
+
+| | Antes | Depois (3 runs) |
+|---|---|---|
+| Score | 70 | **77 – 78** (média 77,7) |
+| LCP | 6,5 s | **5,0 – 5,3 s** (média 5,14 s) |
+| FCP | 3,4 s | **2,3 s** |
+| documentos | 2 | **1** |
+| "Avoid multiple page redirects" | 3.501 ms | **0 ms** |
+
+> **A economia real foi menor do que o Lighthouse prometia.** A auditoria
+> atribuía **3.501 ms** ao item; o ganho de LCP medido foi de **~1,4 s** (−21%).
+> O "wasted ms" do Lighthouse é uma estimativa do custo do recurso, não do efeito
+> no LCP — vale ler como ordem de grandeza, não como previsão.
+
+**Terminologia que engana:** o Lighthouse chama isso de *"Avoid multiple page
+redirects"*, mas **não havia redirect nenhum** — a contagem de redirects de rede
+era **zero**. Era a página inteira sendo baixada duas vezes por JavaScript. Quem
+for procurar "redirect" no painel ou no `.htaccess` não acha nada.
 
 ## Achado 2 — o cache de página nunca é servido no mobile
 
@@ -420,20 +450,23 @@ contra os 3,5 s do achado 1.
 
 | # | Ação | Onde | Ganho esperado | Situação |
 |---|---|---|---|---|
-| 1 | Desligar **Guest Mode** | LiteSpeed | elimina o 2º carregamento (~3,5 s no mobile) | **pendente** — aplicado e revertido em 30/07 sem chegar a medir (ver abaixo) |
-| 2 | Desligar **Separate Mobile Cache** | LiteSpeed | −400 a −580 ms de TTFB e carga de PHP | **pendente**, idem |
+| 1 | Desligar **Guest Mode** | LiteSpeed | medido: score 70→78, LCP 6,5→5,1 s | ✅ **feito em 30/07** |
+| 2 | Desligar **Separate Mobile Cache** | LiteSpeed | −400 a −580 ms de TTFB e carga de PHP | **pendente** — mobile ainda responde `BYPASS` |
 | 3 | `http://` sem `www` indo para `/wp-admin/` | `.htaccess` | corrige UX e SEO, −300 ms de PHP | ✅ **feito em 30/07** |
 | 4 | Consolidar GTM/GA4 | decisão de negócio | até ~320 KB | aberto |
 | 5 | Reduzir o banner da home | mídia | parte dos 457 KB | aberto |
 | 6 | Investigar o `latin-ext` | tema | ~67 KB | aberto |
 
-> **Sobre os itens 1 e 2:** foram aplicados em 30/07 por `wp litespeed-option
-> set`, e revertidos minutos depois durante a queda do site (que teve **outra**
-> causa — a regra do painel). Como a reversão veio antes de qualquer medição,
-> **o ganho dos dois segue não comprovado**. Se forem tentados de novo, use a
-> **interface do plugin** (*LiteSpeed Cache → General → Guest Mode* e
-> *Cache → Mobile*), um por vez, com alguém acompanhando o site — e meça
-> `X-Litespeed-Cache` por User-Agent antes e depois.
+> **Histórico dos itens 1 e 2:** os dois foram aplicados juntos em 30/07 e
+> revertidos minutos depois durante a queda do site — que teve **outra** causa (a
+> regra do painel). Ficou provado depois que a mudança de opções **não** era a
+> causa: restaurar `.htaccess` e as três opções não devolveu o site; só apagar a
+> regra devolveu.
+>
+> O item 1 foi então reaplicado **sozinho**, com backup, verificação de saúde
+> antes da medição e três execuções do Lighthouse — resultado acima. O item 2
+> segue pendente de propósito: **um ajuste por vez**, para cada número ter uma
+> causa só.
 
 **Não faça:** otimizar o CSS/JS do tema. São 3% do peso; o retorno é nulo
 comparado aos itens 1 a 3.

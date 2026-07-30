@@ -34,41 +34,51 @@ site, não adivinhação do tema. Está registrado como intencional no
 
 ---
 
-## Cache: dois itens aplicados, revertidos e não medidos
+## Cache mobile nunca é servido (`BYPASS`)
 
-A auditoria de 30/07 ([10 — Medições](10-medicoes-e-performance.md#auditoria-de-pagespeed--30072026))
-identificou dois ajustes de LiteSpeed com ganho esperado grande:
+Dos dois ajustes de LiteSpeed que a auditoria de 30/07
+([10 — Medições](10-medicoes-e-performance.md#auditoria-de-pagespeed--30072026))
+apontou, **o primeiro foi feito** e este é o que resta:
 
-| Item | Opção | Ganho esperado |
+| Item | Opção | Situação |
 |---|---|---|
-| Guest Mode ligado faz a página carregar **duas vezes** | `guest`, `guest_optm` | ~3,5 s no mobile |
-| Cache de página nunca servido no mobile | `cache-mobile` | −400 a −580 ms de TTFB |
+| Guest Mode carregava a página duas vezes | `guest`, `guest_optm` | ✅ desligado — score 70→78, LCP 6,5→5,1 s |
+| **Cache de página nunca servido no mobile** | `cache-mobile` | **pendente** |
 
-Os dois foram aplicados por `wp litespeed-option set` e **revertidos minutos
-depois**, durante a queda do site — que teve outra causa (uma regra de
-redirecionamento no painel da Hostinger, ver
-[diário](11-diario-de-bordo.md#3007--site-fora-do-ar-por-20-minutos-loop-de-redirect)).
-Como a reversão veio antes de qualquer medição, **o ganho segue não comprovado**.
+**Sintoma medido, ainda hoje:** requisições com UA de celular respondem
+`X-Litespeed-Cache: BYPASS`/`MISS` e pagam um render PHP completo (~500–700 ms);
+com UA de desktop, `HIT` em ~130 ms.
 
-**Como retomar, com segurança:**
+**Por que desligar o cache mobile separado é seguro:** o Arena é responsivo e
+entrega a MESMA marcação para os dois. Comparei o HTML servido a cada UA — 94,6%
+idêntico, e as diferenças eram todas do próprio LiteSpeed (lazy-load,
+`litespeed_ui_events`), consequência de uma cópia estar cacheada e a outra não.
+Nada vinha do tema.
 
-1. use a **interface do plugin**, não o `wp-cli` (*LiteSpeed Cache → General →
-   Guest Mode*; *Cache → Mobile*);
-2. **um item por vez**, com alguém olhando o site logo depois;
-3. meça antes e depois — o teste de 10 segundos é conferir o cabeçalho por
-   User-Agent:
+**Como fazer, com segurança** (o protocolo que funcionou no item 1):
+
+1. registre o valor atual e faça backup do `.htaccess` — o LiteSpeed pode
+   reescrevê-lo ao salvar (no item 1 não reescreveu; ao mexer em `cache-mobile`,
+   reescreve: é ele que gerencia o marcador `### marker MOBILE ###`);
+2. mude **só** `cache-mobile`;
+3. **verifique a saúde do site antes de medir ganho** — caminhos principais,
+   variantes de domínio, 404 e `admin-ajax`;
+4. só então meça:
 
 ```bash
-curl -sD - -o /dev/null -A "…Android…Mobile…" https://www.pichauarena.com.br/ \
-  | grep -i x-litespeed-cache
+curl -sD - -o /dev/null -A "Mozilla/5.0 (Linux; Android 13) Mobile" \
+  https://www.pichauarena.com.br/ | grep -i x-litespeed-cache
 ```
 
-Esperado hoje: `MISS` para UA mobile, `HIT` para desktop. Se depois do ajuste o
-mobile passar a dar `HIT`, funcionou.
+Hoje: `BYPASS`/`MISS`. Se passar a `HIT`, funcionou.
 
-**Estado atual:** as três opções estão nos valores originais
-(`guest=1`, `guest_optm=1`, `cache-mobile=1`) e o `.htaccess` é byte-idêntico ao
-backup pré-mudança.
+> **Atenção ao `.htaccess`:** mexer em `cache-mobile` faz o LiteSpeed reescrever o
+> arquivo. O bloco `# BEGIN Arena canonical host` fica **fora** dos marcadores
+> dele e sobrevive a isso — mas confira depois
+> (`grep -c 'BEGIN Arena canonical host' .htaccess` deve devolver `1`), porque
+> perdê-lo faz o problema do `/wp-admin/` voltar.
+
+**Estado atual:** `guest=0`, `guest_optm=0`, `cache-mobile=1`.
 
 ---
 
