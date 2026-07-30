@@ -34,7 +34,29 @@ site, não adivinhação do tema. Está registrado como intencional no
 
 ---
 
-## Cache mobile nunca é servido (`BYPASS`)
+## Cache mobile nunca é servido — testado, REJEITADO pela medição em 30/07
+
+> **Este item saiu da lista de pendências.** Foi aplicado, medido e revertido.
+> Números completos em
+> [10 — Medições](10-medicoes-e-performance.md#testado-em-3007-e-revertido--a-medição-refutou-a-recomendação).
+>
+> Resumo: desligar o *Separate Mobile Cache* fez o celular passar a dar `HIT` e o
+> TTFB cair de 520–710 ms para **~130 ms** — e ainda assim o **LCP piorou de 5,2 s
+> para 7,3 s** e o score caiu de 78 para 72, em **6 execuções** do Lighthouse.
+> Revertido; o estado bom foi confirmado depois (score 77, LCP 5,3 s).
+>
+> O mecanismo da piora **não foi identificado**: as duas hipóteses testáveis
+> (lazy-load do LiteSpeed e Viewport Images) estão desligadas no site.
+>
+> **Só reconsidere se o problema for carga de servidor**, não velocidade: a
+> mudança elimina o render PHP de todo acesso de celular. Aí a decisão é
+> disponibilidade, e precisa ser medida de novo.
+
+O texto abaixo fica como registro do diagnóstico original.
+
+---
+
+### Diagnóstico original (o sintoma é real, a correção é que não serviu)
 
 Dos dois ajustes de LiteSpeed que a auditoria de 30/07
 ([10 — Medições](10-medicoes-e-performance.md#auditoria-de-pagespeed--30072026))
@@ -43,9 +65,9 @@ apontou, **o primeiro foi feito** e este é o que resta:
 | Item | Opção | Situação |
 |---|---|---|
 | Guest Mode carregava a página duas vezes | `guest`, `guest_optm` | ✅ desligado — score 70→78, LCP 6,5→5,1 s |
-| **Cache de página nunca servido no mobile** | `cache-mobile` | **pendente** |
+| **Cache de página nunca servido no mobile** | `cache-mobile` | ❌ testado e revertido (ver acima) |
 
-**Sintoma medido, ainda hoje:** requisições com UA de celular respondem
+**Sintoma medido:** requisições com UA de celular respondem
 `X-Litespeed-Cache: BYPASS`/`MISS` e pagam um render PHP completo (~500–700 ms);
 com UA de desktop, `HIT` em ~130 ms.
 

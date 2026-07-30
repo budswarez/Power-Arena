@@ -354,13 +354,45 @@ a um desktop — 94,6% idêntico, e **as diferenças são todas do próprio Lite
 (`data-lazyloaded`, script de lazy-load, `litespeed_ui_events`), consequência de
 uma cópia estar cacheada e a outra não. Nada vem do tema.
 
-**Ação:** desligar *Separate Mobile Cache*.
+### ❌ Testado em 30/07 e REVERTIDO — a medição refutou a recomendação
 
-> **Honestidade sobre o ganho:** um A/B com o Lighthouse (mesmo throttling, um UA
-> que erra o cache e outro que acerta) deu **o mesmo score, 70, e o mesmo LCP de
-> 6,5 s**. Ou seja, isto economiza ~400–580 ms de tempo de servidor por
-> requisição e **muita carga de PHP** — mas, isolado, não é o que faz o LCP
-> mobile ser 6,5 s. O achado 1 é.
+Desligar *Separate Mobile Cache* **funcionou como previsto no servidor e piorou o
+que o usuário sente**:
+
+| | Item 1 apenas (guest off) | + item 2 (mobile-cache off) |
+|---|---|---|
+| `X-Litespeed-Cache` mobile | `MISS`/`BYPASS` | **`HIT`** ✅ |
+| TTFB mobile (curl, 5×) | 520–710 ms | **~130 ms** ✅ |
+| TTFB mobile (Lighthouse) | 665 ms | **190–235 ms** ✅ |
+| **Score (mediana)** | **78** | **72** ❌ |
+| **LCP (mediana)** | **5,2 s** | **7,3 s** ❌ |
+
+Seis execuções do Lighthouse na etapa 2 (faixa 70–75 / 6,2–8,1 s) — a piora é
+**reproduzível, não ruído**. Revertido; três execuções depois do revert
+confirmaram a volta ao estado bom (score 77, LCP 5,3 s).
+
+**Mecanismo: não identificado.** As duas explicações que eu tinha foram
+descartadas por medição, não por argumento:
+
+- *"mobile passou a receber o HTML com lazy-load do LiteSpeed"* — falso: o HTML
+  servido ao celular não tinha `data-lazyloaded`, `data-litespeed-src` nem
+  `about:blank`. E `media-lazy` está **desligado**;
+- *"Viewport Images (VPI) do desktop aplicadas no celular"* — `optm-vpi` está
+  **desligado**.
+
+`optm-ccss_gen` está ligado (CSS crítico é gerado por tipo de dispositivo), mas
+`optm-css_async` está desligado — sem CSS assíncrono o crítico não chega a ser
+aplicado, o que também enfraquece essa hipótese.
+
+**Lição que vale mais que o item:** o TTFB melhorou de verdade (menos de um terço
+do anterior) e **isso não se traduziu em página mais rápida**. Servidor mais
+rápido ≠ usuário mais rápido. Se a recomendação tivesse sido aplicada sem medir o
+lado do usuário, o site teria ficado pior com um número bonito para exibir.
+
+> **Quando reconsiderar:** desligar o cache mobile **reduz muito a carga de PHP**
+> (todo acesso de celular deixa de renderizar). Se algum dia o site sofrer com
+> pico de tráfego, o trade-off pode valer a pena — mas então a decisão é
+> disponibilidade, não velocidade percebida, e precisa ser medida de novo.
 
 ## Achado 3 — `http://pichauarena.com.br` cai no wp-login
 
@@ -451,7 +483,7 @@ contra os 3,5 s do achado 1.
 | # | Ação | Onde | Ganho esperado | Situação |
 |---|---|---|---|---|
 | 1 | Desligar **Guest Mode** | LiteSpeed | medido: score 70→78, LCP 6,5→5,1 s | ✅ **feito em 30/07** |
-| 2 | Desligar **Separate Mobile Cache** | LiteSpeed | −400 a −580 ms de TTFB e carga de PHP | **pendente** — mobile ainda responde `BYPASS` |
+| 2 | Desligar **Separate Mobile Cache** | LiteSpeed | TTFB caiu para ~130 ms, mas **LCP piorou 5,2→7,3 s** | ❌ **testado e revertido** |
 | 3 | `http://` sem `www` indo para `/wp-admin/` | `.htaccess` | corrige UX e SEO, −300 ms de PHP | ✅ **feito em 30/07** |
 | 4 | Consolidar GTM/GA4 | decisão de negócio | até ~320 KB | aberto |
 | 5 | Reduzir o banner da home | mídia | parte dos 457 KB | aberto |
@@ -463,10 +495,11 @@ contra os 3,5 s do achado 1.
 > causa: restaurar `.htaccess` e as três opções não devolveu o site; só apagar a
 > regra devolveu.
 >
-> O item 1 foi então reaplicado **sozinho**, com backup, verificação de saúde
-> antes da medição e três execuções do Lighthouse — resultado acima. O item 2
-> segue pendente de propósito: **um ajuste por vez**, para cada número ter uma
-> causa só.
+> Cada um foi então testado **sozinho**, com backup, verificação de saúde antes da
+> medição e múltiplas execuções do Lighthouse. **O item 1 ficou; o item 2 foi
+> rejeitado pela medição** e revertido. Testar um por vez foi o que permitiu saber
+> qual dos dois causava o quê — aplicados juntos, o ganho de um teria escondido a
+> piora do outro e o resultado líquido (score ~72) pareceria "o melhor possível".
 
 **Não faça:** otimizar o CSS/JS do tema. São 3% do peso; o retorno é nulo
 comparado aos itens 1 a 3.
