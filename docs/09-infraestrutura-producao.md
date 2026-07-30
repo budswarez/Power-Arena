@@ -114,6 +114,33 @@ formulário, sem tocar na REST API. Escopo estreito de propósito:
 
 ---
 
+## O bloco de canonicalização no `.htaccess`
+
+No **topo** do `.htaccess`, antes de qualquer marcador de plugin, existe um bloco
+`# BEGIN Arena canonical host` que redireciona qualquer host sem `www.` para
+`https://www.pichauarena.com.br`, **antes de o PHP rodar**.
+
+Ele existe porque requisições em `http://pichauarena.com.br` chegavam ao PHP e
+recebiam um `Location` errado para `/wp-admin/` (assinado com
+`X-Redirect-By: WordPress`; a origem exata nunca foi identificada). Resolver no
+servidor tornou a causa irrelevante e eliminou ~300 ms de bootstrap do WordPress
+nesses acessos. Detalhes e medições em
+[13 — Pendências](13-pendencias.md#http-sem-www-ia-para-wp-admin--resolvido-em-3007).
+
+Três coisas a saber antes de mexer nele:
+
+- **Não pode virar loop**, por construção: a condição exige host **sem** `www.` e
+  o destino **sempre** tem `www.`. Se você editar, preserve essa assimetria — uma
+  regra que casa com o próprio destino é o que derrubou o site em 30/07.
+- **`.well-known` está excluído** de propósito: é o caminho de validação e
+  renovação de certificado.
+- **Fica fora dos marcadores gerenciados** (`LSCACHE`, `WordPress`, `EWWWIO`), então
+  reescritas normais do LiteSpeed e do WordPress o preservam — mas um "resetar
+  `.htaccess`" pelo painel apagaria. Se o redirecionamento para `/wp-admin/`
+  reaparecer, é este bloco que sumiu.
+
+---
+
 ## Ruído de PHP 8.5 que não é seu
 
 Em PHP 8.5 aparecem avisos de *deprecation* que **não vêm do tema**. Saber disso

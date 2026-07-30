@@ -343,12 +343,22 @@ http://pichauarena.com.br/
 Quem digita o domínio sem `www` em `http` **vai para a tela de login**, não para
 a home. Vale para links antigos e para rastreadores.
 
-Onde **não** está: `.htaccess` (nenhuma regra aponta para `wp-admin`) e
-WordPress (`siteurl`/`home` = `https://www.pichauarena.com.br`). O `Server:` das
-respostas é `hws`, então a regra está na **plataforma da Hostinger**.
+**RESOLVIDO em 30/07.** Ver
+[13 — Pendências](13-pendencias.md#http-sem-www-ia-para-wp-admin--resolvido-em-3007)
+para a correção aplicada e os números.
 
-As demais variantes estão certas: `https://` sem `www` e `http://www` fazem um
-único 301 para a canônica.
+**Correção de atribuição:** a primeira versão deste documento dizia que a regra
+estava "na plataforma da Hostinger". **Estava errado.** A resposta trazia
+`X-Redirect-By: WordPress` e `X-Processing-Time: 0.302` — era o **WordPress**
+emitindo o redirect, depois de rodar por inteiro. A pista que confirmou: arquivos
+estáticos existentes eram servidos normalmente em `http` sem `www`; só o que
+passava pelo WordPress era redirecionado.
+
+Resolvido canonicalizando o host **antes do PHP**, num bloco de `.htaccess` que
+não pode entrar em loop. O redirect passou a custar `X-Processing-Time: 0.000`.
+
+As demais variantes já estavam certas: `https://` sem `www` e `http://www` fazem
+um único 301 para a canônica.
 
 > ### ⚠️ NÃO crie uma regra de redirecionamento no painel para "corrigir" isto
 >
@@ -412,7 +422,7 @@ contra os 3,5 s do achado 1.
 |---|---|---|---|---|
 | 1 | Desligar **Guest Mode** | LiteSpeed | elimina o 2º carregamento (~3,5 s no mobile) | **pendente** — aplicado e revertido em 30/07 sem chegar a medir (ver abaixo) |
 | 2 | Desligar **Separate Mobile Cache** | LiteSpeed | −400 a −580 ms de TTFB e carga de PHP | **pendente**, idem |
-| 3 | `http://` sem `www` indo para `/wp-admin/` | suporte Hostinger | corrige UX e SEO | **não crie regra no painel** — ver o aviso acima |
+| 3 | `http://` sem `www` indo para `/wp-admin/` | `.htaccess` | corrige UX e SEO, −300 ms de PHP | ✅ **feito em 30/07** |
 | 4 | Consolidar GTM/GA4 | decisão de negócio | até ~320 KB | aberto |
 | 5 | Reduzir o banner da home | mídia | parte dos 457 KB | aberto |
 | 6 | Investigar o `latin-ext` | tema | ~67 KB | aberto |

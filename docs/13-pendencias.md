@@ -72,28 +72,73 @@ backup pré-mudança.
 
 ---
 
-## `http://` sem `www` ainda vai para `/wp-admin/`
+## `http://` sem `www` ia para `/wp-admin/` — RESOLVIDO em 30/07
 
-`http://pichauarena.com.br/qualquer-coisa` responde 301 para
-`https://www.pichauarena.com.br/wp-admin/`, que cai no `wp-login.php`.
+`http://pichauarena.com.br/qualquer-coisa` respondia 301 para
+`https://www.pichauarena.com.br/wp-admin/`, que caía no `wp-login.php`.
 
-**Já descartado** (verificado após o incidente de 30/07): não é a regra do painel
-que foi apagada (testado com query-busting — não é cache), não está no
-`.htaccess`, não está no WordPress (`siteurl`/`home` corretos) e não está nas
-regras visíveis em *Redireciona* no painel.
+**Quem emitia:** o **WordPress**, não a plataforma. A resposta trazia
+`X-Redirect-By: WordPress` e `X-Processing-Time: 0.302` — ou seja, a requisição
+chegava ao PHP, rodava o WordPress inteiro e devolvia o destino errado. Arquivos
+estáticos existentes não eram afetados (servidos 200 em `http`), o que confirma
+que só o que passava pelo WordPress era redirecionado.
 
-**Não tente corrigir criando uma regra no painel** — foi exatamente isso que
-derrubou o site em 30/07. O caminho é **chamado no suporte da Hostinger**, com
-este texto:
+**Oito candidatos descartados com evidência:** regras do painel (só resta a do
+`/evento`, e o problema era anterior à regra apagada), `.htaccess`,
+`WP_HOME`/`WP_SITEURL` (não definidos), `home`/`siteurl` no banco (corretos),
+redirects do Rank Math, `wp_redirect_admin_locations()` do core (só age em 404 —
+mas uma matéria válida também era redirecionada), o mu-plugin
+`hostinger-preview-domain.php` (só ativa com o header `X-Preview-Indicator`) e
+cache (`MISS`, e reproduzia com query-busting).
 
-> O servidor `hws` responde 301 para `http://pichauarena.com.br/<qualquer
-> caminho>` apontando para `https://www.pichauarena.com.br/wp-admin/`. Não existe
-> regra correspondente no `.htaccess` nem em *Redireciona* no painel. As variantes
-> `https://` sem `www` e `http://www` redirecionam corretamente para a canônica.
+> **A linha exata nunca foi identificada.** Achá-la exigiria instrumentar uma
+> requisição web real, ou seja, código temporário em produção. Optamos por
+> resolver **antes do PHP**, o que torna a causa irrelevante.
 
-**Impacto:** baixo para quem digita o endereço (navegadores modernos tentam HTTPS
-primeiro, e essa variante funciona), mas afeta links `http://` antigos e
-rastreadores.
+**A correção** — bloco no topo do `.htaccess`, fora de qualquer marcador de
+plugin:
+
+```apache
+# BEGIN Arena canonical host
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTP_HOST} !^www\. [NC]
+RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
+RewriteRule ^ https://www.pichauarena.com.br%{REQUEST_URI} [R=301,L]
+</IfModule>
+# END Arena canonical host
+```
+
+**Por que não pode virar loop:** a condição exige que o host **não** comece com
+`www.`, e o destino **sempre** tem `www.` — a requisição redirecionada nunca volta
+a casar. Foi exatamente essa exclusão que faltou na regra do painel que derrubou o
+site (ela apontava o domínio para um destino que ela mesma casava).
+
+`.well-known` fica de fora de propósito: é o caminho de validação/renovação de
+certificado.
+
+**Medido depois:**
+
+| | Antes | Depois |
+|---|---|---|
+| `http://pichauarena.com.br/` | → `/wp-admin/` → `wp-login.php` | → `https://www.pichauarena.com.br/` (**1 redirect**) |
+| `http://pichauarena.com.br/csgo/cs2/` | → `/wp-admin/` | → a própria matéria |
+| `https://pichauarena.com.br/` | correto, mas via PHP | correto, no servidor |
+| custo de PHP no redirect | `X-Processing-Time: 0.302` | **`0.000`** |
+| `/evento` (as duas variantes) | → `evento.pichauarena.com.br` | **preservado** |
+| `.well-known` | 404, sem redirect | **404, sem redirect** |
+
+> ### ⚠️ Se o `.htaccess` for regenerado, este bloco se perde
+>
+> Ele fica **fora** dos marcadores gerenciados por plugin (`LSCACHE`,
+> `WordPress`, `EWWWIO`), então reescritas normais do LiteSpeed e do WordPress o
+> preservam. Mas um "resetar `.htaccess`" pelo painel da Hostinger apagaria tudo.
+> Se o problema do `/wp-admin/` reaparecer, **é isto que sumiu.**
+
+**Ainda em aberto (opcional):** o site não envia `Strict-Transport-Security`
+(HSTS). Com HSTS o navegador nunca mais faria a requisição em `http` depois da
+primeira visita, eliminando a classe inteira do problema — mas é um compromisso
+duradouro com HTTPS, então é decisão separada.
 
 ---
 
