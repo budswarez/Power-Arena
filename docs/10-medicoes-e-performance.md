@@ -219,3 +219,185 @@ python cdp_inp2.py "<ws://…>" "<url>" 1366
 > **página**. Nesse caso os `Runtime.evaluate` não veem a página, e o script
 > imprime "0 deslocamentos" sem ter medido nada. Confira que o
 > `webSocketDebuggerUrl` escolhido é o de `"type": "page"`.
+
+---
+
+# Auditoria de PageSpeed — 30/07/2026
+
+Auditoria completa de velocidade em produção, mobile e desktop.
+
+**Conclusão que orienta tudo o que vem abaixo: o gargalo não está no tema.** O
+CSS+JS do Arena é 46 KB de um total de ~1.477 KB (3%). Os itens que dominam são
+configuração de cache, terceiros e imagens.
+
+## Método e suas limitações
+
+| Item | Como foi feito |
+|---|---|
+| Ferramenta | Lighthouse **13.4.1 local** (mesmo motor que o PSI executa) |
+| Páginas | home (`/`) e matéria (`/csgo/cs2/`) |
+| Modos | mobile (preset padrão) e desktop (`--preset=desktop`) |
+| Cabeçalhos/cache | conferidos com `curl -D -` por User-Agent |
+
+**Três limitações declaradas:**
+
+1. **Sem dados de campo (CrUX).** A API do PageSpeed Insights respondeu **429**
+   (cota anônima esgotada) nas quatro tentativas. Todos os números aqui são de
+   **laboratório**. Para ter dados de usuários reais é preciso uma chave de API
+   do PSI/CrUX.
+2. **Lighthouse local ≠ PSI.** O throttling é o mesmo, a rota de rede não: o PSI
+   mede a partir de um datacenter do Google.
+3. **A primeira rodada estava contaminada.** O antivírus **Kaspersky** desta
+   máquina injetou **314 KB em 8 requisições**
+   (`gc.kis.v2.scr.kaspersky-labs.com`) na página medida. As rodadas finais
+   usaram `--blocked-url-patterns=*kaspersky-labs.com*`. **Se você medir daqui e
+   vir scripts da Kaspersky, o número não é do site.**
+
+## Resultado
+
+| Cenário | Score | LCP | FCP | TBT | CLS | TTFB |
+|---|---:|---:|---:|---:|---:|---:|
+| home / **mobile** | **70** | 6,5 s | 3,4 s | 80 ms | **0** | 720 ms |
+| home / **desktop** | **98** | 1,1 s | 0,6 s | 0 ms | **0** | 250 ms |
+| matéria / mobile | 68 | 7,0 s | 3,0 s | 200 ms | **0** | 700 ms |
+| matéria / desktop | 97 | 1,2 s | 0,8 s | 0 ms | **0** | 200 ms |
+
+**Desktop está muito bom. Mobile é o problema.** CLS zero em tudo e TBT baixo —
+ou seja, o que dói é **carregamento**, não interatividade nem estabilidade.
+
+## De quem é o peso (home, mobile, 1.477 KB)
+
+| Fatia | Peso | % |
+|---|---:|---:|
+| Imagens do site | 457 KB | 31% |
+| **Google (GTM + GA4)** | **437 KB** | **30%** |
+| HTML | 256 KB | 17% |
+| Fontes do tema | 153 KB | 10% |
+| CSS/JS do site (tema **+ plugins**) | 128 KB | 9% |
+| OneSignal | 45 KB | 3% |
+
+> Os 256 KB de HTML são **duas cópias de 128 KB** da mesma página — ver o
+> achado nº 1.
+
+## Achado 1 — o Guest Mode carrega a página DUAS vezes
+
+**O maior item isolado.** O Lighthouse registra dois documentos completos, mesma
+URL, ambos `200`:
+
+```
+doc 1: início 1 ms    → fim 859 ms    128 KB
+doc 2: início 1042 ms → fim 1764 ms   128 KB
+```
+
+E atribui **3.501 ms** à auditoria *"Avoid multiple page redirects"* — numa URL
+que o `curl` prova **não ter redirect nenhum** (`num_redirects=0`, TTFB 145 ms).
+
+A causa está no HTML servido: a lógica de *vary* do **Guest Mode** do LiteSpeed
+(`litespeed_vary`, `litespeed_docref` via `sessionStorage`). O Guest Mode entrega
+uma cópia genérica e **recarrega a página inteira** quando detecta que o visitante
+não tem o cookie de vary — isto é, **em toda primeira visita**, inclusive para
+rastreadores.
+
+Opções (`litespeed.conf.*`): `guest = 1`, `guest_optm = 1`.
+
+**Ação:** desligar o Guest Mode (*LiteSpeed Cache → General → Guest Mode*) e
+remedir. É reversível em um clique.
+
+## Achado 2 — o cache de página nunca é servido no mobile
+
+Medido com `curl -D -`, três requisições seguidas de cada tipo:
+
+| User-Agent | `X-LiteSpeed-Cache-Control` | Resultado | TTFB |
+|---|---|---|---:|
+| Android/Chrome (casa a lista mobile) | `no-cache` | **MISS sempre** | 520–710 ms |
+| iPhone Safari **sem** o token `Mobile` | `public,max-age=604800` | **HIT** | ~130 ms |
+| Desktop | `public,max-age=604800` | **HIT** | ~130 ms |
+
+Ou seja: **todo visitante que casa a lista de UA mobile do LiteSpeed dispara um
+render PHP completo.** A configuração parece correta (`cache-mobile = 1`,
+`cache-mobile_rules` com `Mobile|Android|…`, TTL 604800), o que aponta para
+conflito com o Guest Mode.
+
+**O cache mobile separado não serve para nada neste site:** o Arena é responsivo
+e entrega a MESMA marcação para os dois. Comparei o HTML servido a um UA mobile e
+a um desktop — 94,6% idêntico, e **as diferenças são todas do próprio LiteSpeed**
+(`data-lazyloaded`, script de lazy-load, `litespeed_ui_events`), consequência de
+uma cópia estar cacheada e a outra não. Nada vem do tema.
+
+**Ação:** desligar *Separate Mobile Cache*.
+
+> **Honestidade sobre o ganho:** um A/B com o Lighthouse (mesmo throttling, um UA
+> que erra o cache e outro que acerta) deu **o mesmo score, 70, e o mesmo LCP de
+> 6,5 s**. Ou seja, isto economiza ~400–580 ms de tempo de servidor por
+> requisição e **muita carga de PHP** — mas, isolado, não é o que faz o LCP
+> mobile ser 6,5 s. O achado 1 é.
+
+## Achado 3 — `http://pichauarena.com.br` cai no wp-login
+
+```
+http://pichauarena.com.br/
+  → 301 → https://www.pichauarena.com.br/wp-admin/
+  → 302 → https://www.pichauarena.com.br/wp-login.php?redirect_to=…%2Fwp-admin%2F
+```
+
+Quem digita o domínio sem `www` em `http` **vai para a tela de login**, não para
+a home. Vale para links antigos e para rastreadores.
+
+Onde **não** está: `.htaccess` (nenhuma regra aponta para `wp-admin`) e
+WordPress (`siteurl`/`home` = `https://www.pichauarena.com.br`). O `Server:` das
+respostas é `hws`, então a regra está no **painel da Hostinger**
+(*Domínios → Redirecionamentos*). Corrigir lá, para apontar à raiz.
+
+As demais variantes estão certas: `https://` sem `www` e `http://www` fazem um
+único 301 para a canônica.
+
+## Achado 4 — terceiros são 482 KB (33% da página)
+
+| Origem | Peso | Requisições |
+|---|---:|---:|
+| `googletagmanager.com` (GTM + GA4) | 437 KB | 3 |
+| `cdn.onesignal.com` + `api.onesignal.com` | 45 KB | 5 |
+
+O GA4 carrega o `gtag/js` **duas vezes** (160 KB cada) — comportamento normal do
+GA4 via GTM, mas são 320 KB. Isso é decisão de negócio, não de tema: se o Site
+Kit/GTM/GA4 puderem ser consolidados (GA4 direto, sem GTM), a economia é grande.
+
+## Achado 5 — imagens são a maior fatia (457 KB)
+
+Maior item: o banner da home, `banner-arena-site…@2x.png.webp`, **122 KB**. Já
+está em WebP (EWWW + LiteSpeed). O caminho aqui é reduzir a dimensão servida no
+mobile e revisar a qualidade de compressão do banner, não trocar de formato.
+
+## Achado 6 — o tema (o que é nosso)
+
+| | |
+|---|---|
+| CSS | 43,6 KB |
+| JS | 3,5 KB |
+| Fontes baixadas no mobile | 8 arquivos, 153 KB |
+
+Do lado do tema há **um** ponto a melhorar: das 8 fontes baixadas, **4 são
+`latin-ext`** (~67 KB) e **nenhum caractere da página precisa delas** —
+verifiquei decodificando as entidades HTML e varrendo as faixas Unicode do
+`latin-ext`: zero ocorrências. O CSS servido está correto (12 `@font-face`, todas
+com `unicode-range`, só 2 `preload`), e ainda assim o Chrome busca os quatro.
+
+**Não é ganho garantido:** conteúdo de e-sports legitimamente traz nomes com
+`latin-ext` (polonês, turco — "Sławomir", "Şahin"), então **remover as faces
+quebraria essas matérias**. A investigação certa é descobrir por que o Chrome
+ignora o `unicode-range` aqui, não apagar arquivos. Prioridade baixa: 67 KB
+contra os 3,5 s do achado 1.
+
+## Prioridade
+
+| # | Ação | Onde | Ganho esperado | Risco |
+|---|---|---|---|---|
+| 1 | Desligar **Guest Mode** | LiteSpeed | elimina o 2º carregamento (~3,5 s no mobile) | baixo, reversível |
+| 2 | Desligar **Separate Mobile Cache** | LiteSpeed | −400 a −580 ms de TTFB e muita carga de PHP | baixo, reversível |
+| 3 | Corrigir o redirect do domínio sem `www` em `http` | painel Hostinger | corrige UX e SEO | baixo |
+| 4 | Consolidar GTM/GA4 | decisão de negócio | até ~320 KB | médio (medição/tags) |
+| 5 | Reduzir o banner da home | mídia | parte dos 457 KB | baixo |
+| 6 | Investigar o `latin-ext` | tema | ~67 KB | baixo |
+
+**Não faça:** otimizar o CSS/JS do tema. São 3% do peso; o retorno é nulo
+comparado aos itens 1 a 3.
