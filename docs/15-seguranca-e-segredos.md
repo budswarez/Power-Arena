@@ -108,7 +108,7 @@ Ficam em `/tmp` no servidor e devem ser limpos:
 | Arquivo | Contém | Ação |
 |---|---|---|
 | `/tmp/.arena-my.cnf` | credencial do banco | apagado pelo próprio script |
-| `/tmp/arena-memoria.log` | URLs requisitadas + uso de memória | apagar junto com a instrumentação — ver [13](13-pendencias.md#instrumentação-temporária-de-memória) |
+| `/tmp/arena-memoria.log` | URLs requisitadas + uso de memória | **já removido** em 30/07 — ver [13](13-pendencias.md#instrumentação-temporária-de-memória--resolvido-em-3007) |
 | `/tmp/arena-redirects-auditoria.json` | mapa de URLs antigas → destinos | apagar após migrar os redirecionamentos |
 
 E na raiz web, durante um deploy: o `.zip` e o diretório temporário de envio

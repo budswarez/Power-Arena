@@ -9,6 +9,24 @@ que conta como quebra estão em
 
 ---
 
+## Não lançado
+
+Mudanças de ferramenta de build, feitas durante o deploy da 0.2.0. **Não alteram
+o tema entregue** — o que está em produção corresponde exatamente à tag `v0.2.0`.
+
+### Corrigido
+
+- `bin/package.sh` lia o tema filho da **cópia legada** `themes/arena-child/` em
+  vez da canônica `themes/arena/arena-child/`: o primeiro pacote da 0.2.0 saiu
+  com o pai em 0.2.0 e o filho em 0.1.0. Agora a fonte é explícita, com aviso se
+  cair na legada.
+- `bin/package.sh` passou a **abortar** quando a versão do filho difere do pai, ou
+  quando `ARENA_VERSION` difere do `style.css`.
+- `CHANGELOG.md` passou a ser incluído no pacote, junto de `README.md` e
+  `DEPLOY.md`.
+
+---
+
 ## [0.2.0] — 2026-07-30
 
 Primeira atualização depois da entrada em produção. O tema deixa de depender de

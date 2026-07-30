@@ -88,24 +88,45 @@ nada a fazer no tema em nenhum dos casos.
 
 ---
 
-## Instrumentação temporária de memória
+## Instrumentação temporária de memória — RESOLVIDO em 30/07
 
-**Situação.** Para medir o pico de memória por requisição, um bloco temporário
-foi adicionado ao `functions.php` do tema filho: ele grava uma linha por
-requisição em `/tmp/arena-memoria.log` no `shutdown`.
+Para medir o pico de memória por requisição, um bloco temporário gravava uma
+linha por requisição em `/tmp/arena-memoria.log` no `shutdown`.
 
-**Verificado agora:** o `arena-child/functions.php` **desta cópia local está
-limpo** — só o enfileiramento do estilo.
+**Fechado no deploy da 0.2.0:** o `functions.php` do tema filho em produção não
+contém mais o bloco (`grep arena-memoria` = 0 ocorrências), e o
+`/tmp/arena-memoria.log` que havia ficado no servidor (134 bytes, de 26/07) foi
+removido.
 
-**O que falta:** confirmar que a cópia **em produção** também está limpa. Se o
-bloco tiver ficado lá, ele escreve num arquivo de log a cada requisição — não
-quebra nada, mas é I/O desnecessário e um arquivo crescendo em `/tmp`.
+O método de medição continua documentado em
+[09 — Infraestrutura](09-infraestrutura-producao.md#memória-e-custo-por-plugin)
+para quando for preciso medir de novo — e a lição é reinstrumentar de propósito,
+não deixar ligado.
 
-**Como verificar:** procurar `arena-memoria` no
-`wp-content/themes/arena-child/functions.php` do servidor. Se aparecer, remover o
-bloco (ele é autocontido, entre os comentários "MEDIÇÃO TEMPORÁRIA") e limpar o
-`/tmp/arena-memoria.log`. Método completo em
-[09 — Infraestrutura](09-infraestrutura-producao.md#memória-e-custo-por-plugin).
+---
+
+## Duas cópias do tema filho
+
+**Situação.** Existem duas pastas `arena-child` na máquina de desenvolvimento:
+
+| Caminho | Papel |
+|---|---|
+| `themes/arena/arena-child/` | **canônica** — é o que o git versiona e o que o `.wp-env.json` monta (`"./arena-child"`) |
+| `themes/arena-child/` | **legada** — tem `.git` próprio, de quando o filho era repositório separado |
+
+**Por que importa.** A cópia legada fica para trás e **já causou um erro real**:
+no primeiro empacotamento da 0.2.0 o script leu a irmã legada, e o pacote saiu
+com o pai em 0.2.0 e o filho em 0.1.0 — o site não quebra, mas o painel mostra
+versões divergentes e o cache-busting do filho não gira.
+
+**Já corrigido:** o `bin/package.sh` passou a preferir explicitamente a cópia de
+dentro, avisa se cair na legada, e **aborta** se as versões de pai e filho
+divergirem (o mesmo portão vale para `ARENA_VERSION`).
+
+**O que falta decidir** (é sua escolha, não do tema): apagar
+`themes/arena-child/`. Ela tem histórico git próprio, então merece um olhar antes
+— se não houver nada lá que não esteja no repositório do Arena, remover elimina a
+armadilha na origem.
 
 ---
 

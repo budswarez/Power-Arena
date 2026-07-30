@@ -38,7 +38,7 @@ for item in \
   front-page.php page.php single.php archive.php search.php searchform.php \
   sidebar.php comments.php 404.php attachment.php \
   inc template-parts languages \
-  README.md DEPLOY.md
+  README.md DEPLOY.md CHANGELOG.md
 do
   [ -e "$THEME_DIR/$item" ] && cp -R "$THEME_DIR/$item" "$STAGE/arena/"
 done
@@ -50,10 +50,25 @@ done
 # assets/src não é necessário em produção, mas é útil para futuras customizações
 # no tema filho; remova a linha acima se quiser um pacote ainda menor.
 
-# tema filho
-if [ -d "$THEMES_DIR/arena-child" ]; then
+# Tema filho. A cópia CANÔNICA é a que fica DENTRO do tema pai
+# ($THEME_DIR/arena-child): é ela que o git versiona e que o .wp-env.json monta
+# ("./arena-child"). Existe também uma cópia irmã legada em
+# $THEMES_DIR/arena-child, com .git próprio, de quando o filho tinha repositório
+# separado — ela fica DESATUALIZADA. Ler a irmã por engano já empacotou o filho
+# na versão anterior enquanto o pai ia na nova; por isso a ordem abaixo é
+# explícita, e a versão dos dois é conferida no fim deste script.
+if [ -d "$THEME_DIR/arena-child" ]; then
+  CHILD_SRC="$THEME_DIR/arena-child"
+elif [ -d "$THEMES_DIR/arena-child" ]; then
+  CHILD_SRC="$THEMES_DIR/arena-child"
+  echo "    AVISO: usando a cópia irmã legada do tema filho ($CHILD_SRC)"
+else
+  CHILD_SRC=""
+fi
+
+if [ -n "$CHILD_SRC" ]; then
   mkdir -p "$STAGE/arena-child"
-  cp -R "$THEMES_DIR/arena-child/." "$STAGE/arena-child/"
+  cp -R "$CHILD_SRC/." "$STAGE/arena-child/"
   rm -rf "$STAGE/arena-child/.git"
 fi
 
@@ -79,6 +94,29 @@ do
   fi
 done
 echo "    stage limpo"
+
+# Pai e filho têm de sair na MESMA versão. Já aconteceu de o pai ir na 0.2.0 e o
+# filho na 0.1.0 (cópia irmã legada lida por engano) — o site não quebra, mas o
+# painel mostra versões divergentes e o cache-busting do filho não gira.
+CHILD_STYLE="$STAGE/arena-child/style.css"
+if [ -f "$CHILD_STYLE" ]; then
+  CHILD_VERSION="$(grep -m1 '^Version:' "$CHILD_STYLE" | sed 's/Version:[[:space:]]*//' | tr -d '\r')"
+  if [ "$CHILD_VERSION" != "$VERSION" ]; then
+    echo "ERRO: versão do tema filho ($CHILD_VERSION) difere do pai ($VERSION)"
+    echo "      fonte usada para o filho: $CHILD_SRC"
+    exit 1
+  fi
+  echo "    versões conferem (pai e filho: $VERSION)"
+fi
+
+# ARENA_VERSION tem de acompanhar o style.css: é o que fica disponível em tempo
+# de execução, e um valor defasado aqui é invisível até alguém depurar cache.
+FUNCS_VERSION="$(grep -m1 "ARENA_VERSION" "$STAGE/arena/functions.php" | sed "s/.*'\([0-9][^']*\)'.*/\1/" | tr -d '\r')"
+if [ "$FUNCS_VERSION" != "$VERSION" ]; then
+  echo "ERRO: ARENA_VERSION ($FUNCS_VERSION) difere do style.css ($VERSION)"
+  exit 1
+fi
+echo "    ARENA_VERSION confere ($FUNCS_VERSION)"
 
 # ---------------------------------------------------------------- zip
 echo "==> Gerando o zip…"

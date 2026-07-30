@@ -110,6 +110,46 @@ O tema foi **ativado** (`arena-child`). Na sequência:
 
 Esta pasta `docs/`.
 
+### 30/07 — repositório, versionamento e release 0.2.0
+
+Código publicado em `github.com/budswarez/arena-wp` (privado), com `CHANGELOG.md`,
+política de SemVer ([16 — Versionamento](16-versionamento.md)) e as tags `v0.1.0`
+(retroativa) e `v0.2.0`.
+
+**A descoberta que valeu mais que o deploy:** a comparação arquivo por arquivo
+entre a máquina local e o servidor mostrou que **produção já rodava o código da
+0.2.0 desde 26/07 — rotulado como 0.1.0**. Só 3 de 66 arquivos diferiam, e dois
+deles eram a própria string de versão.
+
+Isso é exatamente o problema que o [16](16-versionamento.md#onde-o-número-da-versão-vive)
+descreve: o cache-busting dos assets usa a versão do tema, então **subir arquivos
+sem subir o número deixa o navegador e o LiteSpeed servindo o CSS antigo**. Não
+foi um deploy de funcionalidade — foi corrigir um rótulo errado, o que só se
+descobre comparando, não olhando.
+
+Dois erros meus de leitura no caminho, ambos corrigidos por medir de novo:
+
+- concluí que "o `dist` local está desatualizado" porque uma verificação no
+  servidor não achou os tokens do painel no CSS. **Estava lendo o arquivo
+  errado:** havia dois builds acumulados no servidor e o comando pegou o mais
+  antigo por ordem alfabética. O manifest apontava para o correto o tempo todo.
+  O build velho foi removido.
+- o primeiro pacote saiu com **pai 0.2.0 e filho 0.1.0**, porque o
+  `bin/package.sh` leu a cópia legada do tema filho. Ver
+  [13 — Pendências](13-pendencias.md#duas-cópias-do-tema-filho). O script ganhou
+  um portão que aborta se as versões divergirem.
+
+Também ficou fechada a pendência da instrumentação de memória: o bloco não estava
+mais no tema filho, mas o `/tmp/arena-memoria.log` ainda estava no servidor.
+
+**Nota honesta sobre esta release:** a suíte de testes **não pôde ser executada**
+(o Docker não estava rodando na máquina). No lugar dela: `php -l` nos 64 arquivos
+PHP do pacote sob o PHP 8.5.8 real do servidor (0 erros), conferência de md5 do
+pacote local *versus* remoto, comparação byte a byte dos 66 arquivos após a
+instalação (idênticos), e verificação do site público — home, matéria com
+breadcrumb, categoria paginada e 404. A única mudança de PHP era uma string de
+versão.
+
 ---
 
 ## Erro 1 — desenvolvi na versão errada

@@ -150,11 +150,23 @@ em [15 — Segurança e segredos](15-seguranca-e-segredos.md).
 
 ### O tema filho mora no mesmo repositório
 
-`arena-child/` é versionado junto com o pai. Motivo: as duas versões precisam
-concordar, e o estilo do filho **depende do handle `arena-main`** registrado pelo
-pai — se o manifest do Vite faltar e `arena-main` não for registrado, o WordPress
-**descarta silenciosamente** o estilo do filho. Manter os dois no mesmo histórico
-torna essa dependência visível numa única `git log`.
+`arena-child/` é versionado junto com o pai, **dentro** de `themes/arena/`.
+Motivo: as duas versões precisam concordar, e o estilo do filho **depende do
+handle `arena-main`** registrado pelo pai — se o manifest do Vite faltar e
+`arena-main` não for registrado, o WordPress **descarta silenciosamente** o estilo
+do filho. Manter os dois no mesmo histórico torna essa dependência visível numa
+única `git log`.
+
+> **Armadilha real.** Existe também uma cópia **legada** em
+> `themes/arena-child/` (irmã do tema pai, com `.git` próprio, de quando o filho
+> era repositório separado). Ela **não é atualizada** e já entrou num pacote por
+> engano: o pai saiu 0.2.0 e o filho 0.1.0. O `bin/package.sh` agora prefere
+> explicitamente a cópia de dentro, avisa se usar a legada e **aborta** se as
+> versões divergirem. Ver
+> [13 — Pendências](13-pendencias.md#duas-cópias-do-tema-filho).
+>
+> No **servidor** o filho é necessariamente irmão (`themes/arena-child/`), porque
+> é o que o WordPress exige — o empacotamento faz essa transposição.
 
 ---
 
