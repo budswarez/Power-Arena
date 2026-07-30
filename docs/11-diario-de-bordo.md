@@ -205,6 +205,74 @@ para 26,8px). Detalhe que só apareceu por medir: o recuo teve de ser escopado a
 é renderizada **dentro** de `.content-column`, que já dá os 15px — uma regra
 solta produziria 30px e desalinharia essas páginas.
 
+### 30/07 — site fora do ar por 20 minutos (loop de redirect)
+
+**O que aconteceu.** Depois da auditoria de PageSpeed, o dono do site criou no
+painel da Hostinger a regra que meu relatório sugeria:
+
+```
+pichauarena.com.br/  →  https://www.pichauarena.com.br
+```
+
+O site inteiro passou a responder **301 em loop infinito**, em todos os caminhos.
+
+**Por quê.** No DNS, `www.pichauarena.com.br` é **alias** de
+`pichauarena.com.br`. A regra, portanto, também casava com o próprio `www`:
+`www` → `www` → `www`, para sempre. E como ela age na camada `hws` (servidor da
+Hostinger), pegava **todo caminho** — inclusive `/robots.txt` e arquivos de CSS,
+que nunca chegariam ao WordPress.
+
+**Culpa é minha.** O achado estava certo; a recomendação estava vaga. Eu escrevi
+*"corrigir lá, para apontar à raiz"* quando o certo era **"apague a regra"** — a
+canonicalização sem-`www` → `www` **já funcionava sem ela** (medido na própria
+auditoria: `https://pichauarena.com.br/` → 301 → `https://www.pichauarena.com.br/`).
+Uma regra de domínio cujo destino é o mesmo domínio sempre vira loop, e eu não
+avisei isso.
+
+**Três tentativas de conserto que falharam** — e o motivo de terem falhado é a
+lição:
+
+1. restaurar o `.htaccess` do backup → sem efeito;
+2. restaurar as opções do LiteSpeed aos valores originais → sem efeito;
+3. procurar cache de borda (query-busting, `Cache-Control: no-cache`) → sem efeito.
+
+Todas partiam da suposição de que **eu** havia causado o problema, porque a
+mudança de opções do LiteSpeed foi imediatamente anterior. A suposição estava
+errada, e insistir nela custou tempo.
+
+**O teste que resolveu o diagnóstico** foi parar de tentar consertar e medir:
+
+| Evidência | Conclusão |
+|---|---|
+| `/robots.txt` e `style.css` também davam 301 | arquivo estático não passa por PHP/WordPress |
+| resposta com `server: hws` + `platform: hostinger` e **zero** header `X-LiteSpeed-*` | a requisição morria antes da camada de cache |
+| loop reproduzido **de dentro do servidor** (`https://127.0.0.1` com Host header) | não era cache de borda/CDN |
+| `.htaccess` lido de ponta a ponta: nenhuma regra para a raiz | não era reescrita de `.htaccess` |
+
+Ou seja: acima do WordPress, na plataforma. Nada dentro do site podia causar nem
+resolver.
+
+**Resolução.** O dono apagou a regra. Verificado depois: 200 em todos os
+caminhos, `X-Litespeed-Cache: HIT` de volta, e `admin-ajax.php` respondendo
+**400** em vez de 301 — o que devolveu os comentários (wpDiscuz) e os anúncios,
+que aquela regra estava quebrando.
+
+**Duas coisas ficaram pendentes**, registradas em
+[13 — Pendências](13-pendencias.md):
+
+- os itens 1 e 2 da auditoria (Guest Mode e Separate Mobile Cache) foram
+  **aplicados, revertidos e nunca medidos**. Se forem tentados de novo, o caminho
+  é a interface do plugin, com alguém olhando o site;
+- `http://pichauarena.com.br` **continua** indo para `/wp-admin/`. Não é a regra
+  apagada (testado com query-busting: não é cache), não está no `.htaccess` e não
+  está nas duas regras visíveis do painel.
+
+**Também vale registrar o que NÃO é problema:** o bloco
+`### marker ASYNC ###` do `.htaccess`, que menciona
+`/wp-admin/admin-ajax.php`, **não é um redirecionamento** — ele só define
+`noabort` para o LiteSpeed não matar as próprias requisições assíncronas. É do
+plugin, é necessário, e não tem relação com o incidente.
+
 ---
 
 ## Erro 1 — desenvolvi na versão errada

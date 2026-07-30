@@ -345,11 +345,29 @@ a home. Vale para links antigos e para rastreadores.
 
 Onde **não** está: `.htaccess` (nenhuma regra aponta para `wp-admin`) e
 WordPress (`siteurl`/`home` = `https://www.pichauarena.com.br`). O `Server:` das
-respostas é `hws`, então a regra está no **painel da Hostinger**
-(*Domínios → Redirecionamentos*). Corrigir lá, para apontar à raiz.
+respostas é `hws`, então a regra está na **plataforma da Hostinger**.
 
 As demais variantes estão certas: `https://` sem `www` e `http://www` fazem um
 único 301 para a canônica.
+
+> ### ⚠️ NÃO crie uma regra de redirecionamento no painel para "corrigir" isto
+>
+> **A primeira versão deste documento recomendava exatamente isso, e derrubou o
+> site.** Uma regra `pichauarena.com.br/ → https://www.pichauarena.com.br` no
+> painel da Hostinger causa **loop infinito em todos os caminhos**, porque
+> `www.pichauarena.com.br` é **alias de DNS** do domínio sem `www` — a regra casa
+> com o próprio `www` e o redireciona para ele mesmo. Como age na camada `hws`,
+> derruba até `/robots.txt`. História completa em
+> [11 — Diário de bordo](11-diario-de-bordo.md#3007--site-fora-do-ar-por-20-minutos-loop-de-redirect).
+>
+> **A canonicalização sem-`www` → `www` já funciona sem regra nenhuma** (medido:
+> `https://pichauarena.com.br/` → 301 → `https://www.pichauarena.com.br/`).
+>
+> O que resta é só a variante **`http://` sem `www`**, e ela vem de algo que não
+> está nem no `.htaccess`, nem no WordPress, nem nas regras visíveis do painel
+> (verificado depois do incidente, com query-busting para descartar cache). O
+> caminho aqui é **abrir chamado no suporte da Hostinger**, não experimentar em
+> produção.
 
 ## Achado 4 — terceiros são 482 KB (33% da página)
 
@@ -390,14 +408,22 @@ contra os 3,5 s do achado 1.
 
 ## Prioridade
 
-| # | Ação | Onde | Ganho esperado | Risco |
+| # | Ação | Onde | Ganho esperado | Situação |
 |---|---|---|---|---|
-| 1 | Desligar **Guest Mode** | LiteSpeed | elimina o 2º carregamento (~3,5 s no mobile) | baixo, reversível |
-| 2 | Desligar **Separate Mobile Cache** | LiteSpeed | −400 a −580 ms de TTFB e muita carga de PHP | baixo, reversível |
-| 3 | Corrigir o redirect do domínio sem `www` em `http` | painel Hostinger | corrige UX e SEO | baixo |
-| 4 | Consolidar GTM/GA4 | decisão de negócio | até ~320 KB | médio (medição/tags) |
-| 5 | Reduzir o banner da home | mídia | parte dos 457 KB | baixo |
-| 6 | Investigar o `latin-ext` | tema | ~67 KB | baixo |
+| 1 | Desligar **Guest Mode** | LiteSpeed | elimina o 2º carregamento (~3,5 s no mobile) | **pendente** — aplicado e revertido em 30/07 sem chegar a medir (ver abaixo) |
+| 2 | Desligar **Separate Mobile Cache** | LiteSpeed | −400 a −580 ms de TTFB e carga de PHP | **pendente**, idem |
+| 3 | `http://` sem `www` indo para `/wp-admin/` | suporte Hostinger | corrige UX e SEO | **não crie regra no painel** — ver o aviso acima |
+| 4 | Consolidar GTM/GA4 | decisão de negócio | até ~320 KB | aberto |
+| 5 | Reduzir o banner da home | mídia | parte dos 457 KB | aberto |
+| 6 | Investigar o `latin-ext` | tema | ~67 KB | aberto |
+
+> **Sobre os itens 1 e 2:** foram aplicados em 30/07 por `wp litespeed-option
+> set`, e revertidos minutos depois durante a queda do site (que teve **outra**
+> causa — a regra do painel). Como a reversão veio antes de qualquer medição,
+> **o ganho dos dois segue não comprovado**. Se forem tentados de novo, use a
+> **interface do plugin** (*LiteSpeed Cache → General → Guest Mode* e
+> *Cache → Mobile*), um por vez, com alguém acompanhando o site — e meça
+> `X-Litespeed-Cache` por User-Agent antes e depois.
 
 **Não faça:** otimizar o CSS/JS do tema. São 3% do peso; o retorno é nulo
 comparado aos itens 1 a 3.

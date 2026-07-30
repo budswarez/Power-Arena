@@ -34,6 +34,69 @@ site, não adivinhação do tema. Está registrado como intencional no
 
 ---
 
+## Cache: dois itens aplicados, revertidos e não medidos
+
+A auditoria de 30/07 ([10 — Medições](10-medicoes-e-performance.md#auditoria-de-pagespeed--30072026))
+identificou dois ajustes de LiteSpeed com ganho esperado grande:
+
+| Item | Opção | Ganho esperado |
+|---|---|---|
+| Guest Mode ligado faz a página carregar **duas vezes** | `guest`, `guest_optm` | ~3,5 s no mobile |
+| Cache de página nunca servido no mobile | `cache-mobile` | −400 a −580 ms de TTFB |
+
+Os dois foram aplicados por `wp litespeed-option set` e **revertidos minutos
+depois**, durante a queda do site — que teve outra causa (uma regra de
+redirecionamento no painel da Hostinger, ver
+[diário](11-diario-de-bordo.md#3007--site-fora-do-ar-por-20-minutos-loop-de-redirect)).
+Como a reversão veio antes de qualquer medição, **o ganho segue não comprovado**.
+
+**Como retomar, com segurança:**
+
+1. use a **interface do plugin**, não o `wp-cli` (*LiteSpeed Cache → General →
+   Guest Mode*; *Cache → Mobile*);
+2. **um item por vez**, com alguém olhando o site logo depois;
+3. meça antes e depois — o teste de 10 segundos é conferir o cabeçalho por
+   User-Agent:
+
+```bash
+curl -sD - -o /dev/null -A "…Android…Mobile…" https://www.pichauarena.com.br/ \
+  | grep -i x-litespeed-cache
+```
+
+Esperado hoje: `MISS` para UA mobile, `HIT` para desktop. Se depois do ajuste o
+mobile passar a dar `HIT`, funcionou.
+
+**Estado atual:** as três opções estão nos valores originais
+(`guest=1`, `guest_optm=1`, `cache-mobile=1`) e o `.htaccess` é byte-idêntico ao
+backup pré-mudança.
+
+---
+
+## `http://` sem `www` ainda vai para `/wp-admin/`
+
+`http://pichauarena.com.br/qualquer-coisa` responde 301 para
+`https://www.pichauarena.com.br/wp-admin/`, que cai no `wp-login.php`.
+
+**Já descartado** (verificado após o incidente de 30/07): não é a regra do painel
+que foi apagada (testado com query-busting — não é cache), não está no
+`.htaccess`, não está no WordPress (`siteurl`/`home` corretos) e não está nas
+regras visíveis em *Redireciona* no painel.
+
+**Não tente corrigir criando uma regra no painel** — foi exatamente isso que
+derrubou o site em 30/07. O caminho é **chamado no suporte da Hostinger**, com
+este texto:
+
+> O servidor `hws` responde 301 para `http://pichauarena.com.br/<qualquer
+> caminho>` apontando para `https://www.pichauarena.com.br/wp-admin/`. Não existe
+> regra correspondente no `.htaccess` nem em *Redireciona* no painel. As variantes
+> `https://` sem `www` e `http://www` redirecionam corretamente para a canônica.
+
+**Impacto:** baixo para quem digita o endereço (navegadores modernos tentam HTTPS
+primeiro, e essa variante funciona), mas afeta links `http://` antigos e
+rastreadores.
+
+---
+
 ## Redirecionamentos do Yoast Premium
 
 **Situação.** Existem **743 regras** de redirecionamento guardadas na option
