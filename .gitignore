@@ -1,0 +1,12 @@
+/node_modules/
+/.npm-cache/
+/.tmp-lighthouse/
+/.server-backups/
+/vendor/
+/assets/dist/
+.wp-env.override.json
+*.log
+.DS_Store
+.phpunit.result.cache
+/.superpowers/sdd/rendered-home.html
+/lh-*.json

@@ -1,0 +1,18 @@
+{
+  "_comentario": "Copie para .wp-env.override.json na raiz do repositório e ajuste os caminhos. Este arquivo NÃO é versionado de propósito: ele contém caminhos locais e plugins pagos que não podem entrar no Git.",
+
+  "plugins": [
+    "https://downloads.wordpress.org/plugin/advanced-custom-fields.latest-stable.zip",
+    "https://downloads.wordpress.org/plugin/seo-by-rank-math.latest-stable.zip",
+    "https://downloads.wordpress.org/plugin/litespeed-cache.latest-stable.zip",
+    "../../plugins/js_composer"
+  ],
+
+  "mappings": {
+    "wp-content/mu-plugins": "./mu-plugins"
+  },
+
+  "config": {
+    "ARENA_PREVIEW_TOKEN": "troque-por-um-token-longo-e-aleatorio"
+  }
+}

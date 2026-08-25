@@ -1,0 +1,485 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Guards CSS-source regressions that a plain PHPUnit markup assertion can't
+ * see on its own — main.css is the single source of truth for the
+ * theme's visual output and has no automated (Lighthouse/visual) coverage
+ * in this suite, so a couple of its rules are asserted directly here.
+ *
+ * BUG (task-uifix): `.content-container` is used for TWO unrelated things —
+ * the page-shell landmark (`<main id="content" class="content-container">`,
+ * template-parts/layout/content-open.php) AND every card partial's own
+ * inner text wrapper (`<div class="content-container">`, card/featured.php,
+ * card/hero.php, card/list.php). A bare `.content-container{background:#fff}`
+ * selector matches BOTH — painting every card's title/meta block with the
+ * shell's own white background, regardless of what section the card sits
+ * in. Invisible on an ordinary light-scheme listing (white-on-white is the
+ * same white), but inside `.bs-listing.bs-dark-scheme` ("Últimas notícias")
+ * it produced a solid white rectangle behind each card's WHITE title text —
+ * completely unreadable (white-on-white).
+ */
+final class StyleGuardTest extends WP_UnitTestCase {
+    private function css(): string {
+        $path = ARENA_DIR . '/assets/src/css/main.css';
+        $this->assertFileExists($path);
+
+        return (string) file_get_contents($path);
+    }
+
+    /**
+     * Extracts every LEAF rule (a selector list with no further nested
+     * braces, i.e. not an `@layer`/`@media` wrapper itself) as
+     * [selectors (trimmed, comma-split), declarations block].
+     *
+     * @return array<int, array{0: string[], 1: string}>
+     */
+    private function rules(string $css): array {
+        // Strip comments FIRST: this file's own comments are full of
+        // illustrative CSS-looking snippets (e.g. "`.foo{bar:baz}`"), whose
+        // braces would otherwise throw off naive brace-pair matching below.
+        $css = (string) preg_replace('#/\*.*?\*/#s', '', $css);
+
+        preg_match_all('/([^{}]+)\{([^{}]*)\}/s', $css, $matches, PREG_SET_ORDER);
+
+        return array_map(
+            static fn (array $m): array => [
+                array_map('trim', explode(',', trim($m[1]))),
+                $m[2],
+            ],
+            $matches
+        );
+    }
+
+    /**
+     * Root-cause fix: the page-shell rule must be scoped to the `<main>`
+     * element (`main.content-container`), not a bare `.content-container`
+     * class selector — the tag qualifier is what stops it from also
+     * matching a card's own same-named inner `<div>`. Parses actual CSS
+     * rules (selector-list -> declarations) rather than a single regex, so
+     * a legitimate SCOPED descendant rule like `.bs-listing.bs-dark-scheme
+     * .content-container { … }` is correctly told apart from a bare,
+     * unscoped `.content-container { … }` rule matching every element with
+     * that class anywhere in the document.
+     */
+    public function test_page_shell_surface_rule_is_scoped_to_the_main_element(): void {
+        $css = $this->css();
+        $rules = $this->rules($css);
+
+        $shellRuleFound = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (in_array('main.content-container', $selectors, true) && str_contains($declarations, 'background')) {
+                $shellRuleFound = true;
+            }
+
+            $this->assertNotContains(
+                '.content-container',
+                $selectors,
+                "A bare `.content-container { … }` selector (no `main` tag qualifier) also matches " .
+                    "every card's own inner `.content-container` div — including inside a dark-scheme " .
+                    "listing, hiding the white card title behind a white card background. Offending " .
+                    "declarations: {$declarations}"
+            );
+        }
+
+        $this->assertTrue($shellRuleFound, 'Expected a `main.content-container { background: … }` rule.');
+    }
+
+    /**
+     * Defensive/robustness rule (belt-and-suspenders): even if a future
+     * change reintroduces a light card surface some other way (a new
+     * `--arena-surface`-style token applied generically to `.content-
+     * container`, a shared "card" component class, etc.), a card rendered
+     * inside `.bs-listing.bs-dark-scheme` must still win the cascade back
+     * to a transparent background — by SPECIFICITY (3 classes), not by
+     * source order, so it can't be silently defeated by a later rule of
+     * equal-or-lower specificity added anywhere else in the file.
+     */
+    public function test_dark_scheme_cards_force_their_content_container_transparent(): void {
+        $rules = $this->rules($this->css());
+
+        $guardFound = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (
+                in_array('.bs-listing.bs-dark-scheme .content-container', $selectors, true)
+                && preg_match('/background:\s*transparent/', $declarations) === 1
+            ) {
+                $guardFound = true;
+            }
+        }
+
+        $this->assertTrue(
+            $guardFound,
+            'Expected a `.bs-listing.bs-dark-scheme .content-container { background: transparent; … }` ' .
+                'guard rule, at a specificity no later light-surface rule can casually outrank.'
+        );
+    }
+
+    /**
+     * BUG 2 (task-uifix): the reference's "Últimas notícias" row is a plain
+     * `vc_row wpb_row vc_row-fluid` + `vc_col-sm-12 vc_col-has-fill` — no
+     * `vc_row-full-width`/`data-vc-full-width` — so its dark fill sits
+     * INSIDE the same 1200px boxed column as the white content above it. An
+     * earlier revision broke it out full-bleed (`width:100vw` + a negative
+     * `margin-inline` trick); that must not come back.
+     */
+    public function test_dark_scheme_row_is_boxed_not_full_bleed(): void {
+        $rules = $this->rules($this->css());
+
+        $found = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (!in_array('.bs-listing.bs-dark-scheme', $selectors, true)) {
+                continue;
+            }
+            // This exact selector also carries an unrelated 1-declaration
+            // rule (`margin-bottom: 0`, the "meets the footer" rhythm
+            // fix) — only the block that also paints the dark fill itself
+            // is the one this test cares about.
+            if (!str_contains($declarations, 'background')) {
+                continue;
+            }
+            $found = true;
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/width:\s*100vw/',
+                $declarations,
+                'The dark-scheme row must not break out to full viewport width (width:100vw) — it must ' .
+                    'stay boxed inside the same 1200px column as the rest of the page.'
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/margin-inline:\s*calc\(\s*50%/',
+                $declarations,
+                'The dark-scheme row must not use the `calc(50% - 50vw)` full-bleed break-out trick.'
+            );
+            $this->assertMatchesRegularExpression(
+                '/padding-inline:\s*15px/',
+                $declarations,
+                'The dark-scheme row must use the SAME 15px inline padding as `.bs-listing.bs-light-scheme` ' .
+                    'so its left/right edges line up with the white content block above it.'
+            );
+        }
+
+        $this->assertTrue($found, 'Expected a `.bs-listing.bs-dark-scheme { … }` rule.');
+    }
+
+    /**
+     * BUG 3 (task-uifix): `<body>`'s background is pure black and
+     * `.main-content` carries no trailing bottom spacing of its own — a
+     * positive `margin-top` on `.site-footer` opens a solid BLACK band
+     * between the last content block and the footer on every page (this
+     * theme fixed the mirror-image WHITE-band regression once already; a
+     * margin on either side of that boundary reintroduces a coloured gap
+     * from the opposite direction).
+     */
+    public function test_site_footer_has_no_top_margin_gap(): void {
+        $rules = $this->rules($this->css());
+
+        $found = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (!in_array('.site-footer', $selectors, true)) {
+                continue;
+            }
+            if (!str_contains($declarations, 'margin-top')) {
+                continue;
+            }
+            $found = true;
+
+            $this->assertMatchesRegularExpression(
+                '/margin-top:\s*0\b/',
+                $declarations,
+                'The footer must not carry a positive `margin-top` — that paints as a stray black band ' .
+                    'against the black body background, between the last content block and the footer.'
+            );
+        }
+
+        $this->assertTrue($found, 'Expected `.site-footer { margin-top: 0; … }`.');
+    }
+
+    /**
+     * task-final-ui item 2 (found only by actually driving a click via CDP,
+     * never by code review): `.offcanvas-overlay` carries a bare `hidden`
+     * attribute in header.php, cleared by JS only while the off-canvas
+     * panel is open. A bare `.offcanvas-overlay { display: block; }` inside
+     * the mobile media query has the SAME (0,0,1,0) specificity as the UA
+     * `[hidden] { display: none }` rule it's meant to coexist with — but
+     * author CSS always beats user-agent CSS regardless of specificity, so
+     * that bare rule silently forced the dimmed overlay to `display:block`
+     * at every mobile width REGARDLESS of the `hidden` attribute: an
+     * invisible (opacity:0 until `.is-open`) but fully hit-testable
+     * `position:fixed;inset:0;z-index:9990` layer sitting over the entire
+     * viewport, intercepting every tap before the menu was ever opened —
+     * including taps on the hamburger and header-search toggles
+     * themselves. The fix scopes the mobile `display:block` override with
+     * `:not([hidden])` so it only applies once JS has actually opened the
+     * panel.
+     */
+    public function test_offcanvas_overlay_mobile_display_rule_respects_the_hidden_attribute(): void {
+        $rules = $this->rules($this->css());
+
+        $guardedRuleFound = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (!str_contains($declarations, 'display')) {
+                continue;
+            }
+
+            $this->assertNotContains(
+                '.offcanvas-overlay',
+                $selectors,
+                'A bare `.offcanvas-overlay { display: … }` selector has the SAME specificity as the ' .
+                    '`[hidden]` UA rule it is meant to coexist with, and author CSS always wins over ' .
+                    'user-agent CSS — this forces the dimmed overlay to display REGARDLESS of the ' .
+                    '`hidden` attribute JS toggles, turning it into an invisible full-viewport layer that ' .
+                    "intercepts every tap. Offending declarations: {$declarations}"
+            );
+
+            if (in_array('.offcanvas-overlay:not([hidden])', $selectors, true) && str_contains($declarations, 'display: block')) {
+                $guardedRuleFound = true;
+            }
+        }
+
+        $this->assertTrue(
+            $guardedRuleFound,
+            'Expected a `.offcanvas-overlay:not([hidden]) { display: block; … }` rule (scoped so the ' .
+                '`hidden` attribute still governs the closed state).'
+        );
+    }
+
+    public function test_mobile_menu_toggle_is_hidden_on_desktop_and_shown_on_mobile(): void {
+        $css = $this->css();
+
+        $this->assertMatchesRegularExpression(
+            '/\.mobile-menu-toggle\s*\{\s*display:\s*none;/s',
+            $css,
+            'The off-canvas menu toggle must not appear beside the desktop navigation.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media\s*\(max-width:\s*860px\)\s*\{\s*\.mobile-menu-toggle\s*\{\s*display:\s*flex;/s',
+            $css,
+            'The off-canvas menu toggle must be restored inside the mobile breakpoint.'
+        );
+    }
+
+    public function test_article_video_embeds_fill_the_reading_column(): void {
+        $css = $this->css();
+
+        $this->assertMatchesRegularExpression(
+            '/\.single-post-content iframe,\s*\.single-post-content embed,\s*\.single-post-content object,\s*\.single-post-content video\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;/s',
+            $css,
+            'Article video and media embeds must use the full reading-column width.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.single-post-content iframe\s*\{[^}]*height:\s*auto;[^}]*aspect-ratio:\s*16\s*\/\s*9;/s',
+            $css,
+            'Embedded videos must retain a responsive 16:9 ratio.'
+        );
+    }
+
+    public function test_twitter_embeds_are_centered_inside_the_article(): void {
+        $css = $this->css();
+
+        $this->assertMatchesRegularExpression(
+            '/\.single-post-content \.twitter-tweet,\s*\.single-post-content \.twitter-tweet-rendered\s*\{[^}]*max-width:\s*550px\s*!important;[^}]*margin-left:\s*auto\s*!important;[^}]*margin-right:\s*auto\s*!important;/s',
+            $css,
+            'Twitter/X embeds must be centered while retaining the provider width limit.'
+        );
+    }
+
+    public function test_article_links_have_visible_theme_coloring_and_focus_state(): void {
+        $css = $this->css();
+
+        $this->assertMatchesRegularExpression(
+            '/\.single-post-content a\s*\{[^}]*color:\s*var\(--arena-accent-text\);[^}]*text-decoration-line:\s*underline;/s',
+            $css,
+            'Article links must use the theme accent color and an underline.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.single-post-content a:hover,\s*\.single-post-content a:focus-visible\s*\{[^}]*color:\s*var\(--arena-accent-text-hover\);/s',
+            $css,
+            'Article links must have a distinct hover/focus color.'
+        );
+    }
+
+    /**
+     * task-breadcrumb: o recuo horizontal da trilha precisa ficar ESCOPADO a
+     * `main.content-container > .arena-breadcrumb`, nunca solto em
+     * `.arena-breadcrumb`.
+     *
+     * O `<nav class="arena-breadcrumb">` do plugin de SEO é renderizado em
+     * DOIS lugares estruturalmente diferentes:
+     *   - single.php / archive.php: filho DIRETO de `main.content-container`,
+     *     numa faixa de largura total ANTES da linha de colunas (task-uifix
+     *     BUG 5) — aí ele encosta na borda do bloco branco e precisa recriar
+     *     por conta própria os 15px de recuo que `.content-column` dá ao
+     *     resto do conteúdo (era o "falta espaçamento à esquerda" relatado);
+     *   - page.php / search.php / index.php / 404.php / attachment.php:
+     *     DENTRO de `.content-column`, que JÁ aplica esses 15px. Medido na
+     *     produção: `left=98` no desktop, exatamente igual ao `<h1>`.
+     *
+     * Um `padding-inline`/`margin-inline` solto em `.arena-breadcrumb`
+     * aplicaria nos dois casos, empurrando a trilha para 30px nesses cinco
+     * templates — desalinhada do próprio conteúdo ao lado, que é justamente
+     * o defeito que a mudança veio corrigir, só invertido.
+     */
+    public function test_breadcrumb_inline_inset_is_scoped_to_the_page_shell(): void {
+        $rules = $this->rules($this->css());
+
+        $scopedRuleFound = false;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (
+                in_array('main.content-container > .arena-breadcrumb', $selectors, true)
+                && preg_match('/margin-inline:\s*15px/', $declarations) === 1
+            ) {
+                $scopedRuleFound = true;
+            }
+
+            if (!in_array('.arena-breadcrumb', $selectors, true)) {
+                continue;
+            }
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/(?:margin|padding)-(?:inline|inline-start|left)\s*:/',
+                $declarations,
+                'Um recuo horizontal solto em `.arena-breadcrumb` também atinge a trilha renderizada ' .
+                    'DENTRO de `.content-column` (page/search/index/404/attachment.php), que já tem os ' .
+                    'mesmos 15px — resultado: 30px, trilha desalinhada do conteúdo ao lado. Use ' .
+                    "`main.content-container > .arena-breadcrumb`. Declarações: {$declarations}"
+            );
+        }
+
+        $this->assertTrue(
+            $scopedRuleFound,
+            'Esperava `main.content-container > .arena-breadcrumb { margin-inline: 15px }` — é o que ' .
+                'alinha o início da trilha com o `<h1>`/coluna de conteúdo em single.php e archive.php.'
+        );
+    }
+
+    /**
+     * task-breadcrumb: o separador do plugin (`<span class="separator"> - </span>`,
+     * um hífen literal) é escondido com `visibility: hidden` — NÃO com
+     * `display: none` — e o chevron decorativo é desenhado no seu
+     * `::before`.
+     *
+     * As duas metades são interdependentes e uma sozinha não funciona:
+     *   - `visibility: hidden` tira o " - " da árvore de acessibilidade
+     *     (conferido via CDP: antes havia 2 nós `StaticText " - "` não
+     *     ignorados dentro do `<nav>`; depois, nenhum) MAS mantém a caixa no
+     *     layout, que é o espaço onde o chevron é desenhado — e um filho com
+     *     `visibility: visible` volta a aparecer dentro de um pai hidden;
+     *   - trocar por `display: none` removeria a caixa E o `::before` junto:
+     *     o separador desapareceria por completo e os itens ficariam
+     *     colados, sem nenhum separador visível.
+     * O chevron é pura geometria (`content: ""` + 2 bordas rotacionadas), e
+     * não texto gerado, justamente para não haver nada que um leitor de tela
+     * possa anunciar — não existe `aria-hidden` que o CSS pudesse aplicar.
+     */
+    public function test_breadcrumb_separator_is_hidden_without_collapsing_its_box(): void {
+        $rules = $this->rules($this->css());
+
+        $separator = null;
+        $chevron = null;
+        foreach ($rules as [$selectors, $declarations]) {
+            if (in_array('.arena-breadcrumb .separator', $selectors, true)) {
+                $separator = $declarations;
+            }
+            if (in_array('.arena-breadcrumb .separator::before', $selectors, true)) {
+                $chevron = $declarations;
+            }
+        }
+
+        $this->assertNotNull($separator, 'Esperava uma regra `.arena-breadcrumb .separator { … }`.');
+        $this->assertMatchesRegularExpression(
+            '/visibility:\s*hidden/',
+            $separator,
+            'O separador do plugin precisa ser escondido com `visibility: hidden` — é o que o remove da ' .
+                'árvore de acessibilidade (o leitor de tela deixa de anunciar "-" entre cada item) sem ' .
+                'destruir a caixa onde o chevron é desenhado.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/display:\s*none/',
+            $separator,
+            '`display: none` no separador remove também o `::before` que desenha o chevron — a trilha ' .
+                'fica sem separador nenhum, com os itens colados. Use `visibility: hidden`.'
+        );
+
+        $this->assertNotNull($chevron, 'Esperava uma regra `.arena-breadcrumb .separator::before { … }`.');
+        $this->assertMatchesRegularExpression(
+            '/visibility:\s*visible/',
+            $chevron,
+            'O chevron precisa reafirmar `visibility: visible` para reaparecer dentro do separador ' .
+                'escondido — sem isso ele herda o `hidden` do pai e nada é desenhado.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/content:\s*""/',
+            $chevron,
+            'O chevron tem de ser pura geometria (`content: ""` + bordas rotacionadas). Um `content: "›"` ' .
+                'volta a inserir texto gerado, que leitores de tela podem anunciar e que o CSS não tem ' .
+                'como marcar com `aria-hidden`.'
+        );
+    }
+
+    /**
+     * As regras de alinhamento de mídia (`.aligncenter` & cia.) precisam ficar
+     * FORA de qualquer `@layer`. Medido no site real: dentro de
+     * `@layer components`, o `margin-inline: auto` do `.aligncenter`
+     * simplesmente não era aplicado (computava `0px`) e a imagem continuava
+     * encostada à esquerda — porque o WordPress core emite
+     * `:where(figure){ margin: 0 0 1em }` SEM layer, e na cascata de camadas
+     * declarações sem layer vencem quaisquer declarações dentro de um layer,
+     * independentemente da especificidade. Ou seja: nenhum seletor mais
+     * específico resolveria o problema enquanto a regra estivesse na camada.
+     */
+    public function test_media_alignment_rules_live_outside_any_cascade_layer(): void {
+        $css = (string) preg_replace('#/\*.*?\*/#s', '', $this->css());
+
+        /*
+         * Varre o arquivo uma vez mantendo a pilha de blocos abertos, marcando
+         * cada abertura com "este bloco foi aberto por um `@layer`?". Quando um
+         * seletor de alinhamento aparece, a pilha diz se ele está em camada.
+         */
+        $stack = [];
+        $head = '';
+        $offending = [];
+        $targets = ['.aligncenter', '.alignleft', '.alignright'];
+
+        for ($i = 0, $len = strlen($css); $i < $len; $i++) {
+            $char = $css[$i];
+
+            if ($char === '{') {
+                $stack[] = str_contains($head, '@layer');
+                $head = '';
+                continue;
+            }
+
+            if ($char === '}') {
+                array_pop($stack);
+                $head = '';
+                continue;
+            }
+
+            if ($char === ';') {
+                $head = '';
+                continue;
+            }
+
+            $head .= $char;
+
+            if (!in_array(true, $stack, true)) {
+                continue; // fora de qualquer camada: exatamente o que queremos
+            }
+
+            foreach ($targets as $selector) {
+                if (str_ends_with($head, $selector)) {
+                    $offending[] = $selector;
+                }
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $offending,
+            'Regras de alinhamento dentro de `@layer` são derrotadas pelo `:where(figure){margin:0 0 1em}` ' .
+                'do core (sem layer vence com layer, independente de especificidade) e a imagem ' .
+                'centralizada continua à esquerda. Seletores em camada: ' . implode(', ', array_unique($offending))
+        );
+    }
+}

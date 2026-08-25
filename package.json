@@ -1,0 +1,19 @@
+{
+  "name": "power-arena-wordpress-theme",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "env:start": "wp-env start && wp-env run cli wp theme activate arena-child",
+    "env:stop": "wp-env stop",
+    "env:destroy": "wp-env destroy",
+    "env:seed": "wp-env run cli wp eval-file wp-content/themes/arena/bin/seed-sample.php",
+    "test": "wp-env run tests-cli --env-cwd=wp-content/themes/arena vendor/bin/phpunit"
+  },
+  "devDependencies": {
+    "@wordpress/env": "^11.12.0",
+    "lighthouse": "^13.4.1",
+    "vite": "^8.2.0"
+  }
+}

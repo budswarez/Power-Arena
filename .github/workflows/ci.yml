@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: arena-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup PHP and Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install PHP development dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Start WordPress test environment
+        run: npm run env:start
+
+      - name: Run PHPUnit
+        run: npm test
+
+      - name: Stop WordPress environment
+        if: always()
+        run: npm run env:stop

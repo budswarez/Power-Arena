@@ -1,0 +1,3383 @@
+/* This entire stylesheet lives inside `@layer base, components, utilities`
+   (declared right below). That is a DELIBERATE choice — CSS layers give
+   `base`/`components`/`utilities` a predictable, low-drama internal
+   cascade order — but it has one structural consequence worth flagging so
+   the next person isn't surprised by it: any UNLAYERED stylesheet (i.e.
+   one that doesn't declare its own `@layer`) outranks every rule in here
+   regardless of selector specificity, because in the CSS cascade
+   unlayered styles always beat layered ones. WPBakery/js_composer's own
+   CSS is unlayered, which is the actual reason several rules in this file
+   that override `.vc_*`/`js_composer` selectors need `!important` — it
+   is not that those selectors lose on specificity, it's that they lose on
+   layer order before specificity is even consulted. Keep that in mind
+   before reaching for ever-more-specific selectors to fight js_composer:
+   only `!important` (or moving js_composer's own output into a layer,
+   which we don't control) actually wins that fight. See also the
+   "Arquitetura" section of README.md. */
+@layer base, components, utilities;
+
+@layer base {
+  :root {
+    --arena-font-head: 'Oswald', sans-serif;
+    --arena-font-body: 'Barlow', sans-serif;
+
+    --arena-c-dark: #1b1b1b;
+
+    /* Single accent token — collapses the old --arena-c-ultimas (identical
+       #f42c1a value, one lone consumer) into this, the token used
+       everywhere else in the stylesheet. */
+    --arena-accent: #f42c1a;
+
+    /* Accessible variant of the accent, for small text/backgrounds where
+       the raw --arena-accent fails WCAG AA. Measured: white (#fff, relative
+       luminance 1.0) against #c81f10 (relative luminance ~0.133) gives
+       (1.0 + .05) / (.133 + .05) ≈ 5.74:1 — clears the 4.5:1 small-text
+       threshold with margin (raw --arena-accent only manages 4.02:1 against
+       white/on-white at the sizes this theme uses it: 13px author links,
+       11.2px term badges). Because WCAG contrast is symmetric in which side
+       is foreground vs background, the SAME colour also fixes white-on-
+       accent text (term badges) — one token covers both directions. */
+    --arena-accent-text: #c81f10;
+
+    /* Darker hover/focus shade of --arena-accent-text, used only by
+       .comment-submit-button's hover/focus state — a genuinely distinct
+       3rd shade in the accent family, not a duplicate of an existing
+       token (whole-branch review, minor finding #3). */
+    --arena-accent-text-hover: #a3190d;
+
+    /* Secondary/muted text colour (author bylines, breadcrumbs, empty-state
+       copy, timestamps) — was a bare #6b6b6b hex literal repeated 15x with
+       no token backing it (whole-branch review, minor finding #3). */
+    --arena-c-text-secondary: #6b6b6b;
+
+    /* Light neutral surface fill (search-toggle bar, share/back-link
+       buttons, table stripes) — was a bare #f2f2f2 literal repeated 7x. */
+    --arena-c-surface: #f2f2f2;
+
+    /* The 6 near-identical hairline-border greys found across the sheet
+       (#ddd/#dedede/#eaeaea/#e6e6e6/#e2e2e2/#eee — a 221-238 range,
+       imperceptible as borders/hairline fills) collapse to these 2: */
+    --arena-c-border: #ddd;
+    --arena-c-border-light: #eaeaea;
+
+    /* Boxed layout width — matches the live site's `--publisher-site-width`
+       (2-col boxed layout) so the header/footer/main content line up. */
+    --arena-site-width: 1200px;
+
+    /* Vertical rhythm between the major home blocks (banner, hero mosaic,
+       3-col row, blog list, dark grid) — measured against the reference's
+       `--publisher-spacing:50` variable, applied as every listing block's
+       own `margin-bottom`. */
+    --arena-block-spacing: 50px;
+
+    /* The mega menu bar's own rendered height — 48px line-height
+       (`.main-menu.menu > li > a`, below) + its 3px top/bottom borders
+       (`.main-menu-bar`, below) = 54px, matching the 54x54 search/hamburger
+       icon hit targets. Defined once here so anything that needs to clear
+       the bar when it's pinned (`.main-menu-bar.is-pinned`, fixed to the
+       viewport top) — e.g. the sticky sidebar's own top offset, further
+       down — reads the SAME number instead of a 2nd hardcoded magic value
+       that could drift out of sync with the bar's actual height. */
+    --arena-sticky-bar-height: 54px;
+  }
+
+  /* ========================================================================
+     Self-hosted webfonts (task-review-fixes-3, FIX 2) — replaces the old
+     `<link rel=stylesheet href="https://fonts.googleapis.com/css?family=…">`
+     (Arena\Assets::enqueue()) with local `@font-face` declarations. Removes
+     a render-blocking cross-origin request + the WOFF2 round trips to
+     fonts.gstatic.com on the LCP path, and stops sending every visitor's IP
+     to Google on every page view (LGPD). Files live in `assets/fonts/`
+     (committed — see that directory's OFL.txt for the licence notice: both
+     families are SIL Open Font License 1.1) and are NOT run through Vite —
+     `base` below is the theme's own fixed absolute URL (same assumption
+     vite.config.js already bakes into every built asset via its own
+     `base: '/wp-content/themes/arena/assets/dist/'`), so the path is stable
+     across builds/deploys without needing a manifest lookup.
+
+     Only the weights actually used ship: Barlow 400/500/600/700, Oswald
+     400/500 (matches the old Google Fonts query exactly). Two subsets per
+     weight — `latin` (covers pt-BR: all our diacritics — ã, ç, é, í, ó, õ,
+     ü — sit inside U+0000-00FF) and `latin-ext` (extra European accents,
+     shipped for completeness per the task brief) — NOT the full Google set
+     (cyrillic, greek, vietnamese, etc.), which this site never renders.
+     `font-display: swap` on every face avoids a blocked/invisible-text
+     render window; the ONE face most critical to first paint (Barlow 400
+     latin — the body-copy weight used above the fold on every template,
+     see `body{}` below, no weight override) gets a `<link rel=preload>`
+     from Arena\Assets::preloadFontUrl(), wired into wp_head — the other 11
+     faces are NOT preloaded (over-preloading delays the one that matters).
+     ========================================================================== */
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-400-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-400-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-500-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-500-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-600-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-600-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-700-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Barlow';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/barlow-700-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'Oswald';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/oswald-400-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Oswald';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/oswald-400-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  @font-face {
+    font-family: 'Oswald';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/oswald-500-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Oswald';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/wp-content/themes/arena/assets/fonts/oswald-500-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* Belt-and-suspenders guard against horizontal scroll on narrow
+     viewports. `.bs-listing.bs-dark-scheme` is now BOXED (task-uifix BUG 2)
+     rather than breaking out to full viewport width, but this stays as a
+     cheap, harmless safety net against any other stray horizontal overflow
+     source. `overflow-x:hidden` on the root element only clips the
+     HORIZONTAL axis — vertical scrolling (a tall page) is untouched — so it
+     can only ever prevent sideways scroll, never hide content that would
+     otherwise be reachable by scrolling down. */
+  html { overflow-x: hidden; }
+
+  body {
+    margin: 0;
+    font-family: var(--arena-font-body);
+    /* NOT #1b1b1b (dark-on-dark bug, bitten twice already — see git
+       history): the page itself sits on a black background, and #1b1b1b
+       text against it measures a 1.21:1 contrast ratio (Lighthouse
+       color-contrast failure). Every light content surface built on top of
+       this black canvas — `.main-content.boxed`, `.content-container`,
+       and every other explicit `background:#fff`/dark-panel block in this
+       file — already sets its OWN explicit `color` for its own text, so
+       the body's default is only ever the fallback for any stray text
+       that ends up directly on the black canvas itself; it must be light
+       to stay legible there, never relied upon by the light surfaces. */
+    color: #fff;
+    /* Tipografia configurável pelo painel. Os fallbacks reproduzem o
+       comportamento atual: `inherit` = 16px do html, `normal` = sem
+       line-height explícito. Nada muda sem opção salva. */
+    font-size: var(--arena-font-size-base, inherit);
+    line-height: var(--arena-line-height, normal);
+    /* Measured on the reference: the page itself sits on a black
+       background — the boxed 1200px content column (`.main-content.boxed`,
+       below) supplies its own light background on top of it, so the black
+       only shows as the gutters around/between blocks, not behind text. */
+    background-color: #000;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--arena-font-head);
+    /* `bold` é o padrão do navegador para h1-h6: fallback fiel ao de hoje. */
+    font-weight: var(--arena-headline-weight, bold);
+    margin: 0 0 .5em;
+  }
+
+  img { max-width: 100%; height: auto; display: block; }
+
+  a { color: inherit; text-decoration: none; }
+}
+
+/* ==========================================================================
+   Layout — boxed container, header/footer shell
+   ========================================================================== */
+@layer components {
+  .container {
+    max-width: var(--arena-site-width);
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 15px;
+  }
+
+  /* Arena has no separate `.main-wrap`/`.content-wrap` element wrapping the
+     whole page (unlike Publisher) — `<body>` is already the outermost box
+     and spans the full page, so the `body` background-color rule above is
+     what actually paints the black page background; this `body.boxed`
+     rule is kept for parity/forward-compat with the measured selector even
+     though no `.boxed` class is currently applied to `<body>`. */
+  body.boxed { background-color: #000; }
+
+  /* `.full-width` bars (header/footer) span the viewport; their own inner
+     content is still boxed to --arena-site-width via .container/.header-main
+     /.footer-inner below. No shared background here on purpose: both
+     `.site-header.header-style-2` and `.site-footer` (further down) set
+     their own dark fill, and a `background` on THIS 2-class selector would
+     out-specificity `.site-footer`'s later 1-class rule, silently forcing
+     the footer back to white — invisible while the page itself was also
+     white/transparent, glaring now that `body` is black. */
+  .site-header.full-width,
+  .site-footer.full-width {
+    width: 100%;
+  }
+
+  /* The boxed 1200px content column is ONE CONTINUOUS light surface —
+     matching how the reference actually works: black only ever appears as
+     the outer gutters either side of this 1200px column (outside its own
+     box entirely) — never as a gap BETWEEN blocks inside the column. The
+     dark "Últimas notícias" row (`.bs-listing.bs-dark-scheme`, further down)
+     paints its OWN dark fill on top of this same boxed width (task-uifix
+     BUG 2 — boxed, not full-bleed) rather than relying on the shared light
+     surface. Content blocks (hero mosaic, category columns, blog list, the
+     WPBakery banner, ordinary page/post content) no longer need to paint
+     their own light background just to be legible; they only keep their
+     own internal padding, which now reads as white breathing-room instead
+     of a separate white card floating on black.
+
+     No vertical padding on THIS element, on purpose: the dark row is
+     always the last block before `</main>` on the home page and carries
+     `margin-bottom:0` (see `.bs-listing.bs-dark-scheme`, further down)
+     precisely so this wrapper's own box ends flush with the dark row's
+     bottom edge — any top/bottom padding here would render as a leftover
+     white band between the dark row and the footer (this regression has
+     bitten twice already; see git history on this file). The footer's OWN
+     `margin-top` must also stay 0 for the same reason — a BLACK band shows
+     up there instead of a white one if it doesn't (task-uifix BUG 3, see
+     `.site-footer` further down). */
+  .main-content.boxed {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding-inline: 15px;
+    background: #fff;
+    color: var(--arena-c-dark);
+  }
+
+  .main-content.boxed > *:first-child { margin-top: 0; }
+}
+
+/* ==========================================================================
+   Skip link — first focusable element in <body> (header.php), jumping to
+   `#content` (the main landmark every template shares). Clipped
+   off-screen with the same technique as `.screen-reader-text` (below, in
+   the Utilities layer) so it never affects sighted-mouse layout, then
+   made visible — pinned to the viewport's top-left corner, above
+   everything else via z-index — the moment it receives keyboard focus.
+   `--arena-accent-text` (#c81f10) on white measures ~5.74:1, clearing the
+   4.5:1 small-text threshold with margin (see the token's own definition
+   above for the full calc).
+   ========================================================================== */
+@layer components {
+  .skip-link {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 100000;
+  }
+
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    top: 12px;
+    left: 12px;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    display: inline-block;
+    padding: 12px 20px;
+    background: #fff;
+    color: var(--arena-accent-text);
+    font-family: var(--arena-font-body);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: underline;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* ==========================================================================
+   2-column shell (single/archive/search) — template-parts/layout/
+   {content-open,content-close}.php + sidebar.php build the markup;
+   Arena\Layout::columnClasses() (pure, tests/LayoutTest.php) decides which
+   of the classes below apply. Same boxed light-surface model as
+   `.main-content.boxed` above (content-container is the box; `.container`
+   inside it only adds the 15px edge padding + column gutter, reusing the
+   already-shared `.container` utility rather than duplicating it).
+   ========================================================================== */
+@layer components {
+  /* Scoped to the `<main>` ELEMENT, not a bare `.content-container` class
+     selector (task-uifix BUG 1, regression): every card partial
+     (card/featured.php, card/hero.php, card/list.php) also renders its own
+     unrelated `<div class="content-container">` for its title/meta block —
+     a bare class selector matches that div too, painting every card's
+     text block with this shell's own white background. Invisible on an
+     ordinary light-scheme listing (white text-block on an already-white
+     page surface), but inside `.bs-listing.bs-dark-scheme` ("Últimas
+     notícias") it rendered as a solid white rectangle behind each card's
+     WHITE title text — completely unreadable. See tests/StyleGuardTest.php
+     for the regression guard and `.bs-listing.bs-dark-scheme
+     .content-container` below for the belt-and-suspenders override. */
+  main.content-container {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    background: #fff;
+    color: var(--arena-c-dark);
+  }
+
+  .content-container > *:first-child { margin-top: 0; }
+
+  /* Bootstrap-style row/col gutter math: `.container` (shared utility,
+     above) already has `padding-inline:15px`; this negative margin cancels
+     it so the flex row's outer edge lines back up with `.container`'s own
+     border-box edge, and each column's own 15px padding (below) recreates
+     a 15px edge inset + a 30px gutter between the 2 columns — matching the
+     "15px column padding (30px gutter)" reference measurement. */
+  .container.layout-2-col,
+  .container.layout-1-col {
+    display: flex;
+    flex-wrap: wrap;
+    margin-inline: -15px;
+  }
+
+  .content-column,
+  .sidebar-column {
+    padding-inline: 15px;
+    /* Flex children default to min-width:auto (their content's intrinsic
+       width) — without this, a wide table/media inside .entry-content
+       could force the whole row wider than the 1200px box instead of
+       scrolling inside its own column. */
+    min-width: 0;
+  }
+
+  .content-column.col-12 { flex: 0 0 100%; max-width: 100%; }
+  .content-column.col-8 { flex: 0 0 66.6667%; max-width: 66.6667%; }
+  .sidebar-column.col-4 { flex: 0 0 33.3333%; max-width: 33.3333%; }
+
+  /* task-review-fixes-3, FIX 1: 'arena_sidebar_position' === 'left' —
+     Arena\Layout::containerClasses() tags the shell `.container` with
+     `layout-left-sidebar` instead of `layout-right-sidebar`, mirroring the
+     right-sidebar shape above (same 8/12+4/12 split, same DOM order:
+     content-column then sidebar-column) but flipping which side the
+     sidebar renders on via flex `order` alone — no markup-order change
+     needed in template-parts/layout/{content-open,content-close}.php. */
+  .container.layout-2-col.layout-left-sidebar .sidebar-column {
+    order: -1;
+  }
+
+  /* Sticky sidebar — gated on `body.active-sticky-sidebar` (added by
+     Arena\Setup::shellBodyClasses() on single/archive/search) rather than
+     unconditionally on `.sidebar-column`, matching the reference's own
+     opt-in naming for this behavior. `top` clears the mega menu bar once
+     it's pinned (`--arena-sticky-bar-height`, above) plus a 20px breathing
+     gap. No transition here — sticky positioning itself isn't an animated
+     property, so there's nothing for `prefers-reduced-motion` to disable. */
+  body.active-sticky-sidebar .sidebar-column .sidebar-inner-wrap {
+    position: sticky;
+    top: calc(var(--arena-sticky-bar-height) + 20px);
+  }
+
+  /* Stack to 1 column, sidebar below content — measured breakpoint 768px.
+     Sticky is turned back off: a sidebar sitting BELOW the content in a
+     single stacked column has no meaningful "stick while scrolling past
+     the content" behavior (there's no content left beside it to scroll
+     past), and leaving `position:sticky` on would just pin it awkwardly
+     under the mega menu bar once its own top passes that point. */
+  @media (max-width: 768px) {
+    .content-column.col-8,
+    .sidebar-column.col-4 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+
+    body.active-sticky-sidebar .sidebar-column .sidebar-inner-wrap {
+      position: static;
+      top: auto;
+    }
+  }
+}
+
+/* ==========================================================================
+   Archive header — template-parts/archive-header.php (Fatia 2B Task 4):
+   the <h1>/description/child-term chips shared by category, tag, author
+   and date archives. Sits at the top of the 2-column shell's content
+   column, above the featured block + main listing, so its bottom spacing
+   uses the same --arena-block-spacing rhythm as every other major block on
+   the page (.bs-listing, .arena-pagination, above/below).
+   ========================================================================== */
+@layer components {
+  .archive-title {
+    margin: 0 0 var(--arena-block-spacing);
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  /* Clearfix: `.actions-container` below is floated, so a following
+     sibling (`.archive-description`/`.archive-terms`) needs the section
+     itself to clear it rather than relying on the H1 alone being tall
+     enough. */
+  .archive-title::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+
+  /* Label chip ("pre-title") + feed link ("actions-container") — measured
+     verbatim in ref-category.html: a small dark chip above the H1, plus a
+     thin rule filling the rest of that row, with the feed link floated to
+     the right so it lands beside the H1's own first line (see
+     archive-header.php's docblock for why no extra wrapper is needed). */
+  .archive-title .pre-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 18px;
+  }
+
+  .archive-title .pre-title span {
+    display: inline-block;
+    flex-shrink: 0;
+    background: var(--arena-c-dark);
+    color: #fff;
+    font-family: var(--arena-font-body);
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: capitalize;
+    padding: 7px 16px;
+  }
+
+  .archive-title .pre-title::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    background: rgba(0, 0, 0, .12);
+  }
+
+  .archive-title .actions-container {
+    float: right;
+    margin-left: 12px;
+  }
+
+  .archive-title .rss-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    color: var(--arena-accent);
+  }
+
+  .archive-title .rss-link .icon-rss { width: 16px; height: 16px; }
+
+  /* Title-case, larger and lighter than the earlier all-caps treatment —
+     measured against the reference ("Hardware", not "HARDWARE"). */
+  .archive-title .page-heading {
+    font-family: var(--arena-font-head);
+    font-size: clamp(26px, 4vw, 40px);
+    line-height: 1.25;
+    font-weight: 500;
+    color: var(--arena-c-dark);
+    margin: 0;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .archive-description {
+    font-family: var(--arena-font-body);
+    font-size: .98rem;
+    line-height: 1.6;
+    color: #555;
+    margin-top: 12px;
+    /* Long unbroken strings (URLs, etc.) in a term description must wrap
+       inside the content column rather than forcing it wider — no
+       horizontal overflow at any of the measured breakpoints. */
+    overflow-wrap: break-word;
+  }
+
+  .archive-description > :first-child { margin-top: 0; }
+  .archive-description > :last-child { margin-bottom: 0; }
+
+  .archive-terms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .archive-terms__link {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 4px;
+    background: var(--arena-c-surface);
+    color: var(--arena-c-dark);
+    font-family: var(--arena-font-body);
+    font-size: .85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color .15s ease, color .15s ease;
+  }
+
+  /* --arena-accent-text: white at .85rem/600 is under the bold "large text"
+     AA threshold (~18.66px), so it needs 4.5:1 — raw --arena-accent only
+     clears 4.02:1. */
+  .archive-terms__link:hover {
+    background: var(--arena-accent-text);
+    color: #fff;
+  }
+
+  @media (max-width: 420px) {
+    .archive-title .page-heading { font-size: clamp(22px, 6vw, 28px); }
+  }
+}
+
+/* ==========================================================================
+   Header (header-style-2) — top bar, branding, sticky mega menu, search
+   ========================================================================== */
+@layer components {
+  /* Measured on the reference (header-style-2): the whole header block —
+     topbar row AND branding row — sits on a near-black background, not
+     white. This is load-bearing: the brand mark is a near-white wordmark
+     + red icon, so it's only legible on a dark surface. */
+  .site-header.header-style-2 {
+    /* Token com fallback: sem opção salva no painel, continua exatamente #0b0b0b. */
+    background-color: var(--arena-header-bg, #0b0b0b);
+    border-bottom: 3px solid var(--arena-c-border);
+  }
+
+  .top-bar {
+    background-color: var(--arena-topbar-bg, #0b0b0b);
+    border-bottom: 1px solid #1e1e1e;
+    font-size: .85rem;
+  }
+
+  .top-bar .content-wrap {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding-inline: 15px;
+  }
+
+  .top-menu.menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin: 0;
+    padding: 8px 0;
+    list-style: none;
+  }
+
+  /* padding bumped 4px->5px top/bottom: at .85rem/13.6px the link's own
+     box (no explicit line-height) sits right at the 24px touch-target
+     floor depending on the browser's exact font-metrics line-height for
+     Barlow; the extra 2px buys margin without a visible height change. */
+  .top-menu.menu a { padding: 5px 0; color: #b0b0b0; }
+  .top-menu.menu a:hover,
+  .top-menu.menu a:focus { color: var(--arena-accent); }
+
+  /* Row 1: branding only (reference `.header-inner`, `header-style-2`
+     padding measured `20px 0`). The mega menu is its own full-width band
+     below (`.main-menu-bar`), not inline with the logo. */
+  .header-main {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding: 20px 15px;
+    display: flex;
+    align-items: center;
+  }
+
+  #site-branding .site-branding__link {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  /* Measured on the reference (`.logo img{max-height:74px}` under
+     header-style-2): the boxed logo mark, not the plain text fallback. */
+  #site-branding .site-logo { max-height: 64px; width: auto; }
+
+  /* Text fallback (no logo set via the options page) has to read against
+     the same near-black branding row as the image logo, so it needs its
+     own light color rather than inheriting body's dark text. */
+  #site-branding .site-name {
+    font-family: var(--arena-font-head);
+    font-size: 1.4rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #e0e0e0;
+  }
+
+  #site-branding .site-description {
+    font-family: var(--arena-font-body);
+    font-size: .8rem;
+    color: #999;
+  }
+
+  /* Row 2: the mega menu band. Measured: header-style-2's
+     `.main-menu-wrapper` background is the accent red (#f42c1a), not
+     white — the menu bar itself IS the accent band, with a thin #dedede
+     seam below it before the page content. It's a full-width band (like
+     `.site-header.full-width`) with its own boxed inner row for the nav +
+     search, and it sticks under the browser chrome once scrolled past. */
+  /* Base (in-flow) state. The "smart" pinned/hidden states below are driven
+     by initSmartStickyMenuBar() (main.js) toggling `.is-pinned`/`.is-hidden`
+     — measured against the reference's `.bs-pinning-block.smart`
+     (`position:fixed` + `transform:translateY(-100%)` on scroll-down, not a
+     plain CSS `position:sticky`, which can't slide the bar away). */
+  /* Background is `--arena-accent-text`, not the raw `--arena-accent`: this
+     bar carries the site-wide primary nav, white 17px/500 links directly on
+     top of it, on EVERY page — white on raw --arena-accent (#f42c1a) only
+     measures 4.02:1 (fails WCAG AA); --arena-accent-text (#c81f10) clears
+     5.74:1. The border keeps the raw accent (not text on it, no contrast
+     requirement). */
+  .main-menu-bar {
+    position: relative;
+    z-index: 60;
+    background: var(--arena-accent-text);
+    border-top: 3px solid var(--arena-accent);
+    border-bottom: 3px solid var(--arena-c-border);
+    transition: .3s all;
+  }
+
+  /* Pinned: fixed to the viewport top, above the off-canvas overlay's own
+     stacking (z-index 9990+) is intentionally NOT the goal here — the
+     off-canvas panel (below) still needs to sit above this bar on mobile,
+     hence its higher z-index values. */
+  .main-menu-bar.is-pinned {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 9980;
+    box-shadow: 0 0 6px rgba(0, 0, 0, .3);
+  }
+
+  /* Unpinned-while-pinned: scrolling down slides the bar up out of view;
+     scrolling back up (JS removes this class) slides it back in. */
+  .main-menu-bar.is-pinned.is-hidden {
+    transform: translateY(-100%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .main-menu-bar { transition: none; }
+    .main-menu-bar.is-pinned.is-hidden { transform: none; }
+  }
+
+  /* Reserves the bar's own height while it's pinned (position:fixed removes
+     it from the flow) so the content below doesn't jump — see
+     initSmartStickyMenuBar() (main.js), which sets the inline height. */
+  .main-menu-bar-spacer { display: none; }
+  .main-menu-bar-spacer.is-active { display: block; }
+
+  .main-menu-bar__inner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .main-menu-container {
+    flex: 1 1 auto;
+  }
+
+  .header-search {
+    position: relative;
+  }
+
+  /* Same 54x54 hit target as `.mobile-menu-toggle` (below) — the reference
+     shows the search + hamburger icons as a matched pair at the bar's right
+     end, both white-on-red with the same measured `rgba(0,0,0,.15)` hover/
+     focus darkening (see the shared rule at the bottom of this layer). */
+  .header-search .search-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    /* Sits on the red .main-menu-bar, same as the menu links. */
+    color: #fff;
+  }
+
+  .header-search-form {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    display: none;
+    background: #fff;
+    box-shadow: 0 7px 7px rgba(0, 0, 0, .15);
+    padding: 8px;
+    z-index: 61;
+  }
+
+  /* aria-expanded alone (NOT `:focus-within` — removed): initSearchToggle()
+     (main.js) now owns the open/closed state entirely. The old
+     `:focus-within` rule predated that JS and kept the form visually open
+     whenever ANY descendant of `.header-search` had focus — including the
+     `.search-toggle` button itself. That collided with
+     close({refocus:true}), which sets `aria-expanded="false"` AND moves
+     focus back onto the toggle on Escape: the toggle regaining focus still
+     satisfies `:focus-within`, so the form stayed visually open while ARIA
+     said closed. The toggle button is still the widget's first focusable
+     element, so keyboard access is unaffected by dropping this rule. */
+  .header-search .search-toggle[aria-expanded="true"] ~ .header-search-form {
+    /* flex (not the plain `block` this used to be): searchform.php
+       (Fatia 2B Task 5) always renders a submit button now, so the shown
+       state needs to lay the input + button out in a row. */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .header-search-form .search-field {
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--arena-c-border);
+    color: #333;
+    min-width: 220px;
+  }
+
+  /* The search toggle stays at the right end of the desktop bar. The
+     hamburger is intentionally mobile-only because it opens the off-canvas
+     menu; on desktop the regular mega menu remains visible. */
+  .header-search,
+  .mobile-menu-toggle {
+    flex: 0 0 auto;
+  }
+
+  .header-search .search-toggle:hover,
+  .header-search .search-toggle:focus-visible,
+  .mobile-menu-toggle:hover,
+  .mobile-menu-toggle:focus-visible {
+    background-color: rgba(0, 0, 0, .15);
+  }
+}
+
+/* ==========================================================================
+   Mega menu — up to 3 levels, hover/focus reveal of .sub-menu
+   ========================================================================== */
+@layer components {
+  /* Top-level items: white text on the accent-red bar (see
+     `.main-menu-container` above), Oswald 500 17px uppercase — measured
+     from `.main-menu li>a{font-family:'Oswald';font-weight:500;
+     font-size:17px;text-transform:uppercase}` and
+     `.site-header .main-menu>li>a{color:#fff}`. */
+  .main-menu.menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--arena-font-head);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 1.0625rem;
+  }
+
+  .main-menu.menu > li {
+    position: relative;
+    margin-right: 10px;
+  }
+
+  .main-menu.menu > li > a {
+    position: relative;
+    display: block;
+    padding: 0 12px;
+    line-height: 48px;
+    color: var(--arena-menu-color, #fff);
+  }
+
+  .main-menu.menu > li:hover > a,
+  .main-menu.menu > li.current-menu-item > a,
+  .main-menu.menu > li.current-menu-parent > a {
+    /* Sem opção no painel, mantém o branco de hoje. */
+    color: var(--arena-menu-hover, #fff);
+  }
+
+  /* Active/hover indicator: a white bar that grows from 20% to 100% width,
+     centered — measured from `.main-menu>li>a:before` (width/transform/
+     transition) + `:hover>a:before{background-color:#fff}`. */
+  .main-menu.menu > li > a::before {
+    content: '';
+    display: block;
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 20%;
+    height: 3px;
+    background: var(--arena-menu-hover, #fff);
+    transform: translateX(-50%);
+    transition: width .3s ease;
+    visibility: hidden;
+  }
+
+  .main-menu.menu > li:hover > a::before,
+  .main-menu.menu > li.current-menu-item > a::before,
+  .main-menu.menu > li.current-menu-parent > a::before {
+    width: 100%;
+    visibility: visible;
+  }
+
+  .main-menu.menu .sub-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 210px;
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+    background: #fff;
+    box-shadow: 0 7px 7px rgba(0, 0, 0, .15);
+    z-index: 70;
+  }
+
+  /* 3rd level flies out to the right of its parent item. */
+  .main-menu.menu .sub-menu .sub-menu {
+    top: -6px;
+    left: 100%;
+  }
+
+  .main-menu.menu > li:hover > .sub-menu,
+  .main-menu.menu > li.menu-item-has-children:focus-within > .sub-menu,
+  .main-menu.menu .sub-menu > li:hover > .sub-menu,
+  .main-menu.menu .sub-menu > li.menu-item-has-children:focus-within > .sub-menu {
+    display: block;
+  }
+
+  /* Submenu items: Oswald 400 15px, no uppercase, dark text on white —
+     measured from `.main-menu .sub-menu>li>a{font-family:'Oswald';
+     font-weight:400;font-size:15px;text-transform:none}` +
+     `.sub-menu>li>a{color:#434343}`. */
+  .main-menu.menu .sub-menu > li > a {
+    display: block;
+    padding: 10px 16px;
+    color: #434343;
+    font-family: var(--arena-font-head);
+    font-weight: 400;
+    font-size: .9375rem;
+    text-transform: none;
+    white-space: nowrap;
+    border-bottom: 1px solid rgba(0, 0, 0, .04);
+  }
+
+  /* --arena-accent-text: white at .9375rem/400 is far below the "large
+     text" AA threshold, so it needs 4.5:1 — raw --arena-accent only clears
+     4.02:1. */
+  .main-menu.menu .sub-menu > li:hover > a,
+  .main-menu.menu .sub-menu > li.current-menu-item > a {
+    background: var(--arena-accent-text);
+    color: #fff;
+  }
+
+  .main-menu.menu .menu-item-has-children > a::after {
+    content: '';
+    display: inline-block;
+    margin-left: 6px;
+    border: 4px solid transparent;
+    border-top-color: currentColor;
+    vertical-align: middle;
+  }
+
+  /* Inside a (white) submenu the has-children arrow should read dark, not
+     inherit the white top-level arrow color. */
+  .main-menu.menu .sub-menu .menu-item-has-children > a::after {
+    border-top-color: #434343;
+  }
+
+  .main-menu.menu .sub-menu > li:hover > a::after {
+    border-top-color: #fff;
+  }
+}
+
+/* ==========================================================================
+   Off-canvas panel + its hamburger handler (`.mobile-menu-toggle`, a real
+   <button aria-expanded/aria-controls>) — opens `#offcanvas-menu`, a panel
+   containing the SAME main-menu re-rendered as a nested accordion, sliding
+   in from the left over a dimmed page overlay. All open/close/Escape/
+   accordion wiring is initOffCanvasMenu() in main.js (vanilla ES6, no
+   jQuery). The handler, panel, and overlay are mobile-only; desktop keeps
+   the regular mega menu visible and exposes only its search control.
+   ========================================================================== */
+@layer components {
+  /* Handler: hidden by default and restored below the mobile breakpoint.
+     It remains a 54x54, centered hit target with a translucent-white fill
+     on the red bar; the mobile breakpoint gives it `order:-1` so it comes
+     before the search control. */
+  .mobile-menu-toggle {
+    display: none;
+    order: 3;
+    width: 54px;
+    height: 54px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, .05);
+    border: 0;
+    padding: 0;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  /* Bars: `width:22px;height:2px;background:#ecf0f1`. `::before`/`::after`
+     form the other 2 lines of the hamburger; all 3 transition on the
+     measured `.38s` timing (a smooth cubic-bezier equivalent to the
+     reference's) into an X once the panel is open (`.is-active`). */
+  .mobile-menu-toggle__lines,
+  .mobile-menu-toggle__lines::before,
+  .mobile-menu-toggle__lines::after {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background-color: #ecf0f1;
+    position: relative;
+    transition: transform .38s cubic-bezier(.4, 0, .2, 1),
+                opacity .38s cubic-bezier(.4, 0, .2, 1),
+                top .38s cubic-bezier(.4, 0, .2, 1);
+  }
+
+  .mobile-menu-toggle__lines::before { content: ''; position: absolute; top: -6px; left: 0; }
+  .mobile-menu-toggle__lines::after { content: ''; position: absolute; top: 4px; left: 0; }
+
+  .mobile-menu-toggle.is-active .mobile-menu-toggle__lines { background-color: transparent; }
+  .mobile-menu-toggle.is-active .mobile-menu-toggle__lines::before { top: 0; transform: rotate(45deg); }
+  .mobile-menu-toggle.is-active .mobile-menu-toggle__lines::after { top: 0; transform: rotate(-45deg); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-menu-toggle__lines,
+    .mobile-menu-toggle__lines::before,
+    .mobile-menu-toggle__lines::after {
+      transition: none;
+    }
+  }
+
+  /* Dimmed page overlay behind the panel. `hidden` (removed by JS on open)
+     keeps it out of the accessibility tree/tab order while closed; the
+     opacity transition still needs `hidden` cleared first, which is why
+     main.js flips it a frame before adding `.is-open`. */
+  .offcanvas-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    opacity: 0;
+    z-index: 9990;
+    transition: opacity .38s cubic-bezier(.4, 0, .2, 1);
+  }
+
+  .offcanvas-overlay.is-open { opacity: 1; }
+
+  /* Panel: ~80vw capped at 320px, dark fill consistent with the header,
+     slides in from the left via `transform: translateX()` on the measured
+     `.38s` timing. Hidden off-screen by default — this is the state the
+     mobile screenshot verification checks for without needing to interact
+     with the page. */
+  /* `visibility: hidden` (not transform alone): `transform:translateX()`
+     moves the panel off-screen but does NOT remove it from the tab order —
+     with the hard-coded `aria-hidden="true"` in header.php, that let a
+     keyboard user Tab into an invisible menu inside an `aria-hidden`
+     container (axe `aria-hidden-focus`). Delaying the `visibility`
+     transition by the same duration as the slide (`transition-delay`) means
+     it only takes effect once the slide-out finishes — so the panel stays
+     visually present throughout its own closing animation and simply drops
+     out of the tab order right after — while opening flips `visibility`
+     back instantly (delay 0) so the panel is interactive from frame one.
+     Also the fix for the ~6px `document.documentElement.scrollWidth`
+     artifact this off-screen-but-still-hit-testable panel produced. */
+  .offcanvas-menu {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(80vw, 320px);
+    background-color: #0b0b0b;
+    color: #fff;
+    z-index: 9995;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform .38s cubic-bezier(.4, 0, .2, 1), visibility 0s .38s;
+    overflow-y: auto;
+    flex-direction: column;
+  }
+
+  .offcanvas-menu.is-open {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform .38s cubic-bezier(.4, 0, .2, 1), visibility 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .offcanvas-menu,
+    .offcanvas-overlay { transition: none; }
+  }
+
+  .offcanvas-menu__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #1e1e1e;
+  }
+
+  .offcanvas-menu__title {
+    font-family: var(--arena-font-head);
+    text-transform: uppercase;
+    font-size: .95rem;
+    color: #fff;
+  }
+
+  .offcanvas-menu__close {
+    width: 36px;
+    height: 36px;
+    background-color: rgba(255, 255, 255, .05);
+    border: 0;
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .offcanvas-nav { padding: 8px 0 24px; }
+
+  .offcanvas-menu-list.menu {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--arena-font-head);
+  }
+
+  .offcanvas-menu-list.menu li { position: relative; }
+
+  .offcanvas-menu-list.menu > li > a,
+  .offcanvas-menu-list .sub-menu > li > a {
+    display: block;
+    padding: 12px 46px 12px 16px;
+    color: #fff;
+    text-transform: uppercase;
+    font-size: .9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, .06);
+  }
+
+  /* Nested accordion: children hidden until the parent's toggle (injected
+     by initOffCanvasMenu()) expands them — tapping the item's own link
+     still navigates normally. */
+  .offcanvas-menu-list .sub-menu {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background-color: rgba(255, 255, 255, .03);
+  }
+
+  .offcanvas-menu-list .sub-menu > li > a {
+    padding-left: 30px;
+    text-transform: none;
+    font-size: .85rem;
+  }
+
+  .offcanvas-menu-list .sub-menu .sub-menu > li > a { padding-left: 44px; }
+
+  .offcanvas-menu-list li.is-expanded > .sub-menu { display: block; }
+
+  .offcanvas-item-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 46px;
+    height: 46px;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .offcanvas-item-toggle span {
+    display: block;
+    width: 8px;
+    height: 8px;
+    margin: 0 auto;
+    border-right: 2px solid #ecf0f1;
+    border-bottom: 2px solid #ecf0f1;
+    transform: rotate(45deg);
+    transition: transform .3s ease;
+  }
+
+  .offcanvas-menu-list li.is-expanded > .offcanvas-item-toggle span { transform: rotate(-135deg); }
+
+  /* Body scroll lock while the panel is open (main.js toggles this class
+     on <html>). */
+  html.offcanvas-open,
+  html.offcanvas-open body {
+    overflow: hidden;
+  }
+
+  @media (max-width: 860px) {
+    .mobile-menu-toggle {
+      display: flex;
+      order: -1;
+    }
+
+    .offcanvas-menu { display: flex; }
+    /* task-final-ui item 2 (CDP-driven finding, never caught by code review
+       alone): this used to be a bare `.offcanvas-overlay { display: block; }`
+       — same (0,0,1,0) specificity as the UA `[hidden] { display: none }`
+       rule it was meant to coexist with, but author-origin CSS always wins
+       over user-agent CSS regardless of specificity. That silently forced
+       the dimmed overlay to `display:block` at EVERY mobile width the
+       moment the page loaded, `hidden` attribute or not — an invisible
+       (opacity:0 until `.is-open`) but fully hit-testable `position:fixed;
+       inset:0; z-index:9990` layer sitting over the ENTIRE viewport,
+       intercepting every tap before the menu was ever opened. In practice
+       that meant NOTHING on the page was tappable below 860px — not the
+       hamburger, not the header search toggle, not a single link — since
+       `document.elementFromPoint()` always resolved to this overlay first.
+       `:not([hidden])` keeps the same "only matters on mobile" scoping
+       while actually respecting the attribute main.js already toggles. */
+    .offcanvas-overlay:not([hidden]) { display: block; }
+
+    .main-menu.menu { display: none; }
+
+    .header-search { margin-left: auto; }
+  }
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+@layer components {
+  /* NOT a positive `margin-top` (task-uifix BUG 3, regression): `<body>`'s
+     own background is pure black (see `body` above) and `.main-content`
+     carries no trailing bottom margin/padding of its own (by design — see
+     `.main-content.boxed`'s own comment) — a margin HERE, on the footer's
+     side of the boundary, opens the exact same gap from the other
+     direction: a solid BLACK band between the last content block and the
+     footer's own dark fill. Zero on purpose; any breathing room the footer
+     wants belongs inside `.footer-inner`'s own padding, not out here where
+     it paints on bare body background. */
+  .site-footer {
+    background: var(--arena-footer-bg, var(--arena-c-dark));
+    color: var(--arena-footer-text, #ccc);
+    margin-top: 0;
+  }
+
+  .site-footer .footer-inner {
+    max-width: var(--arena-site-width);
+    margin-inline: auto;
+    padding: 24px 15px;
+  }
+
+  .footer-menu.menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+    font-family: var(--arena-font-head);
+    text-transform: uppercase;
+    font-size: .85rem;
+  }
+
+  /* padding: was unset, so the link's own box was just its ~16px
+     line-height — well under the 24x24px touch-target minimum. */
+  .footer-menu.menu a { display: inline-block; padding: 5px 0; color: #ccc; }
+  .footer-menu.menu a:hover { color: #fff; }
+
+  .copy-footer {
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    padding-top: 16px;
+    font-size: .85rem;
+  }
+
+  .footer-copyright { margin: 0; }
+}
+
+/* ==========================================================================
+   Section headings — colored "notched flag" (measured against the
+   reference's heading style `sh-t1 sh-s8`: text block padding
+   `4px 17px 4px 21px`, a pointed notch at the top-left made from a CSS
+   border-triangle `::before` — `border-top:15px solid transparent;
+   border-bottom:0 solid transparent; border-right:14px solid <color>` —
+   and wrapper margin `0 0 15px`). Clean-room reconstruction: the border-
+   triangle only reproduces the notch itself, so `.h-text` is offset by the
+   notch's own width (`margin-left`, not part of the measured values) so
+   its rectangle body starts exactly where the triangle's point ends,
+   giving one continuous pointed-flag silhouette instead of the triangle
+   and rectangle overlapping. The bar's color comes from `heading_color`
+   (Arena\Listing\Renderer::renderHeading() puts it as an inline `color:`
+   on THIS wrapper, not on `.h-text`), read here via `currentColor` on both
+   the notch and the `.h-text` background; the text itself is always
+   forced white, matching the reference (white text on the colored bar
+   regardless of the bar's own hue).
+   ========================================================================== */
+@layer components {
+  /* `.section-heading-row`: flex row pairing the colored flag with its
+     light-grey continuation bar (`.h-flag-continuation`, below) — see the
+     comment on `Arena\Listing\Renderer::renderHeading()` for why the
+     continuation is a sibling `<span>` rather than a 3rd pseudo-element on
+     `.section-heading` (which already uses both `::before` and `::after`).
+     Carries the `0 0 15px` bottom margin that used to live on
+     `.section-heading` itself, now that the flag is one child of this row
+     rather than the whole heading. */
+  .section-heading-row {
+    display: flex;
+    align-items: center;
+    margin: 0 0 15px;
+  }
+
+  /* Fills the rest of the column's width to the right of the flag —
+     measured on the reference: every heading flag (the dark bar above the
+     homepage banner, the 3 category-column flags) is followed by this same
+     light-grey bar picking up where the colored part ends. `align-self:
+     stretch` matches its own height to the flag's (the row's tallest
+     child, `.section-heading`, sized by `.h-text` below), not a fixed px
+     value, so it stays correct if the flag's own padding/line-height ever
+     changes. */
+  .h-flag-continuation {
+    flex: 1 1 auto;
+    align-self: stretch;
+    background: var(--arena-c-border-light);
+  }
+
+  .section-heading.sh-t6.sh-s6 {
+    position: relative;
+    display: inline-block;
+    flex: 0 0 auto;
+    /* `--arena-block-title-color` vem do painel; sem ela, a cor de destaque. */
+    color: var(--arena-block-title-color, var(--arena-accent)); /* fallback bar color when no heading_color is set */
+  }
+
+  /* The flag's rectangle body: a wrapper-level `::before` (not `.h-text`'s
+     own background) so its `currentColor` reads the WRAPPER's `color`
+     (the section's accent) rather than `.h-text`'s own forced-white text
+     color — putting `background:currentColor` directly on `.h-text`
+     resolves against ITS OWN `color:#fff`, i.e. a white-on-white,
+     invisible bar. As a `::before` (painted before the in-flow `.h-text`
+     child) it also sits behind the text, not on top of it. */
+  .section-heading.sh-t6.sh-s6::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 0 14px; /* starts where the notch (::after, below) ends */
+    background: currentColor;
+  }
+
+  /* The pointed notch: a CSS border-triangle sitting flush against the
+     wrapper's top-left corner, immediately to the left of the rectangle
+     above. Doesn't spatially overlap `.h-text`/the rectangle, so painting
+     last (`::after`, on top) is harmless. */
+  .section-heading.sh-t6.sh-s6::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-top: 15px solid transparent;
+    border-bottom: 0 solid transparent;
+    border-right: 14px solid currentColor;
+  }
+
+  .section-heading.sh-t6.sh-s6 .h-text {
+    position: relative;
+    display: inline-block;
+    margin-left: 14px; /* = the notch's own width, see comment above */
+    padding: 4px 17px 4px 21px;
+    line-height: 20px;
+    color: #fff;
+    font-family: var(--arena-font-head);
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+
+  .section-heading.sh-t6.sh-s6 a.h-text:hover,
+  .section-heading.sh-t6.sh-s6 .main-link:hover .h-text {
+    opacity: .85;
+  }
+}
+
+/* ==========================================================================
+   WPBakery `[vc_single_image]` block title (`.wpb_singleimage_heading`,
+   e.g. "Evento Power Arena 2026" above the homepage banner) — measured
+   against the reference: a light-grey full-width bar with slanted (chevron)
+   ends, holding a smaller dark chevron with white uppercase text centered
+   inside it. Markup comes from `Arena\Blocks\SingleImageHeading` (a
+   `wpb_widget_title` filter), which splits the plain `<h2>` js_composer
+   would otherwise render into `.sih-bar` (the grey bar) + `.sih-text` (the
+   dark chevron + text) — see that class's own doc-comment for why 2 layers
+   need 2 elements.
+   ========================================================================== */
+@layer components {
+  .wpb_singleimage_heading {
+    position: relative;
+    margin: 0 0 15px;
+    text-align: center;
+    line-height: 0; /* no direct text of its own now — both children set their own line-height */
+  }
+
+  /* The grey bar: `inset:0` stretches it to match `.sih-text`'s own
+     rendered height (below) exactly, since this pseudo-free `<span>` is the
+     ONLY in-flow (non-absolute) child sizing the `<h2>`'s box. Slanted ends
+     via `clip-path` (a 14px inset at each top corner) — same slant amount
+     as `.sih-text`'s own notch, below, so both read as one consistent
+     chevron angle. */
+  .wpb_singleimage_heading .sih-bar {
+    position: absolute;
+    inset: 0;
+    background: var(--arena-c-surface);
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  }
+
+  .wpb_singleimage_heading .sih-text {
+    position: relative;
+    display: inline-block;
+    padding: 9px 28px;
+    background: #1a1a1a;
+    color: #fff;
+    font-family: var(--arena-font-head);
+    font-size: .9375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  }
+}
+
+/* ==========================================================================
+   Listing grids — modern-grid (hero), mix (3-col context), blog (single
+   column w/ excerpt), grid (N-column)
+   ========================================================================== */
+@layer components {
+  /* Vertical rhythm between the major home blocks — measured against the
+     reference's `--publisher-spacing:50` variable applied as every
+     block's own margin-bottom. */
+  .bs-listing { margin: 0 0 var(--arena-block-spacing); }
+
+  /* NOT `.bs-listing:last-child` — every `.bs-listing` is already the sole/
+     last child of its own WPBakery `.wpb_wrapper` (each `[bs-*]` shortcode
+     renders as the lone child of its `vc_column`), so that selector was
+     silently zeroing EVERY block's bottom margin, not just the page's
+     final one — invisible while `.main-content.boxed` painted one
+     continuous white background behind every block (no visible margin to
+     lose), but it meant the 50px rhythm above never actually rendered once
+     each block got its own background. The block that actually needs to
+     meet the footer with no trailing gap is the dark full-bleed row
+     (`bs-dark-scheme` — "Últimas notícias" on the home page, always the
+     last block before `</main>`), so zero it specifically instead. */
+  .bs-listing.bs-dark-scheme { margin-bottom: 0; }
+
+  /* --- mix: 1 featured card (thumb + full meta, incl. comments) + a
+     compact text list (small thumb, title, date only) below a divider —
+     measured against the reference's `listing-mix-3-1` (row-1 =
+     `.listing-grid-1` card, row-2 = `.listing-tb-1` rows with an ~86x64
+     thumb each). The 1st (large) row carries no extra bottom margin of its
+     own; the divider before row-2 comes purely from row-2's own
+     border-top + padding-top. ------------------------------------------ */
+  .listing-mix-3-1 { display: flex; flex-direction: column; gap: 0; }
+
+  .listing-mix-3-1 .row-1 { margin-bottom: 0; }
+
+  .listing-mix-3-1 .row-2 {
+    padding-top: 14px;
+    border-top: 1px solid var(--arena-c-border-light);
+  }
+
+  /* Compact rows: measured margin-bottom 15px + padding-bottom 15px each,
+     with the last row trimmed to margin-bottom 7px and no extra padding. */
+  .listing-mix-3-1 .listing-item-text {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+  }
+
+  .listing-mix-3-1 .listing-item-text:last-child {
+    margin-bottom: 7px;
+    padding-bottom: 0;
+  }
+
+  /* Grid, not flex: image spans both text rows (title on top, date below),
+     matching the reference's thumb-left/stacked-text-right compact row —
+     the `.featured`/`.title`/`.post-meta` markup are flat siblings
+     (card/text.php), so grid placement (rather than restructuring the
+     markup into a nested wrapper) is the simplest way to reproduce it. */
+  .listing-mix-3-1 .listing-item-text .item-inner {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    column-gap: 10px;
+    align-items: center;
+  }
+
+  /* Overrides the generic `.listing-item .featured{margin-bottom:13px}`
+     (Cards block, below): this compact row places the thumb *beside* the
+     title/meta (grid-row spanning both text rows), not stacked above it,
+     so it needs no bottom gap of its own. */
+  .listing-mix-3-1 .listing-item-text .featured { grid-row: 1 / 3; margin-bottom: 0; }
+
+  .listing-mix-3-1 .listing-item-text .img-holder {
+    display: block;
+    aspect-ratio: 86 / 64;
+    overflow: hidden;
+    border-radius: 3px;
+  }
+
+  .listing-mix-3-1 .listing-item-text .title {
+    grid-column: 2;
+    font-size: .92rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .listing-mix-3-1 .listing-item-text .post-meta {
+    grid-column: 2;
+    font-size: .75rem;
+    color: var(--arena-c-text-secondary); /* was #888 — same contrast fix as .listing-item .post-meta, above */
+  }
+
+  /* --- blog: single column with excerpt ---------------------------------- */
+  .listing-blog {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* Measured: item margin-bottom 25px + a divider (border-bottom +
+     padding-bottom 20px); the last item drops all three. */
+  .listing-blog .listing-item-blog {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  .listing-blog .listing-item-blog:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .listing-blog .listing-item-blog .item-inner {
+    display: flex;
+    /* Reference: thumb floats left with a 26px gutter (text column starts at
+       237px = 210px thumb + 26px). */
+    gap: 26px;
+  }
+
+  .listing-blog .listing-item-blog .featured {
+    /* Sits beside the content-container (flex row), not stacked above it,
+       so cancel the generic `.listing-item .featured{margin-bottom:13px}`
+       (Cards block, below). */
+    flex: 0 0 210px;
+    margin-bottom: 0;
+  }
+
+  .listing-blog .listing-item-blog .featured .img-holder {
+    display: block;
+    aspect-ratio: 760 / 428;
+    overflow: hidden;
+    /* Reference thumbs are square-cornered (no border-radius on listing
+       images — only avatars/badges/buttons use radii). */
+  }
+
+  .listing-blog .listing-item-blog .content-container { flex: 1 1 auto; min-width: 0; }
+
+  .listing-blog .post-summary {
+    margin-top: 10px;
+    font-size: .95rem;
+    color: #555;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 600px) {
+    .listing-blog .listing-item-blog .item-inner { flex-direction: column; }
+    .listing-blog .listing-item-blog .featured { flex-basis: auto; }
+  }
+
+  /* --- archive ("blog-5"): thumb 300px + text column, reused by
+     category/tag/author archives and by search results (Task 3 brief) —
+     the wrapper carries BOTH `listing-blog` and `listing-blog-5` (measured
+     reference: `<div class="listing listing-blog listing-blog-5
+     clearfix">`), so it already inherits `.listing-blog`'s flex-column
+     stacking and `.post-summary` excerpt styling above; only the item's own
+     spacing/border and the 300px thumb column are specific to `-5`.
+     Measured: `.listing-item-blog-1,.listing-item-blog-5{margin-bottom:
+     25px}` plus the same divider as `.listing-item-blog`
+     (border-bottom:1px solid rgba(0,0,0,.078); padding-bottom:20px), with
+     the divider dropped on the last item. ------------------------------- */
+  .listing-blog-5 .listing-item-blog-5 {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  .listing-blog-5 .listing-item-blog-5:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .listing-blog-5 .listing-item-blog-5 .item-inner {
+    display: flex;
+    gap: 26px;
+  }
+
+  /* Cancels the generic `.listing-item .featured{margin-bottom:13px}`
+     (Cards block, below): here the thumb sits beside the text column
+     (flex row), not stacked above it. Measured thumb column: 300px. */
+  .listing-blog-5 .listing-item-blog-5 .featured {
+    flex: 0 0 300px;
+    margin-bottom: 0;
+  }
+
+  .listing-blog-5 .listing-item-blog-5 .featured .img-holder {
+    display: block;
+    aspect-ratio: 760 / 428;
+    overflow: hidden;
+  }
+
+  .listing-blog-5 .listing-item-blog-5 .content-container { flex: 1 1 auto; min-width: 0; }
+
+  /* Below 768px: stack the 300px thumb above the text column, full-width,
+     instead of squeezing a fixed 300px column beside it. */
+  @media (max-width: 768px) {
+    .listing-blog-5 .listing-item-blog-5 .item-inner { flex-direction: column; gap: 14px; }
+    .listing-blog-5 .listing-item-blog-5 .featured { flex-basis: auto; width: 100%; }
+  }
+
+  /* --- grid: N-column card grid — measured item margin-bottom 15px
+     (translated to the grid's own row-gap, since gap replaces per-item
+     margin in a CSS grid layout); column-gap unchanged. ------------------ */
+  .listing-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 15px;
+    column-gap: 20px;
+  }
+
+  .listing-grid.columns-1 { grid-template-columns: 1fr; }
+  .listing-grid.columns-2 { grid-template-columns: repeat(2, 1fr); }
+
+  @media (min-width: 720px) {
+    .listing-grid.columns-3 { grid-template-columns: repeat(3, 1fr); }
+    .listing-grid.columns-4 { grid-template-columns: repeat(4, 1fr); }
+    .listing-grid.columns-5 { grid-template-columns: repeat(5, 1fr); }
+    .listing-grid.columns-6 { grid-template-columns: repeat(6, 1fr); }
+  }
+
+  .listing-grid .listing-item-featured .img-cont { aspect-ratio: 760 / 428; }
+}
+
+/* ==========================================================================
+   Cards — thumb, title (Oswald), meta (Barlow), category badge
+   ========================================================================== */
+@layer components {
+  .listing-item { list-style: none; }
+
+  /* `.featured` is the containing block for the absolutely-positioned
+     `.term-badges.floated` badge (a sibling of `.img-cont`/`.img-holder`
+     inside it, per card/featured.php + card/excerpt.php) — without this,
+     the badge has no positioned ancestor and escapes to the initial
+     containing block instead of anchoring over its own card's image.
+     Measured: the thumb block itself carries margin-bottom:13px (the gap
+     to the title/content below it), replacing the old padding-top on
+     `.content-container`. */
+  .listing-item .featured { position: relative; margin-bottom: 13px; }
+
+  .listing-item .img-cont,
+  .listing-item .img-holder {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--arena-c-border);
+  }
+
+  .listing-item .img-cont img,
+  .listing-item .img-holder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Neutral branded placeholder for a card whose thumbnail is missing OR
+     unusable (thumbnail ID set but the attached file is gone — common on
+     dev/import content) — see Arena\Listing\Renderer::hasUsableThumbnail().
+     Card templates render this div in place of the `<a class="img-cont">`
+     /`<a class="img-holder">` markup so a bad thumbnail never falls
+     through as an empty box or a broken-image icon. Overrides the plain
+     `#ddd` background above at equal specificity via the extra class. */
+  .listing-item .img-cont.thumb-placeholder,
+  .listing-item .img-holder.thumb-placeholder,
+  .hero-tile .img-cont.thumb-placeholder {
+    background: linear-gradient(135deg, #2b2b2b 0%, var(--arena-c-dark) 55%, rgba(244, 44, 26, .3) 140%);
+  }
+
+  .listing-item .term-badges.floated {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+    /* Defensive: an absolutely-positioned box's width is shrink-to-fit
+       (intrinsic to its content), NOT clamped to the remaining space in
+       its containing block — an unusually long category name could
+       otherwise push this past the card's own right edge. On narrow
+       (2-column grid) cards there's little room to spare, so cap it to
+       the containing block's width minus the 10px left offset, matching
+       what a right:10px companion inset would give without needing one. */
+    max-width: calc(100% - 20px);
+  }
+
+  /* Single accent colour for EVERY term badge, regardless of category —
+     confirmed against the reference screenshots: "HARDWARE" badges render
+     red there even though the Hardware section heading flag is blue. The
+     per-section heading-flag colours (Hardware blue, VALORANT green, Free
+     Fire red) are supplied per-section as the raw `heading_color` WPBakery
+     shortcode attribute in the imported content, never through a shared
+     CSS custom property and never through these badge rules; see
+     `.section-heading.sh-t6.sh-s6`, further down, and
+     `Arena\Listing\Renderer::renderHeading()`. An earlier pass had
+     introduced --arena-c-hardware/valorant/freefire tokens and a per-slug
+     badge colour keyed off `data-slug`, inferred from those flags; neither
+     exists in the reference stylesheets, so both were removed (whole-
+     branch review, minor finding #2) — the tokens were unused dead weight,
+     and there is no such per-category badge override anywhere in the
+     reference. `data-slug` itself stays on the markup (card/list.php,
+     card/featured.php, card/hero.php) even though no CSS/JS reads it any
+     more: it mirrors the reference production markup exactly (see the
+     `data-slug`-asserting test in ArchiveTemplateTest), which is reason
+     enough to keep it as a harmless, ready-to-use hook (analytics,
+     future per-category styling) rather than strip it for its own sake.
+     Background is `--arena-accent-text` (the darkened accent), not the
+     raw `--arena-accent` — white text on raw #f42c1a only measures a
+     4.02:1 contrast ratio at this badge's 11.2px (.7rem) size, below the
+     4.5:1 small-text minimum; see the token's own comment, above, for the
+     ~5.74:1 this achieves instead. Still unmistakably the same red.
+     Padding/line-height bumped so the link's own hit area (previously a
+     measured 53.3x19px) clears the 24x24px touch-target minimum — height
+     is `min-height` rather than relying on padding+line-height alone, so
+     it's correct regardless of the exact font-metrics line-height Chrome
+     computes for Barlow at this size. */
+  .listing-item .term-badge a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 4px 9px;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--arena-accent-text);
+    border-radius: 2px;
+  }
+
+  /* card/blog5.php (category/tag/author archives, search results):
+     reference overlays the same badge at the BOTTOM-left of the thumb
+     instead of the top-left every other card uses. */
+  .listing-item-blog-5 .term-badges.floated {
+    top: auto;
+    bottom: 10px;
+  }
+
+  .listing-item .content-container { padding-top: 0; }
+
+  .listing-item .title {
+    font-family: var(--arena-font-head);
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.3;
+    margin: 0 0 8px;
+  }
+
+  .listing-item .post-title:hover { color: var(--arena-accent); }
+
+  /* #6b6b6b, not #888: at this .8rem (12.8px) size #888 (#888888) only
+     measures 3.54:1 against the white card surface (Lighthouse
+     color-contrast failure) — #6b6b6b clears 4.5:1 (measures ~5.33:1;
+     same grey the single-post-meta rule below already uses). */
+  .listing-item .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--arena-font-body);
+    font-size: .8rem;
+    color: var(--arena-c-text-secondary);
+  }
+
+  .listing-item .post-author-a { color: var(--arena-c-text-secondary); }
+  .listing-item .post-author { font-style: normal; }
+
+  /* Author • date separator — measured on the reference ("Nicole Pereira •
+     24 jul, 2026"): a bullet between the author link and the date. Scoped
+     via the adjacent-sibling combinator (only `.time` immediately preceded
+     by `.post-author-a`) so cards with no author — the `.post-author-a`
+     link only renders when the post has one, see card/*.php — don't grow a
+     leading bullet in front of a lone date (e.g. the compact text-list
+     rows in `card/text.php`, which the reference itself shows date-only). */
+  .listing-item .post-meta .post-author-a + .time::before {
+    content: '•';
+    margin-right: 10px;
+    color: #ccc;
+  }
+
+  .listing-item .post-meta .comments {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+  }
+}
+
+/* ==========================================================================
+   Hero (`modern-grid`) — mosaic of image-background tiles: a large 2-up
+   row followed by compact 3-up rows, category badge + title overlaid on
+   the image behind a bottom scrim. Measured against the reference's
+   `.listing-modern-grid-7`/`.listing-mg-type-1` (row split 50/50 then
+   33/33/33, tile aspect-ratio ~68% vs ~60% padding-top, overlay
+   `rgba(0,0,0,.42)`, hover zoom `scale(1.1)`) — placed after the generic
+   Cards block above so `.hero-tile .img-cont` (absolute, full-bleed) wins
+   over the generic `.listing-item .img-cont` (relative, bordered) at equal
+   selector specificity.
+   ========================================================================== */
+@layer components {
+  /* Measured: tiles have a 2px gap only (margin-bottom:2px on items),
+     tightened from the earlier 3px approximation. */
+  .listing-modern-grid .mg-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+  }
+
+  .listing-modern-grid .mg-row + .mg-row { margin-top: 2px; }
+
+  .listing-modern-grid .mg-row:not(.mg-row-1) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .hero-tile {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 2px;
+    /* Dark fallback (not the generic card's light #ddd) so the white
+       overlay title stays legible on posts with no featured image. */
+    background: var(--arena-c-dark);
+    height: 100%;
+  }
+
+  .mg-row-1 .hero-tile { aspect-ratio: 1.47; }
+  .mg-row:not(.mg-row-1) .hero-tile { aspect-ratio: 1.67; }
+
+  .hero-tile .img-cont {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  .hero-tile .img-cont img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .5s ease;
+  }
+
+  .hero-tile:hover .img-cont img { transform: scale(1.1); }
+
+  .hero-tile .term-badges.floated { z-index: 2; }
+
+  .hero-tile .content-container {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 1;
+    padding: 20px 18px 16px;
+    background: rgba(0, 0, 0, .42);
+    max-height: 75%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hero-tile .content-container a { pointer-events: auto; }
+
+  .hero-tile .title {
+    margin: 0;
+    color: #fff;
+    font-weight: 500;
+    line-height: 1.35;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, .25);
+  }
+
+  .mg-row-1 .hero-tile .title { font-size: 1.25rem; }
+  .mg-row:not(.mg-row-1) .hero-tile .title { font-size: .98rem; padding: 12px 14px; }
+  .mg-row:not(.mg-row-1) .hero-tile .content-container { padding: 14px 14px 12px; }
+
+  .hero-tile .post-meta {
+    margin-top: 6px;
+    display: flex;
+    gap: 10px;
+    font-size: .78rem;
+  }
+
+  .hero-tile .post-meta .post-author { color: #fff; }
+  .hero-tile .post-meta .time { color: rgba(255, 255, 255, .62); }
+
+  /* Same author • date separator as the generic Cards block above, but on
+     the dark image-overlay scrim, so the bullet needs a light color of its
+     own instead of the light-surface `#ccc` (barely visible on the dark
+     overlay). */
+  .hero-tile .post-meta .post-author-a + .time::before {
+    color: rgba(255, 255, 255, .5);
+  }
+
+  @media (max-width: 640px) {
+    .listing-modern-grid .mg-row,
+    .listing-modern-grid .mg-row:not(.mg-row-1) {
+      grid-template-columns: 1fr;
+    }
+
+    .mg-row-1 .hero-tile,
+    .mg-row:not(.mg-row-1) .hero-tile { aspect-ratio: 16 / 9; }
+  }
+}
+
+/* ==========================================================================
+   Hero, ARCHIVE variant (`modern-grid-1`) — the category/tag featured
+   mosaic, an IRREGULAR pattern distinct from the home's uniform
+   `modern-grid` above (which stays untouched). Measured against the
+   reference's `listing-modern-grid-1` (ref-category.html): `.mg-col-1
+   {width:56%;float:left;padding-right:1px;overflow:hidden}` /
+   `.mg-col-2{width:44%;float:left;padding-left:1px;overflow:hidden}`, and
+   inside col-2 `.item-3-cont,.item-4-cont{width:50%;float:left;
+   overflow:hidden}` (1px padding each side, same 1px+1px gap pattern).
+   Own class names (`mg1-*`, not `mg-*`) so these rules never collide with
+   `.listing-modern-grid .mg-row`/`.mg-col` above — both layouts can share
+   the same page (archive.php renders only one of them, but a future
+   template could put both on one page). Tiles reuse `.hero-tile` (card/
+   hero.php) for the image/overlay/badge/title chrome; only the
+   aspect-ratio, title size and caption inset are overridden per tile role
+   below (measured `padding-top` percentages converted to `aspect-ratio`:
+   89% → 100/89, 63.74% → 100/63.74, 98.58% → 100/98.58; caption inset
+   `left:15px;right:15px;bottom:10px;max-height:50%`).
+   ========================================================================== */
+@layer components {
+  .listing-modern-grid-1 .mg1-col-1,
+  .listing-modern-grid-1 .mg1-col-2 {
+    box-sizing: border-box;
+    float: left;
+    overflow: hidden;
+  }
+
+  .listing-modern-grid-1 .mg1-col-1 { width: 56%; padding-right: 1px; }
+  .listing-modern-grid-1 .mg1-col-2 { width: 44%; padding-left: 1px; }
+
+  /* Vertical rhythm between the top tile and the bottom row inside col-2 —
+     same 2px rhythm as the home mosaic's own `.mg-row + .mg-row`. */
+  .listing-modern-grid-1 .mg1-row-bottom { margin-top: 2px; }
+
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile {
+    box-sizing: border-box;
+    float: left;
+    width: 50%;
+    overflow: hidden;
+  }
+
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile:first-child { padding-right: 1px; }
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile:last-child { padding-left: 1px; }
+
+  /* Graceful degrade: a lone 3rd post with no 4th sibling fills the whole
+     bottom row instead of leaving half of it empty. */
+  .listing-modern-grid-1 .mg1-row-bottom .mg1-tile:only-child {
+    width: 100%;
+    padding: 0;
+  }
+
+  .listing-modern-grid-1 .mg1-col-1 .hero-tile { aspect-ratio: 100 / 89; }
+  .listing-modern-grid-1 .mg1-top .hero-tile { aspect-ratio: 100 / 63.74; }
+  .listing-modern-grid-1 .mg1-row-bottom .hero-tile { aspect-ratio: 100 / 98.58; }
+
+  .listing-modern-grid-1 .mg1-col-1 .hero-tile .title { font-size: 1.3rem; }
+  .listing-modern-grid-1 .mg1-top .hero-tile .title { font-size: 1.05rem; }
+  .listing-modern-grid-1 .mg1-row-bottom .hero-tile .title { font-size: .92rem; }
+
+  /* Caption/overlay inset — measured on the reference, narrower than the
+     home mosaic's flush `inset:auto 0 0 0` (higher specificity than the
+     generic `.hero-tile .content-container` rule above, so it wins without
+     needing `!important`). Padding is a clean-room choice (not itself a
+     measured value): kept small since the inset already provides the
+     15px/10px breathing room on every side. */
+  .listing-modern-grid-1 .hero-tile .content-container {
+    left: 15px;
+    right: 15px;
+    bottom: 10px;
+    max-height: 50%;
+    padding: 10px 0;
+  }
+
+  /* Posts 3 & 4 render title-only (card/hero.php's `$compact` tiles carry
+     no badge/meta) in a much smaller tile — trims the caption padding
+     further so the short title never feels cramped against the inset. */
+  .listing-modern-grid-1 .hero-tile-compact .content-container { padding: 8px 0; }
+
+  /* Stack to a single column below 768px, matching the reference's own
+     narrow/stacked variants (`l-3`/`l-5`): both columns full width, the
+     2nd column picking up a small top gap instead of the side gutter. The
+     bottom row keeps its 50/50 split — still legible at 360px. */
+  @media (max-width: 768px) {
+    .listing-modern-grid-1 .mg1-col-1,
+    .listing-modern-grid-1 .mg1-col-2 {
+      width: 100%;
+      float: none;
+      padding: 0;
+    }
+
+    .listing-modern-grid-1 .mg1-col-2 { padding: 2px 0 0; }
+  }
+}
+
+/* ==========================================================================
+   Block colour schemes — `bs-light-scheme` (the default: hero mosaic,
+   category columns, blog list) vs `bs-dark-scheme` (`bs-text-color-
+   scheme="light"` listings, e.g. "Últimas notícias"). The boxed wrapper
+   (`.main-content.boxed`, above) now supplies ONE continuous light surface
+   for the whole column, so `bs-light-scheme` blocks don't need (and no
+   longer paint) their own white card — they only keep their own internal
+   padding as breathing-room, which reads as white space on the shared
+   surface rather than a separately-painted box with black gaps around it.
+   The dark block paints its own dark fill but stays BOXED inside the same
+   1200px column as everything else (task-uifix BUG 2 — verified against the
+   reference HTML: that row is a plain `vc_row wpb_row vc_row-fluid` +
+   `vc_col-sm-12 vc_col-has-fill`, with NO `vc_row-full-width`/
+   `data-vc-full-width` — the dark fill sits INSIDE the boxed column, same as
+   the white content above it. An earlier revision broke it full-bleed
+   (`width:100vw`) based on an incorrect reading of the reference; that
+   inference is reverted here).
+   ========================================================================== */
+@layer components {
+  /* Breathing-room padding only — no background of its own; the light fill
+     now comes from `.main-content.boxed` (see the comment there). */
+  .bs-listing.bs-light-scheme {
+    padding: 24px 15px;
+  }
+
+  /* Boxed, not full-bleed (task-uifix BUG 2): same 15px inline padding as
+     `.bs-listing.bs-light-scheme` above, so the dark fill's own left/right
+     edges land exactly on the same column edges as the white content block
+     above it — `.bs-listing` already sits inside `.main-content.boxed`
+     (max-width 1200px, 15px side padding), it just also paints its own dark
+     background across that same width instead of relying on the shared
+     light surface. */
+  .bs-listing.bs-dark-scheme {
+    background: var(--arena-c-dark);
+    color: var(--arena-c-surface);
+    padding-block: 32px 40px;
+    padding-inline: 15px;
+    /* The page background is now pure black (see `body` above) and this
+       row's own dark fill (--arena-c-dark, #1b1b1b) is close enough in
+       value that its top/bottom edges could read as an accidental seam
+       rather than an intentional dark section — a faint top/bottom
+       boundary keeps it legible as its own block. */
+    border-block: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  /* Belt-and-suspenders (task-uifix BUG 1): forces a card's own
+     `.content-container` transparent at 3-class specificity, so it wins
+     the cascade over a future light-surface rule regardless of THAT rule's
+     own source order — the root cause (a stray bare `.content-container`
+     selector colliding with the page shell, see `main.content-container`
+     above) is fixed, but this stands on its own even if some other rule
+     ever re-adds a light background to `.content-container` generically. */
+  .bs-listing.bs-dark-scheme .content-container {
+    background: transparent;
+    color: inherit;
+  }
+
+  .bs-listing.bs-dark-scheme .title,
+  .bs-listing.bs-dark-scheme .post-title,
+  .bs-listing.bs-dark-scheme a {
+    color: #fff;
+  }
+
+  .bs-listing.bs-dark-scheme .post-title:hover { color: var(--arena-accent); }
+
+  .bs-listing.bs-dark-scheme .post-meta,
+  .bs-listing.bs-dark-scheme .post-author-a {
+    color: rgba(255, 255, 255, .6);
+  }
+
+  .bs-listing.bs-dark-scheme .post-summary { color: rgba(255, 255, 255, .85); }
+
+  /* The heading's grey continuation bar (`.h-flag-continuation`, above) is
+     a light-SURFACE grey (`#e6e6e6`) by default — on the dark section that
+     reads as an odd light-grey stripe against the `#1b1b1b` fill. Measured
+     against the reference's own light-text scheme (`border-color:
+     rgba(255,255,255,.15)` / heading `::after{opacity:.15;background:#fff}`
+     on that scheme): a translucent white, not a solid light grey. */
+  .bs-listing.bs-dark-scheme .h-flag-continuation {
+    background: rgba(255, 255, 255, .15);
+  }
+}
+
+/* ==========================================================================
+   WPBakery filled-column inset — the "Últimas notícias" row above is a
+   `[vc_row]/[vc_column]` with a background fill, which js_composer's OWN
+   stylesheet (`.vc_col-has-fill > .vc_column-inner{padding-top:35px}`)
+   pads on top of before our block's own `bs-dark-scheme` padding-block
+   (32px) ever runs — stacking to a locally-measured ~84px gap before the
+   row's visible content. Reference measurement of the same filled-column
+   case: `.vc_col-has-fill > .bs-vc-wrapper{padding-top:≈41.5px}`, overridden
+   by the more specific `.vc_col-has-fill > .bs-vc-wrapper.wpb_wrapper
+   {padding-top:30px !important}`, PLUS `.vc_col-has-fill .bs-listing
+   {padding-top:0 !important}` so the listing's own inset doesn't stack on
+   top of it. Same fix, our own markup's selectors (`.wpb_wrapper` is the
+   actual immediate child of `.vc_column-inner` here, there's no
+   `.bs-vc-wrapper` class in Arena's DOM) — neutralize js_composer's own
+   inset, then apply the reference's measured 30px once, in one place.
+
+   EXCEPT for `bs-dark-scheme` ("Últimas notícias"): that block paints its
+   OWN dark fill only on `.bs-listing` itself (not on the `.wpb_wrapper`
+   ancestor, which stays transparent) — so putting the 30px
+   gap on the wrapper, as done below for the ordinary light-scheme case,
+   would render it as plain (non-dark) space ABOVE the dark box, with the
+   heading landing flush against the box's own top edge once the fill
+   begins (no breathing room, reads as a seam between the light content
+   above and the dark section rather than as part of the dark section's own
+   title). Excluding it from both overrides instead lets its own
+   `padding-block` top inset (32px, see `.bs-dark-scheme` above) render AS
+   dark padding — the fill covers it since padding paints within the
+   border box — so the gap above the heading is visibly part of the dark
+   fill, matching the reference. */
+@layer components {
+  /* !important: js_composer's own stylesheet (`js_composer.min.css`) is
+     enqueued AFTER arena-main-css (verified in the rendered <head> — the
+     plugin registers its `wp_enqueue_scripts` callback later than the
+     theme does), so at equal specificity its `padding-top:35px` rule wins
+     the cascade by source order alone. Matches the reference's own use of
+     `!important` for this same override. */
+  .vc_col-has-fill > .vc_column-inner { padding-top: 0 !important; }
+
+  /* `:has()` fallback (whole-branch review, minor finding #12): an
+     unsupported `:has()` inside `:not()` makes the WHOLE selector invalid,
+     not just that one clause — a browser without `:has()` would drop this
+     rule entirely and get NO padding-top on ANY `.vc_col-has-fill`
+     wrapper, including the ordinary light-scheme case that needs the
+     30px. Split in two: the base rule below applies the 30px
+     unconditionally (correct for light-scheme, and the safe fallback
+     everywhere `:has()` isn't supported — dark-scheme sections would just
+     carry a harmless extra ~30px gap there, never a missing one), then
+     `@supports selector(:has(a))` feature-detects real support before
+     applying the dark-scheme exception on top of it. */
+  .vc_col-has-fill > .vc_column-inner > .wpb_wrapper {
+    padding-top: 30px;
+  }
+
+  @supports selector(:has(a)) {
+    .vc_col-has-fill > .vc_column-inner > .wpb_wrapper:has(> .bs-listing.bs-dark-scheme) {
+      padding-top: 0;
+    }
+  }
+
+  .vc_col-has-fill .bs-listing:not(.bs-dark-scheme) { padding-top: 0 !important; }
+}
+
+/* ==========================================================================
+   Article (single.php) — breadcrumb, featured image, header/H1, meta,
+   entry-content typography, tags, prev/next nav.
+   template-parts/single/*.php builds the markup; o PLUGIN de SEO ativo
+   (hoje Rank Math, via Arena\Seo::breadcrumb() — ADR-008) é o dono da
+   marcação e do schema da trilha — as regras abaixo só estilizam o que ele
+   imprime dentro do `<nav class="arena-breadcrumb">` que o tema passa como
+   wrapper; o tema nunca gera trilha nem schema próprios.
+   ========================================================================== */
+@layer components {
+  /* --------------------------------------------------------------------------
+     Breadcrumb (trilha) — estilo APENAS; o HTML é do plugin (ADR-008).
+     Marcação real medida em produção (curl da matéria):
+       <nav class="arena-breadcrumb">
+         <a>Início</a><span class="separator"> - </span>
+         <a>Hardware</a><span class="separator"> - </span>
+         <span class="last">título da matéria</span>
+       </nav>
+
+     Fica DENTRO de `@layer components` de propósito: medido no site real
+     (CDP, matéria + arquivo + busca, 390px e 1366px) TODAS as declarações
+     abaixo aplicam a partir da camada — nenhum CSS sem camada disputa
+     `.arena-breadcrumb` (o Rank Math não manda folha para essa trilha, e o
+     `text-decoration: none` do link — a declaração que mais correria risco
+     de perder para um `a{text-decoration:underline}` sem camada — computa
+     `none` no navegador). Não há motivo para repetir aqui o caso do
+     alinhamento de mídia (ADR-007), que precisou sair da camada porque
+     brigava com `:where(figure)` do core.
+     -------------------------------------------------------------------------- */
+  .arena-breadcrumb {
+    padding-block: 16px 14px;
+    font-family: var(--arena-font-body);
+    font-size: 13px; /* piso: abaixo disso a trilha volta a ser ilegível */
+    line-height: 1.45;
+    color: var(--arena-c-text-secondary);
+    /* O último item é o TÍTULO da matéria — no celular ele é mais largo que
+       a tela e, sem isto, um título sem espaços (ou uma URL crua) empurraria
+       o scrollWidth além do clientWidth. Medido em 390px com 3 casos de
+       estresse (título de 118 chars, palavra única gigante, URL crua):
+       scrollWidth === clientWidth === 390 nos três. */
+    overflow-wrap: break-word;
+    border-bottom: 1px solid var(--arena-c-border-light);
+  }
+
+  /* ESPAÇAMENTO À ESQUERDA (o pedido do dono do site) — mas só onde ele
+     falta. A trilha é renderizada em DOIS lugares diferentes:
+       - single.php e archive.php: filha DIRETA de `main.content-container`,
+         numa faixa de largura total ANTES da linha de colunas (task-uifix
+         BUG 5). Aí ela encostava na borda do bloco branco, enquanto o H1
+         logo abaixo começa 15px adentro (`.content-column`, padding-inline
+         15px) — era isso que fazia a trilha parecer texto solto.
+       - page/search/index/404/attachment.php: DENTRO de `.content-column`,
+         que já dá os mesmos 15px. Medido: left=98 no desktop, igual ao H1.
+     Por isso o recuo é escopado ao primeiro caso — uma regra solta em
+     `.arena-breadcrumb` daria 30px nesses cinco templates, desalinhando a
+     trilha do próprio conteúdo. `margin-inline` (e não `padding-inline`)
+     para que a hairline de baixo também termine alinhada com o conteúdo. */
+  main.content-container > .arena-breadcrumb {
+    margin-inline: 15px;
+  }
+
+  /* `inline-block` + padding vertical: alvo de toque de 26,8px de altura
+     (mínimo 24px), que o link inline de 16px não alcançava. O último item
+     (`.last`) fica inline de propósito — é o título longo, e como texto
+     inline ele quebra no meio, o que um inline-block não faria tão bem. */
+  .arena-breadcrumb a {
+    display: inline-block;
+    padding-block: 4px;
+    color: var(--arena-c-text-secondary);
+    text-decoration: none; /* sublinhado permanente saía: virou estado de hover/foco */
+  }
+
+  /* --arena-accent-text, não --arena-accent: a 13px o destaque cru mede
+     4,02:1 sobre branco (reprova AA). Medido na produção com o destaque
+     configurado hoje, a variante acessível computa rgb(228,29,11) = 4,69:1. */
+  .arena-breadcrumb a:hover,
+  .arena-breadcrumb a:focus-visible {
+    color: var(--arena-accent-text);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .arena-breadcrumb a:focus-visible {
+    outline: 2px solid var(--arena-accent-text);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* SEPARADOR. O plugin imprime `<span class="separator"> - </span>` — um
+     hífen literal, feio e, pior, um nó de texto que o leitor de tela anuncia
+     entre cada item (conferido na árvore de acessibilidade via CDP: 2 nós
+     `StaticText " - "` não-ignorados dentro do nav).
+
+     `visibility: hidden` no span (não `display: none`) porque:
+       1. tira o " - " da árvore de acessibilidade — depois da mudança a
+          varredura da árvore não encontra nenhum nó separador;
+       2. PRESERVA a caixa no layout, então o chevron desenhado no
+          `::before` (com `visibility: visible`, que reaparece dentro de um
+          pai hidden) ocupa esse espaço sem precisar de margem em ninguém.
+     O chevron é PURA geometria (`content: ""` + 2 bordas rotacionadas, o
+     mesmo recurso já usado por `.arena-accordion__title::after` neste
+     arquivo): não há texto gerado para o leitor de tela anunciar, então não
+     faz falta um `aria-hidden` que o CSS não poderia acrescentar.
+
+     Ficar FORA do link também importa: dentro do `<a>` o chevron entraria na
+     área clicável e o sublinhado de hover passaria por baixo dele. */
+  .arena-breadcrumb .separator {
+    visibility: hidden;
+    position: relative;
+    display: inline-block;
+    width: 20px;
+  }
+
+  .arena-breadcrumb .separator::before {
+    visibility: visible;
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    margin: -3px 0 0 -4px; /* centro óptico, conferido em zoom 6x */
+    border-top: 1.5px solid var(--arena-c-text-secondary);
+    border-right: 1.5px solid var(--arena-c-text-secondary);
+    transform: rotate(45deg);
+  }
+
+  /* Item ATUAL: o plugin já o entrega sem link. Peso e cor escura fazem a
+     hierarquia que faltava (17,22:1 sobre o branco da página). */
+  .arena-breadcrumb .last {
+    font-weight: 600;
+    color: var(--arena-c-dark);
+  }
+
+  .single-container { padding-block: 6px 40px; }
+
+  /* Featured image is the page's LCP element (see
+     template-parts/single/featured.php) — full-bleed within the content
+     column, native `width`/`height` from `the_post_thumbnail('full', …)`
+     keep the browser from reflowing once it loads. */
+  .single-featured { margin-bottom: 24px; }
+  .single-featured img { width: 100%; height: auto; border-radius: 4px; }
+  .single-featured-caption {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.35;
+    font-style: italic;
+    color: var(--arena-c-text-secondary);
+    text-align: center;
+  }
+
+  /* The ONLY h1 on the template (see template-parts/single/header.php). */
+  .single-post-title {
+    font-family: var(--arena-font-head);
+    font-size: var(--arena-post-title-size, clamp(26px, 4vw, 38px));
+    line-height: 1.25;
+    font-weight: 600;
+    color: var(--arena-c-dark);
+    margin: 0 0 18px;
+  }
+
+  .post-meta.single-post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    font-size: 13px;
+    color: var(--arena-c-text-secondary);
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--arena-c-border-light);
+  }
+  /* --arena-accent-text, not the raw --arena-accent: the author link at
+     this 13px size only measures 4.02:1 against white in the raw accent
+     (below the 4.5:1 small-text minimum) — see the token's own comment,
+     above, for the ~5.74:1 the darker variant achieves instead. */
+  .post-meta.single-post-meta .post-author-name a {
+    color: var(--arena-accent-text);
+    font-weight: 600;
+  }
+  .post-meta.single-post-meta .comments {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--arena-c-text-secondary);
+  }
+  .post-meta.single-post-meta .icon-comment { color: #9a9a9a; }
+
+  /* entry-content: comfortable reading measure (~720px), Barlow body /
+     Oswald sub-headings — matches the design tokens (--arena-font-body /
+     --arena-font-head) rather than introducing new type families. */
+  .single-post-content {
+    max-width: 720px;
+    font-size: 17px;
+    line-height: 1.75;
+    color: #262626;
+  }
+
+  .single-post-content > :first-child { margin-top: 0; }
+
+  .single-post-content p,
+  .single-post-content ul,
+  .single-post-content ol,
+  .single-post-content blockquote,
+  .single-post-content figure,
+  .single-post-content table,
+  .single-post-content .page-links {
+    margin: 0 0 1.25em;
+  }
+
+  .single-post-content h2,
+  .single-post-content h3,
+  .single-post-content h4 {
+    font-family: var(--arena-font-head);
+    line-height: 1.3;
+    color: var(--arena-c-dark);
+    margin: 1.6em 0 .6em;
+  }
+  .single-post-content h2 { font-size: 26px; }
+  .single-post-content h3 { font-size: 21px; }
+  .single-post-content h4 { font-size: 18px; }
+
+  .single-post-content ul,
+  .single-post-content ol { padding-left: 1.4em; }
+  .single-post-content li + li { margin-top: .4em; }
+
+  .single-post-content blockquote {
+    padding: .8em 1.2em;
+    border-left: 4px solid var(--arena-accent);
+    background: #f7f7f7;
+    font-style: italic;
+    color: #444;
+  }
+
+  /* Links in the article body must be identifiable without guessing from
+     surrounding text: use the theme's contrast-safe red and an underline.
+     The hover/focus color is the darker token already used by the header and
+     other interactive controls. */
+  .single-post-content a {
+    color: var(--arena-accent-text);
+    text-decoration-line: underline;
+    text-decoration-thickness: .08em;
+    text-underline-offset: 2px;
+  }
+  .single-post-content a:hover,
+  .single-post-content a:focus-visible {
+    color: var(--arena-accent-text-hover);
+  }
+
+  /* Inline media + captions — images/figures never force the column
+     wider than its own box; `max-width:100%` on `img` is already set
+     globally (@layer base), repeated here scoped to entry-content only to
+     document the intent. */
+  .single-post-content img { max-width: 100%; height: auto; border-radius: 4px; }
+
+  /* WP's core caption shortcode/block wraps a captioned image in
+     `<figure class="wp-caption">` (or `.wp-block-image`) with an INLINE
+     `style="width:{img_width+10}px"` on the figure itself (see
+     wp-includes/media.php, img_caption_shortcode()) — a fixed pixel width
+     that only ever matches the FULL-SIZE image's own intrinsic width, no
+     matter how narrow the reading column actually is. `max-width` always
+     wins over a conflicting `width` in the used-value computation (they're
+     different properties, not a specificity contest), so capping it here
+     is enough to bring the caption wrapper back under control without
+     needing `!important` to fight the inline style. Confirmed against a
+     real 1280px-wide captioned image at a 420px viewport (previously the
+     single cause of horizontal overflow on this template). */
+  .single-post-content figure,
+  .single-post-content .wp-caption {
+    max-width: 100%;
+  }
+  .single-post-content figcaption,
+  .single-post-content .wp-caption-text {
+    font-size: 13px;
+    color: #767676;
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  .single-post-content pre,
+  .single-post-content code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--arena-c-surface);
+    border-radius: 4px;
+  }
+  .single-post-content code { padding: .15em .4em; font-size: .9em; }
+  .single-post-content pre {
+    padding: 14px;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .single-post-content pre code { background: none; padding: 0; }
+
+  /* Tables and any other wide fixed-width media (iframes/embeds) scroll
+     inside their OWN box rather than ever forcing the 720px reading column
+     (and, in turn, the 1200px page) wider — the entry-content wrapper is
+     their containing block, so an `overflow-x:auto` scoped here is enough
+     to satisfy that at 360/420/768px without a JS-built wrapper `<div>`
+     around every `<table>` the_content() happens to output. */
+  .single-post-content table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    white-space: nowrap;
+  }
+  .single-post-content th,
+  .single-post-content td {
+    padding: 8px 12px;
+    border: 1px solid var(--arena-c-border);
+  }
+
+  /* Video/media embeds: WordPress preserves the provider's original
+     `width` attribute (often 500px), which makes a YouTube iframe look
+     undersized inside the article. Let embeds fill the complete reading
+     column while keeping YouTube-style iframes at a responsive 16:9 ratio. */
+  .single-post-content iframe,
+  .single-post-content embed,
+  .single-post-content object,
+  .single-post-content video {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+  .single-post-content iframe {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* Twitter/X widgets inject their own inline width and left margin after
+     `widgets.js` renders the blockquote. Keep their provider-defined maximum
+     width, but center the embed inside the article column; the `!important`
+     declarations are intentional so the injected inline styles cannot move
+     it back to the left. */
+  .single-post-content .twitter-tweet,
+  .single-post-content .twitter-tweet-rendered {
+    width: 100% !important;
+    max-width: 550px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  .single-post-content blockquote.twitter-tweet {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-style: normal;
+  }
+
+  /* [accordions]/[accordion] — Publisher's "Resumo da matéria" (article
+     summary) box that opens nearly every imported article, now expanded
+     via Arena\Blocks\Accordions (native <details>/<summary>, zero JS —
+     see that class's own doc-comment) instead of rendering as literal
+     shortcode text. Bordered/tinted box echoing the reference's panel
+     look; title row in Oswald with a chevron that rotates on open, body
+     copy in Barlow at the same scale as the rest of .single-post-content
+     rather than introducing a 2nd type scale. No fixed widths anywhere
+     here, so it never overflows its 720px reading column at 360/420/768px
+     — it just wraps like the surrounding prose. */
+  .arena-accordion {
+    margin: 0 0 28px;
+    border: 1px solid #e7cfc2;
+    border-radius: 6px;
+    background: #fdf6f1;
+    overflow: hidden;
+  }
+  /* --arena-accent-text: white at 15px/600 is under the "large text" AA
+     threshold (~18.66px bold), so it needs 4.5:1 — raw --arena-accent only
+     clears 4.02:1. Every accordion in an article renders this heading. */
+  .arena-accordion__heading {
+    padding: 12px 18px;
+    font-family: var(--arena-font-head);
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: #fff;
+    background: var(--arena-accent-text);
+  }
+  .arena-accordion__item + .arena-accordion__item {
+    border-top: 1px solid #e7cfc2;
+  }
+  .arena-accordion__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    margin: 0;
+    font-family: var(--arena-font-head);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--arena-c-dark);
+    cursor: pointer;
+    list-style: none;
+  }
+  .arena-accordion__title::-webkit-details-marker { display: none; }
+  .arena-accordion__title::after {
+    content: '';
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform .2s ease;
+  }
+  .arena-accordion__item[open] > .arena-accordion__title::after {
+    transform: rotate(-135deg);
+  }
+  .arena-accordion__title:focus-visible {
+    outline: 2px solid var(--arena-accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+  .arena-accordion__body {
+    padding: 0 18px 16px;
+    font-family: var(--arena-font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    color: #333;
+  }
+  .arena-accordion__body > :first-child { margin-top: 0; }
+  .arena-accordion__body > :last-child { margin-bottom: 0; }
+  .arena-accordion__body p { margin: 0 0 .6em; }
+
+  /* Tags — get_the_tag_list() already wraps each tag in its own <a>; no
+     extra per-tag markup needed for the chip look. */
+  .post-tags {
+    margin: 32px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .post-tags a {
+    display: inline-block;
+    padding: 6px 14px;
+    background: var(--arena-c-surface);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--arena-c-dark);
+  }
+  /* --arena-accent-text: white at 13px regular is far below the "large
+     text" AA threshold, so it needs 4.5:1 — raw --arena-accent only clears
+     4.02:1. */
+  .post-tags a:hover { background: var(--arena-accent-text); color: #fff; }
+
+  .next-prev {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--arena-c-border-light);
+  }
+  .next-prev .nav-previous,
+  .next-prev .nav-next {
+    flex: 1 1 50%;
+    font-size: 14px;
+  }
+  .next-prev .nav-next { text-align: right; }
+  /* `inline-block` + vertical padding (was a plain inline link, whose box
+     is only as tall as its line-height, ~17px at this 14px size — under
+     the 24x24px touch-target minimum) so the link's own hit area clears
+     24px without changing its visible text size/position. */
+  .next-prev a {
+    display: inline-block;
+    padding: 6px 0;
+    color: var(--arena-c-dark);
+    font-weight: 600;
+  }
+  .next-prev a:hover { color: var(--arena-accent); }
+
+  @media (max-width: 420px) {
+    .next-prev { flex-direction: column; gap: 12px; }
+    .next-prev .nav-next { text-align: left; }
+  }
+}
+
+/* ==========================================================================
+   Attachment/media page (attachment.php, GAP B) — the image itself reuses
+   `.single-featured` (single.php's featured-image wrapper, main.css above)
+   so it gets the same width/border-radius treatment for free; only the
+   caption/description/back-link need their own rules.
+   ========================================================================== */
+@layer components {
+  .attachment-media__link a {
+    display: inline-block;
+    padding: 10px 18px;
+    background: var(--arena-c-surface);
+    border-radius: 4px;
+    color: var(--arena-c-dark);
+    font-weight: 600;
+  }
+  .attachment-media__link a:hover { background: var(--arena-accent); color: #fff; }
+
+  .attachment-caption {
+    margin: 10px 0 0;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--arena-c-text-secondary); /* same contrast fix as .listing-item .post-meta / .listing-empty */
+  }
+
+  .attachment-description {
+    margin-top: 24px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--arena-c-dark);
+  }
+
+  .attachment-back-link {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--arena-c-border-light);
+  }
+  .attachment-back-link a {
+    display: inline-block;
+    padding: 6px 0;
+    color: var(--arena-c-dark);
+    font-weight: 600;
+  }
+  .attachment-back-link a:hover { color: var(--arena-accent); }
+}
+
+/* ==========================================================================
+   Pagination — `Arena\Pagination::render()` / template-parts/pagination.php,
+   reused by category/tag/author archives and by search results (Task 3
+   brief). `paginate_links(['type' => 'plain'])` prints a flat string of
+   `<a>`/`<span>` elements each carrying `.page-numbers`, plus one of
+   `.current`, `.dots`, `.prev` or `.next`.
+   ========================================================================== */
+@layer components {
+  .arena-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: var(--arena-block-spacing) 0 0;
+    font-family: var(--arena-font-body);
+  }
+
+  /* >=40px tap target both ways (height fixed, min-width fixed, horizontal
+     padding grows it further for 2-digit page numbers and the prev/next
+     labels). */
+  .arena-pagination .page-numbers {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 4px;
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--arena-c-dark);
+    background: var(--arena-c-surface);
+    text-decoration: none;
+    transition: background-color .15s ease, color .15s ease;
+  }
+
+  /* --arena-accent-text, not the raw --arena-accent: white text at .9rem/600
+     is well under the ~18.66px-bold "large text" AA threshold, so it needs
+     the normal 4.5:1 minimum — raw --arena-accent only clears 4.02:1.
+     `.current` is rendered on EVERY archive/search page with >1 page of
+     results, so this is a persistent, not just a hover, surface. */
+  .arena-pagination a.page-numbers:hover {
+    background: var(--arena-accent-text);
+    color: #fff;
+  }
+
+  .arena-pagination .page-numbers.current {
+    background: var(--arena-accent-text);
+    color: #fff;
+  }
+
+  /* The "…" ellipsis span: not a link, not a page — no button chrome. */
+  .arena-pagination .page-numbers.dots {
+    background: transparent;
+    color: var(--arena-c-text-secondary); /* was #888 — same contrast fix as .listing-item .post-meta, above */
+  }
+
+  .arena-pagination__chevron { font-size: .85em; }
+}
+
+/* ==========================================================================
+   Search results — search.php (Fatia 2B Task 5): the term/count header
+   above the reused blog-5 listing, and the empty-state message + form +
+   recent-posts fallback. Header styling mirrors `.archive-title`
+   (Fatia 2B Task 4) so search results read as the same "kind" of page as a
+   category/tag archive, just with its own class names since the two <h1>
+   sources (search term vs. archive title) are otherwise unrelated.
+   ========================================================================== */
+@layer components {
+  .search-header {
+    margin: 0 0 var(--arena-block-spacing);
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  .search-header__title {
+    font-family: var(--arena-font-head);
+    font-size: clamp(24px, 3.6vw, 34px);
+    line-height: 1.25;
+    font-weight: 600;
+    color: var(--arena-c-dark);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: .01em;
+    /* A long/unusual search term must wrap inside the content column
+       rather than forcing it wider — no horizontal overflow at any of the
+       measured breakpoints. */
+    overflow-wrap: break-word;
+  }
+
+  .search-header__count {
+    font-family: var(--arena-font-body);
+    font-size: .98rem;
+    color: #555;
+    margin: 12px 0 0;
+  }
+
+  .search-empty__message {
+    font-family: var(--arena-font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #444;
+    margin: 0 0 24px;
+    max-width: 640px;
+  }
+
+  .search-empty .search-form {
+    margin-bottom: var(--arena-block-spacing);
+  }
+
+  .search-empty__recent {
+    margin-top: var(--arena-block-spacing);
+    padding-top: var(--arena-block-spacing);
+    border-top: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  .search-empty__recent-heading {
+    font-family: var(--arena-font-head);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    margin: 0 0 20px;
+    color: var(--arena-c-dark);
+  }
+
+  @media (max-width: 420px) {
+    .search-header__title { font-size: clamp(22px, 6vw, 28px); }
+  }
+}
+
+/* ==========================================================================
+   404 — 404.php (Fatia 2B Task 5): same shell as every other content
+   template, its own header/message + the shared search form + a
+   supplementary recent-posts listing (`.not-found-recent`, styled the same
+   as `.search-empty__recent` above minus the divider, since it's the
+   template's own last block rather than a fallback appended after a
+   divider).
+   ========================================================================== */
+@layer components {
+  .not-found-header {
+    margin: 0 0 var(--arena-block-spacing);
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, .078);
+  }
+
+  .not-found-header__title {
+    font-family: var(--arena-font-head);
+    font-size: clamp(28px, 5vw, 44px);
+    line-height: 1.2;
+    font-weight: 600;
+    color: var(--arena-c-dark);
+    margin: 0 0 14px;
+    text-transform: uppercase;
+    letter-spacing: .01em;
+  }
+
+  .not-found-header__message {
+    font-family: var(--arena-font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #555;
+    margin: 0 0 24px;
+    max-width: 640px;
+  }
+
+  .not-found-header .search-form {
+    max-width: 480px;
+  }
+
+  .not-found-recent__heading {
+    font-family: var(--arena-font-head);
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    margin: 0 0 20px;
+    color: var(--arena-c-dark);
+  }
+
+  @media (max-width: 420px) {
+    .not-found-header__title { font-size: clamp(24px, 8vw, 32px); }
+  }
+}
+
+/* ==========================================================================
+   Accessible search form — searchform.php (Fatia 2B Task 5): one shared
+   template rendering the plain `.search-form` shape styled here (used by
+   `get_search_form()` from search.php's empty state and from 404.php) —
+   the header's OWN dropdown copy of the same markup carries
+   `.header-search-form` INSTEAD of `.search-form` (see
+   template-parts/header/search.php's `$args`), so its pre-existing rules
+   above (`.header-search-form .search-field`, etc.) are additive, not a
+   cascade fight with the rules below.
+   ========================================================================== */
+@layer components {
+  .search-form {
+    display: flex;
+    align-items: stretch;
+    max-width: 480px;
+  }
+
+  .search-form .search-field {
+    flex: 1 1 auto;
+    /* >=40px tap target. */
+    height: 44px;
+    min-width: 0;
+    padding: 0 16px;
+    border: 1px solid var(--arena-c-border);
+    border-right: 0;
+    border-radius: 4px 0 0 4px;
+    background: #fff;
+    color: var(--arena-c-dark);
+    font-family: var(--arena-font-body);
+    font-size: .95rem;
+  }
+
+  .search-form .search-field:focus-visible {
+    outline: 2px solid var(--arena-accent);
+    outline-offset: -2px;
+  }
+
+  .search-form .search-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* >=40px tap target both ways. */
+    min-width: 44px;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--arena-accent);
+    border-radius: 0 4px 4px 0;
+    background: var(--arena-accent);
+    color: #fff;
+    cursor: pointer;
+    flex: 0 0 auto;
+    transition: background-color .15s ease;
+  }
+
+  .search-form .search-submit:hover,
+  .search-form .search-submit:focus-visible {
+    background: var(--arena-accent-text);
+  }
+
+  @media (max-width: 420px) {
+    .search-form { max-width: 100%; }
+  }
+}
+
+/* Header dropdown's own submit button (see the shared-markup note above):
+   the toggle's existing `.header-search-form`/`.search-field` sizing
+   predates this task and stays a compact 36px to match `.search-toggle`'s
+   own bar chrome — this only adds the NEW submit button `searchform.php`
+   now always renders, sized/laid out to match that same 36px row rather
+   than the page-level 44px used by `.search-form` above. */
+@layer components {
+  .header-search-form .search-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    background: var(--arena-accent);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .header-search-form .search-submit:hover,
+  .header-search-form .search-submit:focus-visible {
+    background: var(--arena-accent-text);
+  }
+}
+
+/* ==========================================================================
+   Comments (comments.php, GAP D) — styles ONLY WordPress core's own
+   wp_list_comments()/comment_form() markup (Walker_Comment::html5_comment(),
+   opted into via the 'comment-list'/'comment-form' html5 theme supports in
+   Arena\Setup::themeSupports()). wpDiscuz (the reference's actual comments
+   plugin) ships its own CSS for its own DOM — none of THAT is targeted or
+   overridden here.
+   ========================================================================== */
+@layer components {
+  .comments-area {
+    margin-top: var(--arena-block-spacing);
+    padding-top: 24px;
+    border-top: 1px solid var(--arena-c-border-light);
+  }
+
+  .comments-title {
+    font-family: var(--arena-font-head);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--arena-c-dark);
+    margin: 0 0 20px;
+  }
+
+  .comment-list,
+  .comment-list .children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Nested-reply indentation — `.children` is the <ol> WP core nests
+     directly inside a parent <li class="comment">. */
+  .comment-list .children {
+    margin-left: 24px;
+    padding-left: 20px;
+    border-left: 2px solid var(--arena-c-border-light);
+  }
+
+  .comment-list > li.comment + li.comment,
+  .comment-list .children > li.comment + li.comment {
+    margin-top: 20px;
+  }
+
+  .comment-body {
+    padding: 16px 0;
+  }
+
+  .comment-author.vcard {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .comment-author .avatar {
+    border-radius: 50%;
+    display: block;
+  }
+
+  .comment-author .fn {
+    font-weight: 600;
+    color: var(--arena-c-dark);
+    font-style: normal;
+  }
+
+  .comment-author .says { display: none; }
+
+  .comment-metadata {
+    font-size: 13px;
+    color: var(--arena-c-text-secondary); /* same contrast fix used for .post-meta / .listing-empty elsewhere in this file */
+    margin-bottom: 10px;
+  }
+
+  .comment-metadata a {
+    color: inherit;
+    text-decoration: underline;
+  }
+
+  .comment-content {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--arena-c-dark);
+  }
+  .comment-content p { margin: 0 0 .8em; }
+  .comment-content > :last-child { margin-bottom: 0; }
+
+  .comment-awaiting-moderation {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--arena-c-text-secondary);
+  }
+
+  /* `.reply a` (the "Reply" link core's comment_reply_link() prints) and
+     the "Cancel reply" link share this: both are plain inline text links
+     otherwise well under the 24px touch-target minimum. */
+  .reply a,
+  #cancel-comment-reply-link {
+    display: inline-block;
+    padding: 6px 4px;
+    min-height: 24px;
+    color: var(--arena-accent-text);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .reply a:hover,
+  #cancel-comment-reply-link:hover {
+    text-decoration: underline;
+  }
+
+  .comment-reply-title small { margin-left: 8px; font-size: 13px; }
+
+  /* Comment form */
+  #respond.comment-respond {
+    margin-top: 32px;
+  }
+
+  #reply-title {
+    font-family: var(--arena-font-head);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--arena-c-dark);
+    margin: 0 0 16px;
+  }
+
+  .comment-notes {
+    font-size: 13px;
+    color: var(--arena-c-text-secondary);
+    margin: 0 0 16px;
+  }
+
+  .comment-form p {
+    margin: 0 0 16px;
+  }
+
+  .comment-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--arena-c-dark);
+  }
+
+  .comment-form .required {
+    color: var(--arena-accent-text);
+  }
+
+  .comment-form input[type="text"],
+  .comment-form input[type="email"],
+  .comment-form input[type="url"],
+  .comment-form textarea {
+    width: 100%;
+    max-width: 100%;
+    min-height: 24px;
+    padding: 10px 12px;
+    border: 1px solid #cfcfcf;
+    border-radius: 4px;
+    font-family: var(--arena-font-body);
+    font-size: 15px;
+    color: var(--arena-c-dark);
+    background: #fff;
+  }
+
+  .comment-form textarea { resize: vertical; }
+
+  .comment-form input:focus-visible,
+  .comment-form textarea:focus-visible {
+    outline: 2px solid var(--arena-accent-text);
+    outline-offset: 1px;
+  }
+
+  .comment-form .form-submit { margin-bottom: 0; }
+
+  .comment-submit-button {
+    display: inline-block;
+    min-height: 24px;
+    padding: 12px 28px;
+    border: 0;
+    border-radius: 4px;
+    background: var(--arena-accent-text);
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .comment-submit-button:hover,
+  .comment-submit-button:focus-visible {
+    background: var(--arena-accent-text-hover);
+  }
+  .comment-submit-button:focus-visible {
+    outline: 2px solid var(--arena-c-dark);
+    outline-offset: 2px;
+  }
+
+  .no-comments {
+    color: var(--arena-c-dark);
+    font-size: 14px;
+  }
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+@layer utilities {
+  .clearfix::after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+
+  .screen-reader-text {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+    white-space: nowrap;
+  }
+
+  .listing-empty { padding: 20px 0; color: var(--arena-c-text-secondary); } /* was #888 — same contrast fix as .listing-item .post-meta, above */
+
+  /* `bs-show-desktop`/`bs-show-tablet`/`bs-show-phone` (whole-branch
+     review, minor finding #9): per-breakpoint visibility for a [bs-*]
+     block, set on its own `.bs-listing` wrapper by
+     Arena\Listing\Renderer::visibilityClass(). 3 bands, no overlap:
+     phone <=640px (matches this file's existing narrow-viewport
+     breakpoint), tablet 641-1024px, desktop >=1025px. */
+  @media (max-width: 640px) {
+    .bs-listing-hide-phone { display: none; }
+  }
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .bs-listing-hide-tablet { display: none; }
+  }
+  @media (min-width: 1025px) {
+    .bs-listing-hide-desktop { display: none; }
+  }
+}
+
+/* ==========================================================================
+   Alinhamento de mídia (WordPress core) — aligncenter/left/right/wide/full
+   ==========================================================================
+   O WordPress espera que o TEMA forneça estas classes: o editor apenas marca
+   `align":"center"` no bloco e imprime `class="wp-block-image aligncenter"`
+   (ou `.aligncenter` no editor clássico). Sem CSS correspondente, escolher
+   "centralizar" no editor não produz efeito nenhum — foi o que acontecia com
+   uma imagem centralizada num widget da sidebar E com qualquer imagem
+   centralizada dentro de uma matéria.
+
+   Cuidado que motiva o `width: fit-content`: a base do tema define
+   `img { display: block; max-width: 100% }`, então `margin: auto` sozinho não
+   centraliza nada — a imagem já ocupa toda a largura disponível. É preciso
+   encolher a caixa ao tamanho do conteúdo para que as margens automáticas
+   tenham sobra para distribuir.
+
+   POR QUE ESTE BLOCO FICA FORA DE @layer: medido no site real, `margin-inline:
+   auto` dentro de `@layer components` NÃO era aplicado (computava 0px) — o
+   core emite `:where(figure){ margin: 0 0 1em }`, e declarações SEM layer
+   vencem qualquer declaração DENTRO de um layer, independentemente da
+   especificidade (é assim que a cascata de layers funciona: layer perde de
+   não-layer no mesmo origin). Especificidade só desempata entre declarações
+   da mesma camada, então nenhum seletor mais específico dentro do layer
+   resolveria isso. Mantido sem layer de propósito — não mova para dentro de
+   `@layer components` sem re-medir.
+   ========================================================================== */
+  .aligncenter,
+  figure.aligncenter,
+  .wp-block-image.aligncenter,
+  .wp-block-image .aligncenter {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .aligncenter img,
+  .wp-block-image.aligncenter img {
+    margin-inline: auto;
+  }
+
+  /* Blocos que centralizam via `has-text-align-center` (parágrafos, títulos) */
+  .has-text-align-center { text-align: center; }
+  .has-text-align-right  { text-align: right; }
+  .has-text-align-left   { text-align: left; }
+
+  .alignleft,
+  figure.alignleft,
+  .wp-block-image.alignleft {
+    float: left;
+    max-width: 50%;
+    margin: 0 1.5em 1em 0;
+  }
+
+  .alignright,
+  figure.alignright,
+  .wp-block-image.alignright {
+    float: right;
+    max-width: 50%;
+    margin: 0 0 1em 1.5em;
+  }
+
+  .alignnone,
+  .wp-block-image.alignnone { max-width: 100%; }
+
+  /* Larguras estendidas: só fazem sentido na coluna de conteúdo, e nunca
+     podem estourar a caixa (o tema é boxed em 1200px). */
+  .single-post-content .alignwide,
+  .entry-content .alignwide {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .single-post-content .alignfull,
+  .entry-content .alignfull {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+  }
+
+  /* Empilha os floats no mobile: 50% de largura flutuando em 360px deixa o
+     texto ilegível numa coluna de poucos caracteres. */
+  @media (max-width: 600px) {
+    .alignleft,
+    figure.alignleft,
+    .wp-block-image.alignleft,
+    .alignright,
+    figure.alignright,
+    .wp-block-image.alignright {
+      float: none;
+      max-width: 100%;
+      margin: 0 auto 1em;
+      width: fit-content;
+    }
+  }
+
+  /* Mesma regra dentro dos widgets da sidebar, onde o espaço é estreito e o
+     float atrapalha mais do que ajuda. */
+  .widget .alignleft,
+  .widget .alignright,
+  .widget figure.alignleft,
+  .widget figure.alignright {
+    float: none;
+    max-width: 100%;
+    margin-inline: auto;
+    width: fit-content;
+  }
+
+  .widget figure,
+  .widget .wp-block-image { margin-block: 0 1em; }
+
+  .widget figure:last-child,
+  .widget .wp-block-image:last-child { margin-bottom: 0; }
+
+  /* Legenda de imagem também nos widgets (o conteúdo do artigo já tem a sua). */
+  .widget .wp-element-caption,
+  .widget .wp-caption-text {
+    margin: 6px 0 0;
+    font-size: .82rem;
+    line-height: 1.35;
+    color: var(--arena-text-secondary);
+    text-align: center;
+  }
+
+/* ==========================================================================
+   Colunas do WPBakery voltam a empilhar no mobile
+   ==========================================================================
+   BUG RELATADO: na home, a linha de três colunas (Hardware / VALORANT / Free
+   Fire) não empilhava no celular — as três lado a lado com ~130px cada num
+   viewport de 390px, uma palavra por linha, e a página estourando 49px.
+
+   CAUSA RAIZ (medida na produção, não inferida): esta instalação tem a opção
+   do WPBakery `wpb_js_not_responsive_css = 1` ("desabilitar elementos
+   responsivos"), herdada da época do tema Publisher. Com ela, o WordPress
+   imprime `vc_non_responsive` na classe do `<body>` e o `js_composer.min.css`
+   passa a valer por esta regra, que NÃO tem media query nenhum:
+
+       .vc_non_responsive .vc_row .vc_col-sm-4 { width: 33.33333333% }
+       .vc_non_responsive .vc_row .vc_col-sm-4 { float: left }
+
+   As regras responsivas nativas do js_composer continuam no arquivo, dentro de
+   `@media (min-width:768px)`, mas nunca chegam a importar: a variante
+   `vc_non_responsive` é mais específica E incondicional. O Publisher
+   compensava com CSS mobile próprio; o Arena não tinha nada equivalente, então
+   a quebra apareceu junto com a troca de tema.
+
+   POR QUE O TEMA CORRIGE, EM VEZ DE DESLIGAR A OPÇÃO: desligar
+   `wpb_js_not_responsive_css` resolveria neste site, mas é configuração global
+   do construtor, não do tema — e um tema revendável não pode depender de um
+   ajuste que qualquer administrador religa sem saber a consequência. Se a
+   opção for desligada algum dia, estas regras se tornam redundantes e inócuas
+   (o seletor exige `.vc_non_responsive` no body), não conflitantes.
+
+   POR QUE ESTE BLOCO FICA FORA DE @layer: mesma armadilha do alinhamento de
+   mídia acima (ADR-007). Medido a 390px na home real, injetando a MESMA regra
+   das duas formas: dentro de `@layer components` as colunas continuaram com
+   130px; fora de qualquer camada foram para 390px. O `js_composer.min.css` não
+   usa camadas, e declaração sem camada vence qualquer declaração DENTRO de uma
+   camada na mesma origem, independentemente da especificidade. Mover este
+   bloco para dentro da camada DESLIGA a correção sem quebrar nenhum teste de
+   marcação — por isso existe o teste-guarda
+   `WpBakeryResponsiveGuardTest::test_regra_responsiva_do_wpbakery_fica_fora_de_qualquer_camada`.
+
+   Os limites reproduzem exatamente o que o js_composer faria se a opção
+   estivesse desligada: `col-sm-*` empilha abaixo de 768px, `col-md-*` abaixo
+   de 992px, `col-lg-*` abaixo de 1200px.
+
+   `vc_col-xs-*` fica DE FORA de propósito: no Bootstrap, `xs` significa "vale
+   também nas telas pequenas", ou seja é escolha explícita de quem montou a
+   página — empilhar isso seria o tema passando por cima do editor.
+
+   Medido depois da correção (home de produção, 7 larguras): 360/390/420/767px
+   empilham com zero overflow; 768/1024/1366px seguem com 3 colunas. Títulos
+   com menos de 120px de largura: 29 antes, 0 depois.
+   ========================================================================== */
+@media (max-width: 767px) {
+  body.vc_non_responsive .vc_row [class*="vc_col-sm-"] {
+    float: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 991px) {
+  body.vc_non_responsive .vc_row [class*="vc_col-md-"] {
+    float: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 1199px) {
+  body.vc_non_responsive .vc_row [class*="vc_col-lg-"] {
+    float: none;
+    width: 100%;
+  }
+}
